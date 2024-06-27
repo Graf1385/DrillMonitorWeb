@@ -1,0 +1,47 @@
+:root{
+    --selected-color: lime;
+}
+
+.indicator{    
+    position: absolute;
+    text-align: justify;
+	border: 1px solid var(--selected-color);
+    resize: both; /* позволяет изменять размер */ 
+    overflow: hidden; /* обрезает содержимое и поддерживает resize */ 
+}
+
+.indicator.selected{
+    box-shadow: 0px 0px 30px var(--selected-color);
+}
+
+/* Digital Indicator */
+.digitalIndicator {
+    min-width: 100px;
+    min-height: 100px;
+    width: auto;
+    height: auto;    
+    background-color: red;
+    margin: 0;
+}
+
+.digitalIndicator > .indicatorHeader{
+    font-size: 30px;
+    text-align: center;
+    margin: 0;
+    font-weight: bold;
+}
+
+.digitalIndicator > .indicatorValue{
+    font-size: 100px;
+    text-align: center;
+    margin: 0;
+    background-color: black;
+    text-shadow: 0px 0px 10px var(--selected-color);
+    font-weight: bold;
+    color: var(--selected-color);
+    height: 100%;
+}
+
+
+
+

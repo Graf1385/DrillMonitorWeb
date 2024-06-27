@@ -1,0 +1,43 @@
+<dialog class="settingsModal" id="settings">
+			<h1>Общие настройки</h1>
+			<table class="settingsTable">
+				<tr>
+					<th>Параметр</th>
+					<th>Значение</th>
+				</tr>
+				<tr>
+					<td>Ip адрес</td>
+					<td><input type="text" class="settingsInput" id="ipAddress" placeholder="XXX.XXX.XXX.XXX"></td>
+				</tr>
+				<tr>
+					<td>Маска подсети</td>
+					<td><input type="text" class="settingsInput" id="netMask" placeholder="XXX.XXX.XXX.XXX"></td>
+				</tr>
+				<tr>
+					<td>Цвет фона</td>
+					<td><input type="color" class="inputColor" id="workSpaceColor" oninput="setColor(this.value, '--workSpace-color')"></td>
+				</tr>
+				<tr>
+					<td>Цвет сетки</td>
+					<td><input type="color" class="inputColor" id="netColor" oninput="setColor(this.value, '--net-color')"></td>
+				</tr>
+				<tr>
+					<td>Размер сетки</td>
+					<td><input type="number" class="settingsInput" id="netSize" placeholder="XXX" oninput="numericMask(this, 0, 300), setGridSize(this.value)"></td>
+				</tr>
+			</table>
+    <footer>
+        <button class="modalButton okBtn" onclick="closeModal()">Сохранить</button>	
+		<button class="modalButton cancelBtn" onclick="closeModal()">Отмена</button>			
+    </footer>
+</dialog>
+
+<dialog id="rebootModal">
+    <h1>Общие настройки</h1>
+     <footer>
+        <button class="modalButton yesBtn" onclick="closeModal()">ДА</button>
+        <button class="modalButton noBtn" onclick="closeModal()">HET</button>				
+    </footer>
+</dialog>
+
+<script script language="JavaScript" type="text/javascript" src="settings.js"></script>

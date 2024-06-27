@@ -1,0 +1,102 @@
+:root{
+	--sideBarBack:  #DCDCDC;
+}
+
+#sideBarLogo{
+	width: 70px;
+	height: 70px;
+	border-radius: 50px;
+	margin-top: 5px;
+	margin-bottom: 10px;
+	background-color: var(--sideBarBack);	
+	transition: all 0.7s;
+	z-index: 1;
+}
+
+#sideBarLogo img{
+	object-position: center top;
+	margin-top: 4px;
+	width: 100%;	
+}
+
+#sideBar{
+	z-index: 1;
+	margin: 10px;
+	position: fixed;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	height: 85px;
+	width: 85px;
+	background-color: var(--sideBarBack);	
+	border: 2px solid black;
+	border-radius: 50px;	
+	opacity: 0.1;
+	transition: all 0.9s;
+}
+
+#sideBar:hover{
+	opacity: 1;
+}
+
+#sideBar.open #sideBarLogo{
+	height: 15vh;
+}
+
+#sideBar.open{
+	height: 98%;
+	opacity: 1;
+}
+
+#sideBar.open .sideBarButton{
+	opacity: 1;
+}
+
+.sideBarButton{
+	width: 60px;
+	height: 60px;
+	margin-bottom: 10px;
+	border-radius: 20px;
+	border-width: 0px;
+	opacity: 0;
+	transition: opacity 0.7s;
+	background-color: var(--sideBarBack);
+
+}
+
+.sideBarButton img{
+	margin-top: 4px;
+	width: 100%;
+	height: auto;
+}
+
+.sideBarButton:hover{
+	box-shadow: 0px 0px 10px black;
+}
+
+.sideBarButton:active{
+	box-shadow: inset 0px 0px 10px black;
+}
+
+#netButton.enable{
+	box-shadow: inset 0px 0px 10px black;
+}
+
+#removeButton{
+	visibility: hidden;
+}
+
+#removeButton.visible{
+	visibility: visible;
+}
+
+#saveButton{
+	margin-top: auto;
+	margin-bottom: 30px;
+	visibility: hidden;
+}
+
+#saveButton.visible{
+	visibility: visible;
+}
+
