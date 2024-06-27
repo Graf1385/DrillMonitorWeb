@@ -1,8 +1,16 @@
-var root = document.querySelector(':root');
-var modal = document.querySelector('#settings');
-var workSpace = document.querySelector('#workSpace');
-var ip_address = $('#ipAddress');
+var _root = document.querySelector(':root');
+var _modal = document.querySelector('#settings');
+var _workSpace = document.querySelector('#workSpace');
+var _ip_address = $('#ipAddress');
 var net_mask = $('#netMask');
+
+var _settings = {
+    ip : "",
+    mask : "",
+    background : "#000000",
+    gridColor : "#FFFFFF",
+    cellSize : 20
+}
 
 ip_address.inputmask({
     alias: "ip",
@@ -30,42 +38,72 @@ function numericMask(item, min, max){
 }
 
 function getSettings(){
-    
+    $.ajax({
+        url: "/getSettings",
+        type: "POST",
+        data: `city=JJJ&country=KKKK`,
+        success: function(settings){
+            setColor(settings.Settings.background, '--workSpace-color')
+            
+        }
+    });  
 }
 
 function showSettings(){    
-    modal.querySelector('#workSpaceColor').value = getColor('--workSpace-color');
-    modal.querySelector('#netColor').value = getColor('--net-color');
-    modal.querySelector('#netSize').value = workSpace.dataset.cellSize;
+    _modal.querySelector('#workSpaceColor').value = getColor('--workSpace-color');
+    _modal.querySelector('#netColor').value = getColor('--net-color');
+    _modal.querySelector('#netSize').value = workSpace.dataset.cellSize;
 
     $.ajax({
         url: "/getSettings",
         type: "POST",
         data: `city=JJJ&country=KKKK`,
         success: function(settings){
-            modal.querySelector('#ipAddress').value = settings.Settings.ip;
-            modal.querySelector('#netMask').value = settings.Settings.mask;
+            _modal.querySelector('#ipAddress').value = settings.Settings.ip;
+            _modal.querySelector('#netMask').value = settings.Settings.mask;
         }
-    });
+    });  
 
-   
-
-    modal.showModal();
+    _modal.showModal();
 }
 
 function getColor(varName){
-    return getComputedStyle(root).getPropertyValue(varName);
+    return getComputedStyle(_root).getPropertyValue(varName);
 }
 
 function setColor(value, varName){
-    root.style.setProperty(varName, value);
+    _root.style.setProperty(varName, value);
 }
 
-function closeModal(){
-    modal.close();//wfd-id - id0
+function closeSettings(){
+    _modal.close();//wfd-id - id0
 }
 
-function SaveSettings(){
+function applySettings(){
+    showSaveBtn();
+    _modal.close();
+}
 
+function saveSettings(){
+    
+    try {
+
+        
+
+        $.ajax({
+            url: "/setSettings",
+            type: "POST",
+            data: ``,
+            success: function(settings){
+                hideSaveBtn();
+            }
+        });  
+
+       
+
+    } catch (error) {
+        console.log(error);
+    }    
+    
 }
 
