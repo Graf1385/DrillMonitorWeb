@@ -29,15 +29,8 @@ function numericMask(item, min, max){
     }
 }
 
-async function getSettings(){
-    await $.ajax({
-        url: "/getSettings",
-        type: "POST",
-        data: `city=JJJ&country=KKKK`,
-        success: function(settings){
-           return settings;
-        }
-    });
+function getSettings(){
+    
 }
 
 function showSettings(){    
@@ -45,10 +38,17 @@ function showSettings(){
     modal.querySelector('#netColor').value = getColor('--net-color');
     modal.querySelector('#netSize').value = workSpace.dataset.cellSize;
 
-    var settings = getSettings();
+    $.ajax({
+        url: "/getSettings",
+        type: "POST",
+        data: `city=JJJ&country=KKKK`,
+        success: function(settings){
+            modal.querySelector('#ipAddress').value = settings.Settings.ip;
+            modal.querySelector('#netMask').value = settings.Settings.mask;
+        }
+    });
 
-    modal.querySelector('#ipAddress').value = settings.ip;
-    modal.querySelector('#netMask').value = settings.mask;
+   
 
     modal.showModal();
 }

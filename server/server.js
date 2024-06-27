@@ -14,7 +14,7 @@ app.set('views', './server/views');
 
 app.use(express.static('./public/scripts'));
 app.use(express.static('./public/styles'));
-app.use(express.static('./public/Image'));
+app.use(express.static('./public/image'));
 
 app.use(router);
 

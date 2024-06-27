@@ -8,20 +8,8 @@ router.get('/', (req, res) =>{
 
 router.post('/getSettings',(req, res) =>{
     try {
-        var ip = '';
-        var mask = '';
-        helper.networkInterfaces.Ethernet.forEach(element => {
-            if(element.family == 'IPv4'){
-                ip = element.address;
-                mask = element.netmask;
-            }
-        });
-       
-        res.status(200).send({
-            ip : ip,
-            mask : mask
-        });
-
+        var settings = helper.getSettings();
+        res.status(200).send(settings);
     } catch (error) {
         console.log(error);
         res.status(400);

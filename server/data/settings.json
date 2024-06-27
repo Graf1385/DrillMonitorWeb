@@ -2,7 +2,6 @@
     "Settings" : {
         "ip" : "",
         "mask" : "",
-        "gateway" : "",
         "background" : "#000000",
         "gridColor" : "#FFFFFF",
         "cellSize" : 20        
