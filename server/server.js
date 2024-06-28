@@ -1,29 +1,33 @@
-const express = require("express");
-const app = express();
-const router = require("./routes/routers");
-const exphbs = require('express-handlebars');
+const _express = require("express");
+const _app = _express();
+const _get_router = require("./routes/get_routers");
+const _post_router = require("./routes/post_routers");
+const _exphbs = require('express-handlebars');
 
-const hbs = exphbs.create({
+const _hbs = _exphbs.create({
     defaultLayout: 'main',
     extname: 'hbs'
 });
 
-app.engine('hbs', hbs.engine);
-app.set('view engine', 'hbs');
-app.set('views', './server/views');
+_app.engine('hbs', _hbs.engine);
+_app.set('view engine', 'hbs');
+_app.set('views', './server/views');
 
-app.use(express.static('./public/scripts'));
-app.use(express.static('./public/styles'));
-app.use(express.static('./public/image'));
+_app.use(_express.urlencoded({ extended : false}))
+_app.use(_express.static('./public/scripts'));
+_app.use(_express.static('./public/styles'));
+_app.use(_express.static('./public/image'));
 
-app.use(router);
+
+_app.use(_get_router);
+_app.use(_post_router);
 
 function Start(port){
 
     try {
-        app.listen(port, ()=>{
+        _app.listen(port, ()=>{
             console.log("The server is already running...");
-            console.log("http://localhost:"+port);
+            console.log("http://localhost:" + port);
         });    
         
     } catch (error) {

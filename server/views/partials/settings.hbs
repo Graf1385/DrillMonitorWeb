@@ -7,23 +7,23 @@
 				</tr>
 				<tr>
 					<td>Ip адрес</td>
-					<td><input type="text" class="settingsInput" id="ipAddress" placeholder="XXX.XXX.XXX.XXX"></td>
+					<td><input type="text" class="settingsInput" id="ipAddress" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.ip = this.value;"></td>
 				</tr>
 				<tr>
 					<td>Маска подсети</td>
-					<td><input type="text" class="settingsInput" id="netMask" placeholder="XXX.XXX.XXX.XXX"></td>
+					<td><input type="text" class="settingsInput" id="netMask" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.mask = this.value;"></td>
 				</tr>
 				<tr>
 					<td>Цвет фона</td>
-					<td><input type="color" class="inputColor" id="workSpaceColor" oninput="setColor(this.value, '--workSpace-color')"></td>
+					<td><input type="color" class="inputColor" id="workSpaceColor" oninput="_settings.background = this.value;"></td>
 				</tr>
 				<tr>
 					<td>Цвет сетки</td>
-					<td><input type="color" class="inputColor" id="netColor" oninput="setColor(this.value, '--net-color')"></td>
+					<td><input type="color" class="inputColor" id="gridColor"  oninput="_settings.gridColor = this.value;"></td>
 				</tr>
 				<tr>
 					<td>Размер сетки</td>
-					<td><input type="number" class="settingsInput" id="netSize" placeholder="XXX" oninput="numericMask(this, 0, 300), setGridSize(this.value)"></td>
+					<td><input type="number" class="settingsInput" id="cellSize" placeholder="XXX" oninput="_settings.cellSize = this.value;"></td>
 				</tr>
 			</table>
     <footer>

@@ -2,27 +2,29 @@ var netBtn = sideBar.querySelector('#netButton');
 var workSpace = document.querySelector('#workSpace');
 
 
-function netControl(){
+function netControl(settings){
 	
+	console.log(settings);
 	var cellSize = 0;
+	
+	if(settings.grid == 'false'){
+		cellSize = getComputedStyle(_workSpace).getPropertyValue('--cellsSize');
 
-	if(workSpace.dataset["gridState"] == "false"){
-		cellSize = workSpace.dataset["cellSize"];
 		netBtn.classList.add('enable');
-		workSpace.dataset["gridState"] = true;
+		_workSpace.style.setProperty('--gridSate', true);
 	}
 	else{
 		netBtn.classList.remove('enable');
-		workSpace.dataset["gridState"] = false;
+		_workSpace.style.setProperty('--gridSate', false);
 	}
 
-	workSpace.style.backgroundSize = cellSize + 'px ' + cellSize + 'px';
+	_workSpace.style.setProperty('--cellsSize', cellSize);
 }
 
 function setGridSize(value){
-	workSpace.dataset["cellSize"] = value;
+	var sate = getComputedStyle(_workSpace).getPropertyValue('--gridSate');
 
-	if(workSpace.dataset["gridState"] == "true"){
-		workSpace.style.backgroundSize = value + 'px ' + value + 'px';
+	if(sate == 'true'){
+		_workSpace.style.setProperty('--cellsSize', cellSize);
 	}	
 }

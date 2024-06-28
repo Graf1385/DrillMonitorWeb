@@ -1,0 +1,32 @@
+{
+    "Items" : [
+        {
+            "id" : 0,
+            "type" : "digitalIndicator",
+            "size" : {
+                "width" : "auto",
+                "height" : "auto"
+            },
+            "position" : {
+                "left" : 100,
+                "top" : 100
+            }, 
+            "header" : {
+                "text" : "Вес на крюке",
+                "foreColor" : "",
+                "background" : ""
+            },
+            "value" : {
+                "default" : "000.00",
+                "min" : 0,
+                "max" : 250,
+                "alarm" : 200,
+                "alarmColor" : "#FF0000",
+                "fontFamily" : "",
+                "fontSize" : "30",
+                "foreColor" : "",
+                "background" : "#000000"
+            }
+        }
+    ]
+}

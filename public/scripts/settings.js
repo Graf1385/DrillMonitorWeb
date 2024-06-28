@@ -2,22 +2,49 @@ var _root = document.querySelector(':root');
 var _modal = document.querySelector('#settings');
 var _workSpace = document.querySelector('#workSpace');
 var _ip_address = $('#ipAddress');
-var net_mask = $('#netMask');
+var _net_mask = $('#netMask');
+let _defaultSettings;
+let _settings = {
+    ip : '',
+    mask : '',
+    get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color'); },
+    set background(value) { _workSpace.style.setProperty('--workSpace-color', value); },
 
-var _settings = {
-    ip : "",
-    mask : "",
-    background : "#000000",
-    gridColor : "#FFFFFF",
-    cellSize : 20
+    get gridColor() { return getComputedStyle(_workSpace).getPropertyValue('--grid-color'); },
+    set gridColor(value) { _workSpace.style.setProperty('--grid-color', value); },
+
+    get cellSize() { return _workSpace.dataset['cellSize']; },
+    set cellSize(value) { 
+        
+        _workSpace.dataset['cellSize'] = value; 
+
+        if(this.gridState == "true"){
+            workSpace.style.backgroundSize = value + 'px ' +  value + 'px';
+        }
+    },
+
+    get gridState() { return _workSpace.dataset['gridState']; },
+    set gridState(value) { 
+
+        _workSpace.dataset['gridState'] = !value;
+
+        if(value == false){
+            netBtn.classList.add('enable');
+            workSpace.style.backgroundSize = this.cellSize + 'px ' +  this.cellSize + 'px';
+        }
+        else{            
+            netBtn.classList.remove('enable');
+            workSpace.style.backgroundSize = 0 + 'px ' +  0 + 'px';
+        }
+    }
 }
 
-ip_address.inputmask({
+_ip_address.inputmask({
     alias: "ip",
     greedy: false
 });
 
-net_mask.inputmask({
+_net_mask.inputmask({
     alias: "ip",
     greedy: false
 });
@@ -40,70 +67,59 @@ function numericMask(item, min, max){
 function getSettings(){
     $.ajax({
         url: "/getSettings",
-        type: "POST",
-        data: `city=JJJ&country=KKKK`,
+        type: "GET",
+        dataType: "JSON",
         success: function(settings){
-            setColor(settings.Settings.background, '--workSpace-color')
-            
+            _defaultSettings = settings;
+            setSettings(settings, _settings);            
         }
     });  
+}
+
+function setSettings(source, target){
+    try {
+        for (let key in source) {            
+            target[key] = source[key];            
+        }
+    } catch (error) {
+        console.error(error);
+    }   
 }
 
 function showSettings(){    
-    _modal.querySelector('#workSpaceColor').value = getColor('--workSpace-color');
-    _modal.querySelector('#netColor').value = getColor('--net-color');
-    _modal.querySelector('#netSize').value = workSpace.dataset.cellSize;
-
-    $.ajax({
-        url: "/getSettings",
-        type: "POST",
-        data: `city=JJJ&country=KKKK`,
-        success: function(settings){
-            _modal.querySelector('#ipAddress').value = settings.Settings.ip;
-            _modal.querySelector('#netMask').value = settings.Settings.mask;
-        }
-    });  
-
+    _modal.querySelector('#ipAddress').value = _settings.ip;
+    _modal.querySelector('#netMask').value = _settings.mask;
+    _modal.querySelector('#workSpaceColor').value = _settings.background;
+    _modal.querySelector('#gridColor').value = _settings.gridColor;
+    _modal.querySelector('#cellSize').value = _settings.cellSize;
     _modal.showModal();
 }
 
-function getColor(varName){
-    return getComputedStyle(_root).getPropertyValue(varName);
-}
-
-function setColor(value, varName){
-    _root.style.setProperty(varName, value);
-}
-
 function closeSettings(){
+    setSettings(_defaultSettings, _settings)
     _modal.close();//wfd-id - id0
 }
 
 function applySettings(){
+    setSettings(_settings, _defaultSettings)
     showSaveBtn();
     _modal.close();
 }
 
 function saveSettings(){
     
-    try {
-
-        
-
+    try {        
         $.ajax({
             url: "/setSettings",
             type: "POST",
-            data: ``,
-            success: function(settings){
-                hideSaveBtn();
-            }
-        });  
-
-       
+            async: true,
+            dataType: "html",
+            data: { settings : JSON.stringify(_settings) },
+            success: hideSaveBtn()
+        });         
 
     } catch (error) {
         console.log(error);
     }    
     
 }
-
