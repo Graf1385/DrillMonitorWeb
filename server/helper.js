@@ -2,9 +2,11 @@ var _os = require('os');
 var _fs = require('fs');
 var _set_ip_address = require('set-ip-address');
 
+const _exec = require('child_process').exec;
 const _networkInterfaces = _os.networkInterfaces();
 const _parList = require('./data/parameters.json');
 const _settings = require('./data/settings.json');
+const { Console } = require('console');
 
 
 function netMaskToPrefex(mask){
@@ -18,6 +20,12 @@ function netMaskToPrefex(mask){
         
     });   
     return count;
+}
+
+function rebootSystem(){
+    _exec('shutdown -r now', function(error, stdout, stderr){ (stdout) => {
+        Console.log(stdout);
+    } });
 }
 
 function getSettings(){
@@ -34,7 +42,8 @@ function saveSettings(settings){
     eth0 = {
         interface : "eth0",
         ip_address : ip,
-        prefix : prefex
+        prefix : prefex,
+        dhcp: false
     }
 
     _set_ip_address.configure([eth0]).then(() => console.log('Ошибка изменений сетивых настроек'));
@@ -43,6 +52,8 @@ function saveSettings(settings){
         console.log(error);
         throw error;
     });   
+
+    rebootSystem();
    
 }
 
