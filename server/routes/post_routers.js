@@ -4,7 +4,8 @@ const helper = require('../helper');
 
 router.post('/setSettings', (req, res) => {
     try {
-        helper.saveSettings(req.body.settings);
+        var settings = JSON.parse(req.body.settings)
+        helper.saveSettings(settings);
         res.status(200).send();
 
     } catch (error) {

@@ -20,5 +20,3 @@ function removeItem() {
     workspace.innerHTML += item;
 }
 
-//showNewItems();
-
