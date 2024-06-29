@@ -41,6 +41,7 @@ function saveSettings(settings){
 
     _fs.writeFileSync('./server/data/settings.json', JSON.stringify(settings), (error) => {
         console.log(error);
+        throw error;
     });   
    
 }
