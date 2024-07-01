@@ -3,7 +3,6 @@ var _fs = require('fs');
 var _set_ip_address = require('set-ip-address');
 
 const _exec = require('child_process').exec;
-const _networkInterfaces = _os.networkInterfaces();
 const _parList = require('./data/parameters.json');
 const _settings = require('./data/settings.json');
 const { Console } = require('console');
@@ -23,14 +22,15 @@ function netMaskToPrefex(mask){
 }
 
 function rebootSystem(){
-    _exec('sudo systemctl restart networking', function(error, stdout, stderr){ (stdout) => {
+    _exec('sudo systemctl restart networking && netplan apply', function(error, stdout, stderr){ (stdout) => {
         Console.log(stdout);
     } });
 }
 
 function getSettings(){
-    _settings.ip = _networkInterfaces.eth0[0].address;
-    _settings.mask = _networkInterfaces.eth0[0].netmask;
+	var networkInterfaces = _os.networkInterfaces();
+    _settings.ip = networkInterfaces.eth0[0].address;
+    _settings.mask = networkInterfaces.eth0[0].netmask;
     return _settings;
 }
 
