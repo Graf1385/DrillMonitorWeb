@@ -23,7 +23,7 @@ function netMaskToPrefex(mask){
 }
 
 function rebootSystem(){
-    _exec('shutdown -r now', function(error, stdout, stderr){ (stdout) => {
+    _exec('sudo systemctl restart networking', function(error, stdout, stderr){ (stdout) => {
         Console.log(stdout);
     } });
 }
