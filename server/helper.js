@@ -28,9 +28,9 @@ function rebootSystem(){
 }
 
 function getSettings(){
-	var networkInterfaces = _os.networkInterfaces();
-    _settings.ip = networkInterfaces.eth0[0].address;
-    _settings.mask = networkInterfaces.eth0[0].netmask;
+    var netInf = _os.networkInterfaces();
+    _settings.ip = netInf.eth0[0].address;
+    _settings.mask = netInf.eth0[0].netmask;
     return _settings;
 }
 
@@ -58,7 +58,6 @@ function saveSettings(settings){
 }
 
 module.exports = {
-    network : _networkInterfaces,
     parlist : _parList,
     getSettings,
     saveSettings
