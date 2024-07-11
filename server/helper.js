@@ -1,11 +1,12 @@
 var _os = require('os');
 var _fs = require('fs');
+const Netplan = require('netplan-config');
 var _set_ip_address = require('set-ip-address');
 
 const _exec = require('child_process').exec;
 const _parList = require('./data/parameters.json');
 const _settings = require('./data/settings.json');
-const { Console } = require('console');
+const { Console, log } = require('console');
 
 
 function netMaskToPrefex(mask){
@@ -28,6 +29,10 @@ function rebootSystem(){
 }
 
 function getSettings(){
+
+    const net = new Netplan();
+    net.loadConfig();
+    console.log(net);
     var netInf = _os.networkInterfaces();
     _settings.ip = netInf.eth0[0].address;
     _settings.mask = netInf.eth0[0].netmask;
