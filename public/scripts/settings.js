@@ -7,6 +7,7 @@ let _defaultSettings;
 let _settings = {
     ip : '',
     mask : '',
+    gateway : '',
     get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color'); },
     set background(value) { _workSpace.style.setProperty('--workSpace-color', value); },
 
@@ -71,7 +72,9 @@ function getSettings(){
         dataType: "JSON",
         success: function(settings){
             _defaultSettings = settings;
-            setSettings(settings, _settings);            
+            console.log(settings);
+            setSettings(settings, _settings);       
+            console.log(_settings);     
         }
     });  
 }

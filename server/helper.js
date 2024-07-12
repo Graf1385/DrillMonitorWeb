@@ -4,7 +4,7 @@ var _set_ip_address = require('set-ip-address');
 
 const _exec = require('child_process').exec;
 const _parList = require('./data/parameters.json');
-const _settings = require('./data/settings.json');
+
 
 
 function netMaskToPrefex(mask){
@@ -26,19 +26,33 @@ function rebootSystem(){
     } });
 }
 
+function getNetPlan(){
+    const Netplan = require('netplan-js');
+
+    const netplan = new Netplan();
+
+    netplan.loadConfigs().then(() => {
+        const config = netplan.getInterface('ethernets', 'eth0');
+        console.log('Current config:', JSON.stringify(config));
+    });
+}
+
 function getSettings(){  
     var netInf = _os.networkInterfaces();
-    _settings.ip = netInf.eth0[0].address;
-    _settings.mask = netInf.eth0[0].netmask;
-    _settings.gateway = netInf.eth0[0].gateway;
-    return _settings;
+    var settings = require('./data/settings.json');
+    
+    settings.ip = netInf.eth0[0].address;
+    settings.mask = netInf.eth0[0].netmask;
+    settings.gateway = netInf.eth0[0].gateway;
+
+    return settings;
 }
 
 function saveSettings(settings){
 
     var prefex = netMaskToPrefex(settings.mask);
 
-    eth0 = {
+    var eth0 = {
         interface : "eth0",
         ip_address : settings.ip,
         prefix : prefex,

@@ -1,1 +1,1 @@
-{"ip":"172.18.42.216","mask":"255.255.240.0","background":"#000000","gridColor":"#ffffff","cellSize":"30","gridState":"false"}
+{"ip":"172.18.42.216","mask":"255.255.240.0","gateway":"0.0.0.0","background":"#000000","gridColor":"#ffffff","cellSize":"30","gridState":"false"}
