@@ -1,7 +1,7 @@
 var _os = require('os');
 var _fs = require('fs');
 var _set_ip_address = require('set-ip-address');
-
+const _netplan = require('netplan-js');
 const _exec = require('child_process').exec;
 const _parList = require('./data/parameters.json');
 
@@ -27,9 +27,9 @@ function rebootSystem(){
 }
 
 function getNetPlan(){
-    const Netplan = require('netplan-js');
+    
 
-    const netplan = new Netplan();
+    const netplan = new _netplan();
 
     netplan.loadConfigs().then(() => {
         const config = netplan.getInterface('ethernets', 'eth0');
