@@ -38,6 +38,7 @@ function getNetPlan(){
 }
 
 function getSettings(){  
+    getNetPlan();
     var netInf = _os.networkInterfaces();
     var settings = require('./data/settings.json');
     

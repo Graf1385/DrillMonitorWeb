@@ -8,6 +8,7 @@ let _settings = {
     ip : '',
     mask : '',
     gateway : '',
+    dhcp : false,
     get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color'); },
     set background(value) { _workSpace.style.setProperty('--workSpace-color', value); },
 
