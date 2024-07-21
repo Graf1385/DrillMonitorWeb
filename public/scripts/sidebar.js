@@ -1,7 +1,14 @@
+var _networkSettings = document.querySelector('#networkSettings');
+
 let sideBar = document.querySelector('#sideBar');
 let logo = document.querySelector('#sideBarLogo');
 let rmBtn = sideBar.querySelector('#removeButton');
 let saveBtn = sideBar.querySelector('#saveButton');
+
+function showNetworkSettings(){    
+
+    _networkSettings.showModal();
+}
 
 function showRemoveBtn(){    
     rmBtn.classList.add('visible');
@@ -18,6 +25,7 @@ function showSaveBtn(){
 function hideSaveBtn(){
     saveBtn.classList.remove('visible');
 }
+
 
 logo.addEventListener('click', (event)=>{
     if(sideBar.classList.contains('open')){

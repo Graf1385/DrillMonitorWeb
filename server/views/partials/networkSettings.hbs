@@ -1,5 +1,5 @@
-<dialog class="settingsModal" id="settings">
-			<h1>Общие настройки</h1>
+<dialog class="settingsModal" id="networkSettings">
+			<h1>Сетевые настройки</h1>
 			<table class="settingsTable">
 				<tr>
 					<th>Параметр</th>
@@ -8,29 +8,35 @@
                 <tr>
 					<td>Получение ip адреса</td>
 					<td>
-                        <input type="radio" id="dhcpon" name="dhcp">
-                        <input type="radio" id="dhcpoff" name="dhcp">
+						<div class="dhcp" >
+    						<input type="radio" id="dhcpon" name="dhcp" oninput="dhcpOn();"/>
+    						<label for="dhcpon" style="margin: 0px 0px 0px 5px;">Статический</label>
+						</div>
+						<div class="dhcp" >
+    						<input type="radio" id="dhcpoff" name="dhcp" oninput="dhcpOff();"/>
+    						<label for="dhcpon" style="margin: 0px 0px 0px 5px;">Автоматический</label>
+						</div>
                     </td>
 				</tr>
 				<tr>
 					<td>Ip адрес</td>
-					<td><input type="text" class="settingsInput" id="ipAddress" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.ip = this.value;"></td>
+					<td><input type="text" class="settingsInput ipAddress" id="ipAddress" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.ip = this.value;"></td>
 				</tr>
 				<tr>
 					<td>Маска подсети</td>
-					<td><input type="text" class="settingsInput" id="netMask" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.mask = this.value;"></td>
+					<td><input type="text" class="settingsInput ipAddress" id="netMask" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.mask = this.value;"></td>
 				</tr>
 				<tr>
-					<td>Маска подсети</td>
-					<td><input type="text" class="settingsInput" id="gateway" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.mask = this.value;"></td>
+					<td>Шлюз</td>
+					<td><input type="text" class="settingsInput ipAddress" id="gateway" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.gateway = this.value;"></td>
 				</tr>
 				<tr>
 					<td>Предпочитаемый DNS</td>
-					<td><input type="text" class="settingsInput" id="fistdns" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.mask = this.value;"></td>
+					<td><input type="text" class="settingsInput ipAddress" id="fistdns" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.fistdns = this.value;"></td>
 				</tr>
                 <tr>
 					<td>Альтернативный DNS</td>
-					<td><input type="text" class="settingsInput" id="seconddns" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.mask = this.value;"></td>
+					<td><input type="text" class="settingsInput ipAddress" id="seconddns" placeholder="XXX.XXX.XXX.XXX" oninput="_settings.seconddns = this.value;"></td>
 				</tr>
 
 			</table>

@@ -1,8 +1,7 @@
 var _root = document.querySelector(':root');
 var _modal = document.querySelector('#settings');
 var _workSpace = document.querySelector('#workSpace');
-var _ip_address = $('#ipAddress');
-var _net_mask = $('#netMask');
+
 let _defaultSettings;
 let _settings = {
     ip : '',
@@ -41,15 +40,7 @@ let _settings = {
     }
 }
 
-_ip_address.inputmask({
-    alias: "ip",
-    greedy: false
-});
 
-_net_mask.inputmask({
-    alias: "ip",
-    greedy: false
-});
 
 function numericMask(item, min, max){
     var value = parseInt(item.value);
@@ -91,8 +82,6 @@ function setSettings(source, target){
 }
 
 function showSettings(){    
-    _modal.querySelector('#ipAddress').value = _settings.ip;
-    _modal.querySelector('#netMask').value = _settings.mask;
     _modal.querySelector('#workSpaceColor').value = _settings.background;
     _modal.querySelector('#gridColor').value = _settings.gridColor;
     _modal.querySelector('#cellSize').value = _settings.cellSize;

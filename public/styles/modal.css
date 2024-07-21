@@ -86,6 +86,12 @@
     
 }
 
+.dhcp{
+    display: flex;
+    margin: 5px 5px 5px 25px;
+    justify-content: left;
+}
+
 input[type='color']{
     margin: auto;
     appearance: none;
@@ -113,6 +119,10 @@ input[type='color']::-moz-color-swatch{
     border-radius: 10px;
     border: 0;
     padding: 0;
+}
+
+.settingsInput:disabled{
+    background-color: darkgrey;
 }
 
 .settingsInput{
