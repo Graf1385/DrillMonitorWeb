@@ -14,9 +14,9 @@ function addItem() {
     workspace.innerHTML += item;
 }
 
-function removeItem() {   
-    var item = GetDigitalIndicator(2, "Вес на крюке", "0000.0");
+function removeItem() {
     var workspace = document.querySelector('#workSpace');
-    workspace.innerHTML += item;
+    var last = workspace.querySelector('.indicator:last-child');
+    if (last) last.remove();
 }
 

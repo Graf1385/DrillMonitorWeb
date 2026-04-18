@@ -37,16 +37,16 @@ function dhcpOn(){
     var inputs = document.querySelectorAll(".ipAddress");
     settings.dhcp = true;
     inputs.forEach(item => {
-        item.removeAttribute("disabled", "");
-    })
+        item.setAttribute("disabled", "");
+    });
 }
 
 function dhcpOff(){
     var inputs = document.querySelectorAll(".ipAddress");
     settings.dhcp = false;
     inputs.forEach(item => {
-        item.setAttribute("disabled", "");
-    })
+        item.removeAttribute("disabled");
+    });
 }
 
 function closeSettings(){

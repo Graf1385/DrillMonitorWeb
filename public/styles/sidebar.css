@@ -1,25 +1,31 @@
-:root{
-	--sideBarBack:  #DCDCDC;
+:root {
+	--sidebar-bg:        #0d1117;
+	--sidebar-border:    #1f2937;
+	--sidebar-btn-bg:    #161b22;
+	--sidebar-btn-hover: #21262d;
+	--sidebar-accent:    #38bdf8;
+	--sidebar-shadow:    rgba(56, 189, 248, 0.12);
 }
 
-#sideBarLogo{
+#sideBarLogo {
 	width: 70px;
 	height: 70px;
 	border-radius: 50px;
 	margin-top: 5px;
 	margin-bottom: 10px;
-	background-color: var(--sideBarBack);	
+	background-color: transparent;
 	transition: all 0.7s;
 	z-index: 1;
 }
 
-#sideBarLogo img{
+#sideBarLogo img {
 	object-position: center top;
 	margin-top: 4px;
-	width: 100%;	
+	width: 100%;
+	filter: brightness(0.9) drop-shadow(0 0 4px var(--sidebar-accent));
 }
 
-#sideBar{
+#sideBar {
 	z-index: 1;
 	margin: 10px;
 	position: fixed;
@@ -28,75 +34,91 @@
 	align-items: center;
 	height: 85px;
 	width: 85px;
-	background-color: var(--sideBarBack);	
-	border: 2px solid black;
-	border-radius: 50px;	
-	opacity: 0.1;
+	background-color: var(--sidebar-bg);
+	border: 1px solid var(--sidebar-border);
+	border-radius: 50px;
+	opacity: 0.25;
 	transition: all 0.9s;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
 }
 
-#sideBar:hover{
+#sideBar:hover {
 	opacity: 1;
 }
 
-#sideBar.open #sideBarLogo{
+#sideBar.open #sideBarLogo {
 	height: 15vh;
 }
 
-#sideBar.open{
+#sideBar.open {
 	height: 98%;
 	opacity: 1;
+	border-color: var(--sidebar-border);
+	box-shadow: 0 4px 32px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--sidebar-border);
 }
 
-#sideBar.open .sideBarButton{
+#sideBar.open .sideBarButton {
 	opacity: 1;
 }
 
-.sideBarButton{
+.sideBarButton {
 	width: 60px;
 	height: 60px;
 	margin-bottom: 10px;
-	border-radius: 20px;
-	border-width: 0px;
+	border-radius: 16px;
+	border: 1px solid transparent;
 	opacity: 0;
-	transition: opacity 0.7s;
-	background-color: var(--sideBarBack);
-
+	transition: opacity 0.7s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+	background-color: var(--sidebar-btn-bg);
+	cursor: pointer;
 }
 
-.sideBarButton img{
+.sideBarButton img {
 	margin-top: 4px;
 	width: 100%;
 	height: auto;
+	filter: brightness(0.7);
+	transition: filter 0.2s;
 }
 
-.sideBarButton:hover{
-	box-shadow: 0px 0px 10px black;
+.sideBarButton:hover {
+	background-color: var(--sidebar-btn-hover);
+	border-color: var(--sidebar-border);
+	box-shadow: 0 0 12px var(--sidebar-shadow);
 }
 
-.sideBarButton:active{
-	box-shadow: inset 0px 0px 10px black;
+.sideBarButton:hover img {
+	filter: brightness(1) drop-shadow(0 0 3px var(--sidebar-accent));
 }
 
-#netButton.enable{
-	box-shadow: inset 0px 0px 10px black;
+.sideBarButton:active {
+	box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
 }
 
-#removeButton{
+#gridButton.enable {
+	background-color: rgba(56, 189, 248, 0.08);
+	border-color: var(--sidebar-accent);
+	box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.15), 0 0 12px var(--sidebar-shadow);
+}
+
+#gridButton.enable img {
+	filter: brightness(1) drop-shadow(0 0 4px var(--sidebar-accent));
+}
+
+#removeButton {
 	visibility: hidden;
 }
 
-#removeButton.visible{
+#removeButton.visible {
 	visibility: visible;
 }
 
-#saveButton{
+#saveButton {
 	margin-top: auto;
 	margin-bottom: 30px;
 	visibility: hidden;
 }
 
-#saveButton.visible{
+#saveButton.visible {
 	visibility: visible;
 }
-

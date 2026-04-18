@@ -21,9 +21,11 @@ function netMaskToPrefex(mask){
 }
 
 function rebootSystem(){
-    _exec('sudo systemctl restart networking && netplan apply', function(error, stdout, stderr){ (stdout) => {
-        Console.log(stdout);
-    } });
+    _exec('sudo systemctl restart networking && netplan apply', function(error, stdout, stderr){
+        if (error) console.error('rebootSystem error:', error);
+        if (stdout) console.log(stdout);
+        if (stderr) console.error(stderr);
+    });
 }
 
 function getNetPlan(){
@@ -61,7 +63,9 @@ function saveSettings(settings){
         dhcp: false
     }
 
-    _set_ip_address.configure([eth0]).then(() => console.log('Ошибка изменений сетивых настроек'));
+    _set_ip_address.configure([eth0])
+        .then(() => console.log('Сетевые настройки успешно применены'))
+        .catch((err) => console.error('Ошибка изменения сетевых настроек:', err));
 
     _fs.writeFileSync('./server/data/settings.json', JSON.stringify(settings), (error) => {
         console.log(error);

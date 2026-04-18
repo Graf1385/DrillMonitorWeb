@@ -1,30 +1,17 @@
-var netBtn = sideBar.querySelector('#netButton');	
+var netBtn = sideBar.querySelector('#gridButton');
 var workSpace = document.querySelector('#workSpace');
 
+var _gridActive = false;
 
-function netControl(settings){
-	
-	console.log(settings);
-	var cellSize = 0;
-	
-	if(settings.grid == 'false'){
-		cellSize = getComputedStyle(_workSpace).getPropertyValue('--cellsSize');
+function toggleGrid() {
+    _gridActive = !_gridActive;
 
-		netBtn.classList.add('enable');
-		_workSpace.style.setProperty('--gridSate', true);
-	}
-	else{
-		netBtn.classList.remove('enable');
-		_workSpace.style.setProperty('--gridSate', false);
-	}
-
-	_workSpace.style.setProperty('--cellsSize', cellSize);
-}
-
-function setGridSize(value){
-	var sate = getComputedStyle(_workSpace).getPropertyValue('--gridSate');
-
-	if(sate == 'true'){
-		_workSpace.style.setProperty('--cellsSize', cellSize);
-	}	
+    if (_gridActive) {
+        var cellSize = _workSpace.dataset.cellSize || 20;
+        netBtn.classList.add('enable');
+        _workSpace.style.backgroundSize = cellSize + 'px ' + cellSize + 'px';
+    } else {
+        netBtn.classList.remove('enable');
+        _workSpace.style.backgroundSize = '0px 0px';
+    }
 }
