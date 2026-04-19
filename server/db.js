@@ -60,18 +60,31 @@ db.exec(`
         param_id     INTEGER,
         profile_id   INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
         type         TEXT    NOT NULL DEFAULT 'digitalIndicator',
+        pos_left     INTEGER NOT NULL DEFAULT 0,
+        pos_top      INTEGER NOT NULL DEFAULT 0,
         height       INTEGER,
         width        INTEGER,
         header_text  TEXT    NOT NULL DEFAULT '',
         header_color TEXT    NOT NULL DEFAULT '#c9d1d9',
+        header_bg    TEXT    NOT NULL DEFAULT '#161b22',
         header_font  TEXT    NOT NULL DEFAULT 'monospace',
         header_size  INTEGER NOT NULL DEFAULT 14,
         decimals     INTEGER NOT NULL DEFAULT 1,
         value_color  TEXT    NOT NULL DEFAULT '#38bdf8',
+        value_bg     TEXT    NOT NULL DEFAULT '#0d1117',
         value_font   TEXT    NOT NULL DEFAULT 'monospace',
         value_size   INTEGER NOT NULL DEFAULT 48
     )
 `);
+
+// Migrations for existing databases
+['pos_left INTEGER NOT NULL DEFAULT 0',
+ 'pos_top  INTEGER NOT NULL DEFAULT 0',
+ 'header_bg TEXT NOT NULL DEFAULT \'#161b22\'',
+ 'value_bg  TEXT NOT NULL DEFAULT \'#0d1117\''
+].forEach(col => {
+    try { db.exec('ALTER TABLE indicators ADD COLUMN ' + col); } catch {}
+});
 
 module.exports = {
     getProfiles() {
@@ -93,10 +106,12 @@ module.exports = {
     },
 
     updateProfile(id, background, cellSize) {
-        db.prepare('UPDATE profiles SET is_active = 0').run();
-        return db.prepare(
-            'UPDATE profiles SET background = ?, cell_size = ?, is_active = 1 WHERE id = ?'
-        ).run(background, cellSize, id);
+        return db.transaction(() => {
+            db.prepare('UPDATE profiles SET is_active = 0').run();
+            return db.prepare(
+                'UPDATE profiles SET background = ?, cell_size = ?, is_active = 1 WHERE id = ?'
+            ).run(background, cellSize, id);
+        })();
     },
 
     deleteProfile(id) {
@@ -133,44 +148,20 @@ module.exports = {
         ).all(profileId);
     },
 
-    createIndicator(data) {
-        return db.prepare(`
-            INSERT INTO indicators
-                (param_id, profile_id, type, height, width,
-                 header_text, header_color, header_font, header_size,
-                 decimals, value_color, value_font, value_size)
-            VALUES
-                (@param_id, @profile_id, @type, @height, @width,
-                 @header_text, @header_color, @header_font, @header_size,
-                 @decimals, @value_color, @value_font, @value_size)
-        `).run(data);
-    },
-
-    updateIndicator(id, data) {
-        return db.prepare(`
-            UPDATE indicators SET
-                param_id     = @param_id,
-                profile_id   = @profile_id,
-                type         = @type,
-                height       = @height,
-                width        = @width,
-                header_text  = @header_text,
-                header_color = @header_color,
-                header_font  = @header_font,
-                header_size  = @header_size,
-                decimals     = @decimals,
-                value_color  = @value_color,
-                value_font   = @value_font,
-                value_size   = @value_size
-            WHERE id = @id
-        `).run({ ...data, id });
-    },
-
-    deleteIndicator(id) {
-        return db.prepare('DELETE FROM indicators WHERE id = ?').run(id);
-    },
-
-    deleteIndicatorsByProfile(profileId) {
-        return db.prepare('DELETE FROM indicators WHERE profile_id = ?').run(profileId);
+    saveIndicators(profileId, list) {
+        db.transaction(() => {
+            db.prepare('DELETE FROM indicators WHERE profile_id = ?').run(profileId);
+            const insert = db.prepare(`
+                INSERT INTO indicators
+                    (param_id, profile_id, type, pos_left, pos_top, height, width,
+                     header_text, header_color, header_bg, header_font, header_size,
+                     decimals, value_color, value_bg, value_font, value_size)
+                VALUES
+                    (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
+                     @header_text, @header_color, @header_bg, @header_font, @header_size,
+                     @decimals, @value_color, @value_bg, @value_font, @value_size)
+            `);
+            for (const item of list) insert.run({ ...item, profile_id: profileId });
+        })();
     }
 };

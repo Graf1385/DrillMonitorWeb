@@ -1,4 +1,78 @@
 
+/* ── Loader ────────────────────────────────────────────────────────────────── */
+
+#loaderOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+}
+
+#loaderOverlay.active {
+    display: flex;
+}
+
+.loader-ring {
+    width: 64px;
+    height: 64px;
+    filter: drop-shadow(0 0 8px var(--sidebar-accent));
+    animation: loader-glow 1.7s ease-in-out infinite;
+}
+
+.loader-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.loader-track {
+    fill: none;
+    stroke: var(--sidebar-border);
+    stroke-width: 3;
+}
+
+.loader-arc {
+    fill: none;
+    stroke: var(--sidebar-accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 60 104;
+    animation: loader-spin 0.9s linear infinite;
+    transform-origin: 30px 30px;
+}
+
+.loader-text {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sidebar-accent);
+    text-shadow: 0 0 10px var(--sidebar-accent);
+    animation: loader-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes loader-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes loader-glow {
+    0%, 100% { filter: drop-shadow(0 0 4px  var(--sidebar-shadow)); }
+    50%       { filter: drop-shadow(0 0 14px var(--sidebar-accent)); }
+}
+
+@keyframes loader-pulse {
+    0%, 100% { opacity: 0.5; }
+    50%       { opacity: 1.0; }
+}
+
+/* ── /Loader ─────────────────────────────────────────────────────────────── */
+
 .modalInputRow {
     padding: 16px 20px;
     display: flex;

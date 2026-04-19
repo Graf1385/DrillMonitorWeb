@@ -330,5 +330,31 @@ function addNewItem() {
 function removeItem() {
     var ws   = document.querySelector('#workSpace');
     var last = ws.querySelector('.indicator:last-child');
-    if (last) last.remove();
+    if (last) { last.remove(); showSaveBtn(); }
+}
+
+function _collectIndicators() {
+    var indicators = [];
+    document.querySelectorAll('#workSpace .indicator').forEach(function(el) {
+        var d = el.dataset;
+        indicators.push({
+            type:         el.classList.contains('timeIndicator') ? 'timeIndicator' : 'digitalIndicator',
+            param_id:     d.paramId !== undefined && d.paramId !== '' ? parseInt(d.paramId) : null,
+            pos_left:     parseInt(el.style.left) || 0,
+            pos_top:      parseInt(el.style.top)  || 0,
+            width:        d.width  ? parseInt(d.width)  : null,
+            height:       d.height ? parseInt(d.height) : null,
+            header_text:  d.headerText  || '',
+            header_color: d.headerColor || '#c9d1d9',
+            header_bg:    d.headerBg    || '#161b22',
+            header_font:  d.headerFont  || 'monospace',
+            header_size:  parseInt(d.headerSize) || 14,
+            decimals:     parseInt(d.decimals)   || 1,
+            value_color:  d.valueColor  || '#38bdf8',
+            value_bg:     d.valueBg     || '#0d1117',
+            value_font:   d.valueFont   || 'monospace',
+            value_size:   parseInt(d.valueSize)  || 48
+        });
+    });
+    return indicators;
 }

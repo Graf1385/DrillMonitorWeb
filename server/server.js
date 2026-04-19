@@ -13,6 +13,7 @@ _app.engine('hbs', _hbs.engine);
 _app.set('view engine', 'hbs');
 _app.set('views', './server/views');
 
+_app.use(_express.json());
 _app.use(_express.urlencoded({ extended : false}))
 _app.use(_express.static('./public/scripts'));
 _app.use(_express.static('./public/styles'));

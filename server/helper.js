@@ -2,7 +2,7 @@ var _os = require('os');
 var _fs = require('fs');
 var _set_ip_address = require('set-ip-address');
 const _netplan = require('netplan-js');
-const _exec = require('child_process').exec;
+const { execFile: _execFile } = require('child_process');
 const _parList = require('./data/parameters.json');
 
 
@@ -21,10 +21,11 @@ function netMaskToPrefex(mask){
 }
 
 function rebootSystem(){
-    _exec('sudo systemctl restart networking && netplan apply', function(error, stdout, stderr){
-        if (error) console.error('rebootSystem error:', error);
-        if (stdout) console.log(stdout);
-        if (stderr) console.error(stderr);
+    _execFile('sudo', ['systemctl', 'restart', 'networking'], function(error) {
+        if (error) { console.error('networking restart error:', error); return; }
+        _execFile('netplan', ['apply'], function(err) {
+            if (err) console.error('netplan apply error:', err);
+        });
     });
 }
 

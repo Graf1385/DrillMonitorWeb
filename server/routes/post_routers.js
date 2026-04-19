@@ -40,7 +40,6 @@ router.put('/api/profiles/:id', (req, res) => {
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Профиль не найден' });
         }
-        sse.broadcast('profile-activated', db.getProfile(parseInt(req.params.id)));
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
@@ -53,6 +52,22 @@ router.post('/api/profiles/:id/select', (req, res) => {
         const profile = db.getProfile(parseInt(req.params.id));
         if (!profile) return res.status(404).json({ error: 'Профиль не найден' });
         sse.broadcast('profile-selected', profile);
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/api/profiles/:id/indicators', (req, res) => {
+    try {
+        const profileId = parseInt(req.params.id);
+        const list = req.body.indicators;
+        if (!Array.isArray(list)) {
+            return res.status(400).json({ error: 'indicators must be an array' });
+        }
+        db.saveIndicators(profileId, list);
+        sse.broadcast('workspace-saved', db.getProfile(profileId));
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);

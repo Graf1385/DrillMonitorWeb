@@ -202,7 +202,13 @@ function saveSettings() {
         success: function () {
             _savedBackground = _settings.background;
             _savedCellSize   = _settings.cellSize;
-            hideSaveBtn();
+            $.ajax({
+                url:         '/api/profiles/' + _activeProfileId + '/indicators',
+                type:        'POST',
+                contentType: 'application/json',
+                data:        JSON.stringify({ indicators: _collectIndicators() }),
+                complete:    function () { hideSaveBtn(); }
+            });
         },
         error: function (xhr) {
             console.error('Ошибка сохранения в профиль:', xhr.responseJSON);

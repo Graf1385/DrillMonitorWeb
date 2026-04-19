@@ -14,8 +14,8 @@ router.get('/getSettings',(req, res) =>{
         res.status(200).send(JSON.stringify(settings));
     } catch (error) {
         console.log(error);
-        res.status(400);
-    } 
+        res.status(400).json({ error: error.message });
+    }
 });
 
 router.get('/api/profiles', (req, res) => {
@@ -40,6 +40,15 @@ router.get('/api/profiles/active', (req, res) => {
 router.get('/api/parameters', (req, res) => {
     try {
         res.status(200).json(db.getParameters());
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/api/profiles/:id/indicators', (req, res) => {
+    try {
+        res.status(200).json(db.getIndicatorsByProfile(parseInt(req.params.id)));
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
