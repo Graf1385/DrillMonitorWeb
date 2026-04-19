@@ -67,6 +67,8 @@ document.addEventListener('mouseup', function () {
             el.style.width  = (Math.round(right  / cellSize) * cellSize - left - bW) + 'px';
             el.style.height = (Math.round(bottom / cellSize) * cellSize - top  - bH) + 'px';
         }
+        _resize.el.dataset.width  = parseInt(_resize.el.style.width)  || _resize.el.offsetWidth;
+        _resize.el.dataset.height = parseInt(_resize.el.style.height) || _resize.el.offsetHeight;
         _resize.el = null;
     }
 });
@@ -87,8 +89,9 @@ function _loadParameters(selectedId) {
         select.innerHTML = '<option value="">— не выбран —</option>';
         params.forEach(function (p) {
             var opt = document.createElement('option');
-            opt.value       = p.id;
-            opt.textContent = p.name;
+            opt.value        = p.id;
+            opt.textContent  = p.name;
+            opt.dataset.type = p.type;
             select.appendChild(opt);
         });
         if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
@@ -97,13 +100,29 @@ function _loadParameters(selectedId) {
     });
 }
 
+function _applyTypeToParamSelect(type) {
+    var select = _addModal.querySelector('#ni_paramId');
+    if (type === 'timeIndicator' || type === 'dateIndicator') {
+        var dtOpt = Array.from(select.options).find(function (o) {
+            return o.dataset.type === 'datetime';
+        });
+        if (dtOpt) select.value = dtOpt.value;
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+    }
+}
+
 function showNewItems() {
     _editingEl = null;
     _addModal.querySelector('h1').textContent = 'Добавить элемент';
     _addModal.querySelector('.okBtn').textContent = 'Добавить';
     _addModal.querySelector('.itemTypeRow').style.display = '';
     _resetModalDefaults();
-    _loadParameters().then(function () { _addModal.showModal(); });
+    _loadParameters().then(function () {
+        _applyTypeToParamSelect(_activeType);
+        _addModal.showModal();
+    });
 }
 
 function _openEditModal(indicator) {
@@ -112,8 +131,14 @@ function _openEditModal(indicator) {
     _addModal.querySelector('.okBtn').textContent = 'Применить';
     _addModal.querySelector('.itemTypeRow').style.display = 'none';
 
+    var indType = indicator.classList.contains('timeIndicator') ? 'timeIndicator'
+                : indicator.classList.contains('dateIndicator')  ? 'dateIndicator'
+                : 'digitalIndicator';
     var d = indicator.dataset;
-    _loadParameters(d.paramId || '').then(function () { _addModal.showModal(); });
+    _loadParameters(d.paramId || '').then(function () {
+        _applyTypeToParamSelect(indType);
+        _addModal.showModal();
+    });
     _addModal.querySelector('#ni_width').value   = d.width  || indicator.offsetWidth  || '';
     _addModal.querySelector('#ni_height').value  = d.height || indicator.offsetHeight || '';
     _addModal.querySelector('#ni_headerText').value  = d.headerText  || '';
@@ -159,8 +184,9 @@ function selectItemType(type) {
     _addModal.querySelectorAll('.itemTypeCard').forEach(function (c) {
         c.classList.remove('selected');
     });
-    var idMap = { digitalIndicator: '#typeDigital', timeIndicator: '#typeTime' };
+    var idMap = { digitalIndicator: '#typeDigital', timeIndicator: '#typeTime', dateIndicator: '#typeDate' };
     if (idMap[type]) document.querySelector(idMap[type]).classList.add('selected');
+    _applyTypeToParamSelect(type);
 }
 
 // ── Config read ───────────────────────────────────────────────────────────────
@@ -282,6 +308,34 @@ function _createTimeIndicator(config, left, top) {
     return el;
 }
 
+function _createDateIndicator(config, left, top) {
+    var el = document.createElement('div');
+    el.className = 'indicator dateIndicator';
+    el.id        = 'item_' + Date.now();
+    el.style.left        = left + 'px';
+    el.style.top         = top  + 'px';
+    el.style.borderColor = config.valueColor;
+    _applySize(el, config);
+    _storeConfig(el, config);
+
+    var header = document.createElement('div');
+    header.className = 'indicatorHeader';
+    _applyToHeader(header, config);
+
+    var valueEl = document.createElement('div');
+    valueEl.className = 'indicatorValue';
+    valueEl.style.color           = config.valueColor;
+    valueEl.style.backgroundColor = config.valueBg;
+    valueEl.style.fontFamily      = config.valueFont;
+    valueEl.style.fontSize        = config.valueSize + 'px';
+    valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
+    valueEl.textContent = 'дд.мм.гг';
+
+    el.appendChild(header);
+    el.appendChild(valueEl);
+    return el;
+}
+
 // ── Add / apply ───────────────────────────────────────────────────────────────
 
 function addNewItem() {
@@ -294,12 +348,13 @@ function addNewItem() {
     }
 
     if (_editingEl) {
-        var isTime = _editingEl.classList.contains('timeIndicator');
+        var isDatetime = _editingEl.classList.contains('timeIndicator') ||
+                         _editingEl.classList.contains('dateIndicator');
         _editingEl.style.borderColor = config.valueColor;
         _applySize(_editingEl, config);
         _storeConfig(_editingEl, config);
         _applyToHeader(_editingEl.querySelector('.indicatorHeader'), config);
-        if (isTime) {
+        if (isDatetime) {
             var vEl = _editingEl.querySelector('.indicatorValue');
             vEl.style.color           = config.valueColor;
             vEl.style.backgroundColor = config.valueBg;
@@ -318,6 +373,8 @@ function addNewItem() {
         var top  = Math.max(20, Math.round(ws.clientHeight / 2 - 60));
         var newEl = _activeType === 'timeIndicator'
             ? _createTimeIndicator(config, left, top)
+            : _activeType === 'dateIndicator'
+            ? _createDateIndicator(config, left, top)
             : _createDigitalIndicator(config, left, top);
         ws.appendChild(newEl);
         showSaveBtn();
@@ -338,12 +395,13 @@ function _collectIndicators() {
     document.querySelectorAll('#workSpace .indicator').forEach(function(el) {
         var d = el.dataset;
         indicators.push({
-            type:         el.classList.contains('timeIndicator') ? 'timeIndicator' : 'digitalIndicator',
+            type:         el.classList.contains('timeIndicator') ? 'timeIndicator' :
+                          el.classList.contains('dateIndicator') ? 'dateIndicator' : 'digitalIndicator',
             param_id:     d.paramId !== undefined && d.paramId !== '' ? parseInt(d.paramId) : null,
             pos_left:     parseInt(el.style.left) || 0,
             pos_top:      parseInt(el.style.top)  || 0,
-            width:        d.width  ? parseInt(d.width)  : null,
-            height:       d.height ? parseInt(d.height) : null,
+            width:        parseInt(el.style.width)  || (d.width  ? parseInt(d.width)  : null),
+            height:       parseInt(el.style.height) || (d.height ? parseInt(d.height) : null),
             header_text:  d.headerText  || '',
             header_color: d.headerColor || '#c9d1d9',
             header_bg:    d.headerBg    || '#161b22',

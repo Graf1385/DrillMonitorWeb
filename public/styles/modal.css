@@ -319,6 +319,13 @@ input[type=number]::-webkit-inner-spin-button {
     box-shadow: 0 0 0 1px var(--sidebar-accent);
 }
 
+.settingsSelect:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    background-image: none;
+}
+
 .settingsSelect option {
     background-color: var(--sidebar-btn-bg);
     color: #c9d1d9;
