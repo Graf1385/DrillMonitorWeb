@@ -7,24 +7,44 @@
         </tr>
         <tr>
             <td>Профиль</td>
-            <td>
-                <select class="settingsSelect" id="wsProfile" onchange="applyProfile(this.value)">
-                    <option value="default">Стандартный</option>
-                </select>
+            <td class="profileCell">
+                <select class="settingsSelect" id="wsProfile" onchange="applyProfile(this)"></select>
+                <button class="profileIconBtn saveBtn"   onclick="showCreateProfileModal()" title="Создать профиль">+</button>
+                <button class="profileIconBtn deleteBtn" id="deleteProfileBtn" onclick="showDeleteProfileModal()" title="Удалить профиль">✕</button>
             </td>
         </tr>
         <tr>
             <td>Цвет фона</td>
-            <td><input type="color" id="workSpaceColor" onchange="selectCustomProfile()"></td>
+            <td><input type="color" id="workSpaceColor"></td>
         </tr>
         <tr>
             <td>Размер ячейки</td>
-            <td><input type="number" class="settingsInput" id="cellSize" placeholder="20" min="10" max="200" oninput="selectCustomProfile()"></td>
+            <td><input type="number" class="settingsInput" id="cellSize" placeholder="20" min="10" max="200"></td>
         </tr>
     </table>
     <footer>
-        <button class="modalButton okBtn" onclick="applyWorkSpaceSettings()">OK</button>
+        <button class="modalButton okBtn"     onclick="applyWorkSpaceSettings()">OK</button>
         <button class="modalButton cancelBtn" onclick="closeWorkSpaceSettings()">Отмена</button>
+    </footer>
+</dialog>
+
+<dialog class="settingsModal" id="createProfileModal">
+    <h1>Новый профиль</h1>
+    <div class="modalInputRow">
+        <input type="text" class="settingsInput" id="newProfileName" placeholder="Введите название">
+    </div>
+    <footer>
+        <button class="modalButton okBtn"     onclick="createProfileConfirm()">OK</button>
+        <button class="modalButton cancelBtn" onclick="closeCreateProfileModal()">Отмена</button>
+    </footer>
+</dialog>
+
+<dialog class="settingsModal" id="deleteProfileModal">
+    <h1>Удаление профиля</h1>
+    <p class="modalMessage" id="deleteProfileMessage"></p>
+    <footer>
+        <button class="modalButton okBtn"     onclick="deleteProfileConfirm()">Да</button>
+        <button class="modalButton cancelBtn" onclick="closeDeleteProfileModal()">Нет</button>
     </footer>
 </dialog>
 

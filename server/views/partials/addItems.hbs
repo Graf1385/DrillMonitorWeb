@@ -1,14 +1,102 @@
 <dialog class="settingsModal" id="newItemModal">
-    <h1>Добавить новый элемент</h1>
-    <div>
-       <table>
-            <tr>
-                <th>Параметр</th>
-            </tr>
-       </table>
+    <h1>Добавить элемент</h1>
+
+    <div class="itemTypeRow">
+        <button class="itemTypeCard selected" id="typeDigital" onclick="selectItemType('digitalIndicator')">
+            <div class="itemTypeCardPreview">
+                <div class="previewHeader">Заголовок</div>
+                <div class="previewValue">0.0</div>
+            </div>
+            <span>Цифровой индикатор</span>
+        </button>
     </div>
+
+    <table class="settingsTable addItemTable">
+        <tr>
+            <th>Параметр</th>
+            <th>Значение</th>
+        </tr>
+
+        <tr><td colspan="2" class="sectionLabel">Размер</td></tr>
+        <tr>
+            <td>Ширина / Высота (px)</td>
+            <td class="paramCell">
+                <input type="number" class="settingsInput sizeInput" id="ni_width"  placeholder="авто" min="40" max="2000">
+                <input type="number" class="settingsInput sizeInput" id="ni_height" placeholder="авто" min="40" max="2000">
+            </td>
+        </tr>
+
+        <tr><td colspan="2" class="sectionLabel">Заголовок</td></tr>
+        <tr>
+            <td>Текст</td>
+            <td><input type="text" class="settingsInput" id="ni_headerText" value="Заголовок"></td>
+        </tr>
+        <tr>
+            <td>Цвет текста / фона</td>
+            <td class="paramCell">
+                <input type="color" id="ni_headerColor" value="#c9d1d9">
+                <input type="color" id="ni_headerBg"    value="#161b22">
+            </td>
+        </tr>
+        <tr>
+            <td>Шрифт / размер</td>
+            <td class="paramCell">
+                <select class="settingsSelect" id="ni_headerFont">
+                    <option value="monospace">Monospace</option>
+                    <option value="'Courier New'">Courier New</option>
+                    <option value="Consolas">Consolas</option>
+                    <option value="Arial">Arial</option>
+                    <option value="'Segoe UI'">Segoe UI</option>
+                </select>
+                <input type="number" class="settingsInput sizeInput" id="ni_headerSize" value="14" min="8" max="72">
+            </td>
+        </tr>
+
+        <tr><td colspan="2" class="sectionLabel">Значение</td></tr>
+        <tr>
+            <td>Параметр</td>
+            <td>
+                <select class="settingsSelect" id="ni_paramId" onchange="onParamChange(this)">
+                    <option value="">— не выбран —</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td>Знаков после запятой</td>
+            <td><input type="number" class="settingsInput" id="ni_decimals" value="1" min="0" max="4"></td>
+        </tr>
+        <tr>
+            <td>Шрифт / размер</td>
+            <td class="paramCell">
+                <select class="settingsSelect" id="ni_valueFont">
+                    <option value="monospace">Monospace</option>
+                    <option value="'Courier New'">Courier New</option>
+                    <option value="Consolas">Consolas</option>
+                    <option value="Arial">Arial</option>
+                    <option value="'Segoe UI'">Segoe UI</option>
+                </select>
+                <input type="number" class="settingsInput sizeInput" id="ni_valueSize" value="48" min="12" max="120">
+            </td>
+        </tr>
+        <tr>
+            <td>Цвет текста / фона</td>
+            <td class="paramCell">
+                <input type="color" id="ni_valueColor" value="#38bdf8">
+                <input type="color" id="ni_valueBg"    value="#0d1117">
+            </td>
+        </tr>
+    </table>
+
     <footer>
-        <button class="modalButton okBtn" onclick="closeModal()">Сохранить</button>	
-		<button class="modalButton cancelBtn" onclick="applyModal()">Отмена</button>			
+        <button class="modalButton okBtn"     onclick="addNewItem()">Добавить</button>
+        <button class="modalButton cancelBtn" onclick="closeAddItemModal()">Отмена</button>
+    </footer>
+</dialog>
+
+<dialog class="settingsModal" id="addItemErrorModal">
+    <h1>Ошибка</h1>
+    <p class="modalMessage">Необходимо выбрать параметр индикатора.</p>
+    <footer>
+        <button class="modalButton okBtn" onclick="document.querySelector('#addItemErrorModal').close()">OK</button>
     </footer>
 </dialog>

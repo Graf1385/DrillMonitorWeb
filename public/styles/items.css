@@ -1,47 +1,41 @@
-:root{
+:root {
     --selected-color: lime;
 }
 
-.indicator{    
+.indicator {
     position: absolute;
-    text-align: justify;
-	border: 1px solid var(--selected-color);
-    resize: both; /* позволяет изменять размер */ 
-    overflow: hidden; /* обрезает содержимое и поддерживает resize */ 
+    border: 2px solid;
+    overflow: hidden;
+    resize: both;
+    width: fit-content;
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
 }
 
-.indicator.selected{
-    box-shadow: 0px 0px 30px var(--selected-color);
+.indicator.selected {
+    box-shadow: 0 0 20px currentColor;
 }
 
 /* Digital Indicator */
-.digitalIndicator {
-    min-width: 100px;
-    min-height: 100px;
-    width: auto;
-    height: auto;    
-    background-color: red;
-    margin: 0;
-}
-
-.digitalIndicator > .indicatorHeader{
-    font-size: 30px;
+.digitalIndicator > .indicatorHeader {
     text-align: center;
     margin: 0;
+    padding: 4px 12px;
     font-weight: bold;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
 }
 
-.digitalIndicator > .indicatorValue{
-    font-size: 100px;
+.digitalIndicator > .indicatorValue {
     text-align: center;
     margin: 0;
-    background-color: black;
-    text-shadow: 0px 0px 10px var(--selected-color);
+    padding: 4px 12px;
     font-weight: bold;
-    color: var(--selected-color);
-    height: 100%;
+    white-space: nowrap;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-
-
-
-
