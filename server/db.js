@@ -35,6 +35,7 @@ const _seedParams = [
     [7,  'Глубина долота',                 'float'],
     [8,  'Температура бурового раствора',  'float'],
     [9,  'Плотность бурового раствора',    'float'],
+    [10, 'Время сбора данных',             'datetime'],
 ];
 const _insertParam = db.prepare('INSERT OR IGNORE INTO parameters (id, name, type) VALUES (?, ?, ?)');
 for (const p of _seedParams) _insertParam.run(...p);

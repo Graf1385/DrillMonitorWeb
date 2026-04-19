@@ -159,7 +159,8 @@ function selectItemType(type) {
     _addModal.querySelectorAll('.itemTypeCard').forEach(function (c) {
         c.classList.remove('selected');
     });
-    document.querySelector('#typeDigital').classList.add('selected');
+    var idMap = { digitalIndicator: '#typeDigital', timeIndicator: '#typeTime' };
+    if (idMap[type]) document.querySelector(idMap[type]).classList.add('selected');
 }
 
 // ── Config read ───────────────────────────────────────────────────────────────
@@ -253,33 +254,72 @@ function _createDigitalIndicator(config, left, top) {
     return el;
 }
 
+function _createTimeIndicator(config, left, top) {
+    var el = document.createElement('div');
+    el.className = 'indicator timeIndicator';
+    el.id        = 'item_' + Date.now();
+    el.style.left        = left + 'px';
+    el.style.top         = top  + 'px';
+    el.style.borderColor = config.valueColor;
+    _applySize(el, config);
+    _storeConfig(el, config);
+
+    var header = document.createElement('div');
+    header.className = 'indicatorHeader';
+    _applyToHeader(header, config);
+
+    var valueEl = document.createElement('div');
+    valueEl.className = 'indicatorValue';
+    valueEl.style.color           = config.valueColor;
+    valueEl.style.backgroundColor = config.valueBg;
+    valueEl.style.fontFamily      = config.valueFont;
+    valueEl.style.fontSize        = config.valueSize + 'px';
+    valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
+    valueEl.textContent           = '00:00:00';
+
+    el.appendChild(header);
+    el.appendChild(valueEl);
+    return el;
+}
+
 // ── Add / apply ───────────────────────────────────────────────────────────────
 
 function addNewItem() {
     var config = _readConfig();
 
-    if (config.paramId === null) {
+    if (_activeType === 'digitalIndicator' && config.paramId === null) {
         _addModal.close();
         _errorModal.showModal();
         return;
     }
 
     if (_editingEl) {
-        // Edit existing
-        var currentNum = parseFloat(_editingEl.querySelector('.indicatorValue').textContent) || 0;
+        var isTime = _editingEl.classList.contains('timeIndicator');
         _editingEl.style.borderColor = config.valueColor;
         _applySize(_editingEl, config);
         _storeConfig(_editingEl, config);
         _applyToHeader(_editingEl.querySelector('.indicatorHeader'), config);
-        _applyToValue(_editingEl.querySelector('.indicatorValue'), config, currentNum);
+        if (isTime) {
+            var vEl = _editingEl.querySelector('.indicatorValue');
+            vEl.style.color           = config.valueColor;
+            vEl.style.backgroundColor = config.valueBg;
+            vEl.style.fontFamily      = config.valueFont;
+            vEl.style.fontSize        = config.valueSize + 'px';
+            vEl.style.textShadow      = '0 0 10px ' + config.valueColor;
+        } else {
+            var currentNum = parseFloat(_editingEl.querySelector('.indicatorValue').textContent) || 0;
+            _applyToValue(_editingEl.querySelector('.indicatorValue'), config, currentNum);
+        }
         showSaveBtn();
 
     } else {
-        // Add new
         var ws   = document.querySelector('#workSpace');
         var left = Math.max(20, Math.round(ws.clientWidth  / 2 - 80));
         var top  = Math.max(20, Math.round(ws.clientHeight / 2 - 60));
-        ws.appendChild(_createDigitalIndicator(config, left, top));
+        var newEl = _activeType === 'timeIndicator'
+            ? _createTimeIndicator(config, left, top)
+            : _createDigitalIndicator(config, left, top);
+        ws.appendChild(newEl);
         showSaveBtn();
     }
 

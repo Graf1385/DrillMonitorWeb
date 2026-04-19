@@ -28,6 +28,30 @@
     user-select: none;
 }
 
+/* Time Indicator */
+.timeIndicator > .indicatorHeader {
+    text-align: center;
+    margin: 0;
+    padding: 4px 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+}
+
+.timeIndicator > .indicatorValue {
+    text-align: center;
+    margin: 0;
+    padding: 4px 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.05em;
+}
+
 .digitalIndicator > .indicatorValue {
     text-align: center;
     margin: 0;
