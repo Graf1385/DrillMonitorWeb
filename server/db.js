@@ -1,5 +1,10 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
+
+function _sha256(str) {
+    return crypto.createHash('sha256').update(str).digest('hex');
+}
 
 const db = new Database(path.join(__dirname, 'data', 'profiles.db'));
 
@@ -207,6 +212,20 @@ if (_indCols.includes('decimals') && !_indCols.includes('format')) {
     })();
 }
 
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        name     TEXT    NOT NULL UNIQUE,
+        password TEXT    NOT NULL
+    )
+`);
+
+db.prepare(`
+    INSERT OR IGNORE INTO users (name, password) VALUES ('admin', ?)
+`).run(_sha256('RFVtgb12345678'));
+
 // ── Alarm sounds ─────────────────────────────────────────────────────────────
 
 db.exec(`
@@ -361,6 +380,23 @@ module.exports = {
 
     deleteAlarmSound(id) {
         return db.prepare('DELETE FROM alarm_sounds WHERE id = ?').run(id);
+    },
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+
+    getUser(name) {
+        return db.prepare('SELECT * FROM users WHERE name = ?').get(name);
+    },
+
+    verifyUser(name, password) {
+        const user = db.prepare('SELECT * FROM users WHERE name = ?').get(name);
+        if (!user) return false;
+        return user.password === _sha256(password);
+    },
+
+    updateUserPassword(name, newPassword) {
+        return db.prepare('UPDATE users SET password = ? WHERE name = ?')
+            .run(_sha256(newPassword), name);
     },
 
 };

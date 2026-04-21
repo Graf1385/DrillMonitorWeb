@@ -155,6 +155,24 @@
     </footer>
 </dialog>
 
+<dialog class="settingsModal" id="loginModal">
+    <h1>Авторизация</h1>
+    <table class="settingsTable">
+        <tr>
+            <td>Пользователь</td>
+            <td><input type="text" class="settingsInput" id="login_name" value="admin" autocomplete="username"></td>
+        </tr>
+        <tr>
+            <td>Пароль</td>
+            <td><input type="password" class="settingsInput" id="login_password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()"></td>
+        </tr>
+    </table>
+    <footer>
+        <button class="modalButton okBtn" onclick="submitLogin()">Войти</button>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#loginModal').close()">Отмена</button>
+    </footer>
+</dialog>
+
 <dialog class="settingsModal" id="addItemErrorModal">
     <h1>Ошибка</h1>
     <p class="modalMessage">Необходимо выбрать параметр индикатора.</p>

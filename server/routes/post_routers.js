@@ -14,6 +14,15 @@ const _upload = multer({
     }
 });
 
+router.post('/api/auth/login', (req, res) => {
+    const { name, password } = req.body;
+    if (db.verifyUser(name, password)) {
+        res.json({ ok: true });
+    } else {
+        res.status(401).json({ ok: false });
+    }
+});
+
 router.post('/setSettings', (req, res) => {
     try {
         var settings = JSON.parse(req.body.settings)

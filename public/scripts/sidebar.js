@@ -56,10 +56,51 @@ function showAlarmSettings() {
     document.querySelector('#alarmOverviewModal').showModal();
 }
 
-logo.addEventListener('click', (event)=>{
-    if(sideBar.classList.contains('open')){
+var _AUTH_KEY = 'drillmonitor_auth';
+var _AUTH_TTL = 24 * 60 * 60 * 1000;
+
+function _isAuthenticated() {
+    var raw = localStorage.getItem(_AUTH_KEY);
+    if (!raw) return false;
+    try {
+        var ts = JSON.parse(raw).ts;
+        return Date.now() - ts < _AUTH_TTL;
+    } catch { return false; }
+}
+
+function _setAuthenticated() {
+    localStorage.setItem(_AUTH_KEY, JSON.stringify({ ts: Date.now() }));
+}
+
+function submitLogin() {
+    var name     = document.querySelector('#login_name').value.trim();
+    var password = document.querySelector('#login_password').value;
+    $.ajax({
+        url: '/api/auth/login',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ name, password }),
+        success: function() {
+            _setAuthenticated();
+            document.querySelector('#loginModal').close();
+            document.querySelector('#login_password').value = '';
+            sideBar.classList.add('open');
+        },
+        error: function() {
+            showError('Неверный логин или пароль');
+        }
+    });
+}
+
+logo.addEventListener('click', function() {
+    if (sideBar.classList.contains('open')) {
         sideBar.classList.remove('open');
-    }else{
+        return;
+    }
+    if (!_isAuthenticated()) {
+        document.querySelector('#login_password').value = '';
+        document.querySelector('#loginModal').showModal();
+    } else {
         sideBar.classList.add('open');
     }
-})
+});

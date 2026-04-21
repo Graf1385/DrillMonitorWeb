@@ -1,5 +1,33 @@
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 
+// ── Error Toast ───────────────────────────────────────────────────────────────
+
+(function () {
+    var _toast   = document.getElementById('errorToast');
+    var _timer   = null;
+
+    function _hide() {
+        _toast.classList.remove('visible');
+        clearTimeout(_timer);
+        document.removeEventListener('mousedown', _hide);
+    }
+
+    window.showError = function (msg) {
+        var openDialog = Array.from(document.querySelectorAll('dialog')).find(function(d) { return d.open; });
+        var parent = openDialog || document.body;
+        if (_toast.parentNode !== parent) parent.appendChild(_toast);
+
+        _toast.textContent = msg;
+        _toast.classList.add('visible');
+        clearTimeout(_timer);
+        document.removeEventListener('mousedown', _hide);
+        _timer = setTimeout(_hide, 5000);
+        setTimeout(function () {
+            document.addEventListener('mousedown', _hide);
+        }, 0);
+    };
+})();
+
 getSettings();
 
 function _restoreIndicators(indicators) {

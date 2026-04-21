@@ -1,4 +1,30 @@
 
+/* ── Error Toast ─────────────────────────────────────────────────────────── */
+
+#errorToast {
+    position: fixed;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2147483647;
+    background: #2a0a0a;
+    border: 1px solid #f87171;
+    color: #f87171;
+    padding: 10px 28px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(248, 113, 113, 0.3);
+    transition: top 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+#errorToast.visible {
+    top: 18px;
+    pointer-events: auto;
+}
+
 /* ── Loader ────────────────────────────────────────────────────────────────── */
 
 #loaderOverlay {
