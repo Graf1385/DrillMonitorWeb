@@ -1,32 +1,69 @@
 <div id="profileSwitcher">
-    <select id="profileSelect" onchange="switchProfile(this.value)"></select>
+    <div id="profileDropdown" class="customDropdown">
+        <div id="profileDropdownSelected" class="cdSelected" onclick="toggleProfileDropdown()">
+            <span id="profileDropdownLabel"></span>
+            <svg class="cdArrow" viewBox="0 0 8 5"><path fill="#38bdf8" d="M1 1l3 3 3-3"/></svg>
+        </div>
+        <ul id="profileDropdownList" class="cdList"></ul>
+    </div>
 </div>
 
 <script>
 (function () {
-    function loadProfiles() {
-        $.getJSON('/api/profiles', function (profiles) {
-            var sel = document.querySelector('#profileSelect');
-            sel.innerHTML = '';
-            profiles.forEach(function (p) {
-                var opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.name;
-                if (p.is_active) opt.selected = true;
-                sel.appendChild(opt);
-            });
+    var _list    = document.querySelector('#profileDropdownList');
+    var _label   = document.querySelector('#profileDropdownLabel');
+    var _dropdown = document.querySelector('#profileDropdown');
+    var _profiles = [];
+
+    function renderList() {
+        _list.innerHTML = '';
+        _profiles.forEach(function (p) {
+            var li = document.createElement('li');
+            li.className = 'cdOption' + (p.is_active ? ' active' : '');
+            li.textContent = p.name;
+            li.dataset.id = p.id;
+            li.onclick = function () {
+                selectProfile(p.id);
+                closeDropdown();
+            };
+            _list.appendChild(li);
         });
     }
 
-    window.switchProfile = function (id) {
+    function selectProfile(id) {
+        var p = _profiles.find(function(p){ return p.id == id; });
+        if (p) _label.textContent = p.name;
+        _profiles.forEach(function(p){ p.is_active = p.id == id ? 1 : 0; });
+        renderList();
         $.ajax({ url: '/api/profiles/' + id + '/select', type: 'POST' });
+    }
+
+    function closeDropdown() {
+        _dropdown.classList.remove('open');
+    }
+
+    window.toggleProfileDropdown = function () {
+        _dropdown.classList.toggle('open');
     };
 
     window.profileSwitcherSetActive = function (id) {
-        var sel = document.querySelector('#profileSelect');
-        if (sel) sel.value = id;
+        var p = _profiles.find(function(p){ return p.id == id; });
+        if (p) {
+            _label.textContent = p.name;
+            _profiles.forEach(function(p){ p.is_active = p.id == id ? 1 : 0; });
+            renderList();
+        }
     };
 
-    loadProfiles();
+    document.addEventListener('mousedown', function (e) {
+        if (!_dropdown.contains(e.target)) closeDropdown();
+    });
+
+    $.getJSON('/api/profiles', function (profiles) {
+        _profiles = profiles;
+        var active = profiles.find(function(p){ return p.is_active; }) || profiles[0];
+        if (active) _label.textContent = active.name;
+        renderList();
+    });
 })();
 </script>
