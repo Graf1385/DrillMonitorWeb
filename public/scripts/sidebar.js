@@ -27,6 +27,59 @@ function hideSaveBtn(){
 }
 
 
+function showIndicatorList() {
+    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
+    var body = document.querySelector('#indicatorListBody');
+    if (indicators.length === 0) {
+        body.innerHTML = '<p class="alarmOverviewEmpty">Нет индикаторов на рабочей области</p>';
+        document.querySelector('#indicatorListModal').showModal();
+        return;
+    }
+    $.getJSON('/api/parameters', function(params) {
+        var paramMap = {};
+        params.forEach(function(p) { paramMap[p.id] = p.name; });
+        var rows = indicators.map(function(ind, i) {
+            var d = ind.dataset;
+            var paramName = d.paramId ? (paramMap[d.paramId] || '—') : '—';
+            var header = (d.headerText || '').replace(/"/g, '&quot;');
+            var format = (d.format     || '').replace(/"/g, '&quot;');
+            return '<tr>' +
+                '<td class="il-id">'    + (d.paramId || '—') + '</td>' +
+                '<td class="il-pname">' + paramName           + '</td>' +
+                '<td class="il-input"><input class="settingsInput il-headerInput" value="' + header + '" oninput="updateIndicatorField(' + i + ',\'headerText\',this.value)"></td>' +
+                '<td class="il-input"><input class="settingsInput il-formatInput" value="' + format + '" oninput="updateIndicatorField(' + i + ',\'format\',this.value)"></td>' +
+                '<td class="il-del"><button class="il-delBtn" onclick="deleteIndicatorFromList(' + i + ')">Удалить</button></td>' +
+            '</tr>';
+        });
+        body.innerHTML = '<table class="settingsTable il-table">' +
+            '<colgroup><col style="width:50px"><col><col><col style="width:110px"><col style="width:90px"></colgroup>' +
+            '<thead><tr><th>ID</th><th>Параметр</th><th>Заголовок</th><th>Формат</th><th></th></tr></thead>' +
+            '<tbody>' + rows.join('') + '</tbody></table>';
+        document.querySelector('#indicatorListModal').showModal();
+    });
+}
+
+window.updateIndicatorField = function(index, field, value) {
+    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
+    var ind = indicators[index];
+    if (!ind) return;
+    ind.dataset[field] = value;
+    if (field === 'headerText') {
+        var headerEl = ind.querySelector('.indicatorHeader');
+        if (headerEl) headerEl.textContent = value;
+    }
+    showSaveBtn();
+};
+
+window.deleteIndicatorFromList = function(index) {
+    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
+    if (indicators[index]) {
+        indicators[index].remove();
+        showSaveBtn();
+        showIndicatorList();
+    }
+};
+
 function showAlarmSettings() {
     var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'))
         .filter(function(ind) { return ind.dataset.alarmEnabled === '1'; });

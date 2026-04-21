@@ -542,6 +542,7 @@ input[type=number]::-webkit-inner-spin-button {
     width: 600px;
 }
 
+
 #alarmOverviewList table {
     table-layout: fixed;
     width: 100%;
@@ -562,6 +563,45 @@ input[type=number]::-webkit-inner-spin-button {
     color: #6b7280;
     padding: 24px 0;
     font-size: 13px;
+}
+
+/* ── Indicator List Modal ────────────────────────────────────────────────────── */
+
+#indicatorListBody table {
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
+}
+
+#indicatorListBody {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 8px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-accent) transparent;
+}
+
+.il-id     { color: #8b949e; font-family: monospace; text-align: center; }
+.il-input  { padding: 2px 4px; }
+.il-pname  { color: #c9d1d9; }
+.il-format { font-family: monospace; color: var(--sidebar-accent); text-align: center; }
+.il-del    { text-align: center; }
+
+.il-delBtn {
+    background: transparent;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    color: #f87171;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.il-delBtn:hover {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: #f87171;
 }
 
 .aol-name  { font-weight: 500; }
