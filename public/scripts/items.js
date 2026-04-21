@@ -64,11 +64,21 @@ function applyAlarmSettings() {
     showSaveBtn();
 }
 
+var _deleteTarget = null;
+
 function ctxDeleteIndicator() {
     _ctxMenu.style.display = 'none';
     if (!_ctxTarget) return;
-    _ctxTarget.remove();
+    _deleteTarget = _ctxTarget;
     _ctxTarget = null;
+    document.querySelector('#deleteConfirmModal').showModal();
+}
+
+function confirmDeleteIndicator() {
+    document.querySelector('#deleteConfirmModal').close();
+    if (!_deleteTarget) return;
+    _deleteTarget.remove();
+    _deleteTarget = null;
     showSaveBtn();
 }
 

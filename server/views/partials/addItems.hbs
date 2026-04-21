@@ -157,6 +157,15 @@
     </footer>
 </dialog>
 
+<dialog class="settingsModal" id="deleteConfirmModal">
+    <h1>Удаление индикатора</h1>
+    <p class="modalMessage">Вы уверены, что хотите удалить индикатор?</p>
+    <footer>
+        <button class="modalButton deleteBtn" onclick="confirmDeleteIndicator()">Да</button>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#deleteConfirmModal').close()">Нет</button>
+    </footer>
+</dialog>
+
 <dialog class="settingsModal" id="addItemErrorModal">
     <h1>Ошибка</h1>
     <p class="modalMessage">Необходимо выбрать параметр индикатора.</p>
