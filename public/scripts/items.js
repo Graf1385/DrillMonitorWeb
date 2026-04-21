@@ -91,7 +91,8 @@ function _loadParameters(selectedId) {
             var opt = document.createElement('option');
             opt.value        = p.id;
             opt.textContent  = p.name;
-            opt.dataset.type = p.type;
+            opt.dataset.type          = p.type_name;
+            opt.dataset.defaultFormat = p.default_format || '';
             select.appendChild(opt);
         });
         if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
@@ -101,15 +102,20 @@ function _loadParameters(selectedId) {
 }
 
 function _applyTypeToParamSelect(type) {
-    var select = _addModal.querySelector('#ni_paramId');
-    if (type === 'timeIndicator' || type === 'dateIndicator') {
+    var select      = _addModal.querySelector('#ni_paramId');
+    var isDatetime  = type === 'timeIndicator' || type === 'dateIndicator';
+    var numericRows = _addModal.querySelectorAll('.numericOnlyRow');
+
+    if (isDatetime) {
         var dtOpt = Array.from(select.options).find(function (o) {
-            return o.dataset.type === 'datetime';
+            return o.dataset.type === 'time';
         });
         if (dtOpt) select.value = dtOpt.value;
         select.disabled = true;
+        numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else {
         select.disabled = false;
+        numericRows.forEach(function (r) { r.style.display = ''; });
     }
 }
 
@@ -146,17 +152,22 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#ni_headerBg').value    = d.headerBg    || '#161b22';
     _addModal.querySelector('#ni_headerFont').value  = d.headerFont  || 'monospace';
     _addModal.querySelector('#ni_headerSize').value  = d.headerSize  || 14;
-    _addModal.querySelector('#ni_decimals').value    = d.decimals    || 1;
+    _addModal.querySelector('#ni_format').value      = d.format      || '';
     _addModal.querySelector('#ni_valueFont').value   = d.valueFont   || 'monospace';
     _addModal.querySelector('#ni_valueSize').value   = d.valueSize   || 48;
     _addModal.querySelector('#ni_valueColor').value  = d.valueColor  || '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = d.valueBg     || '#0d1117';
+    _addModal.querySelector('#ni_rangeMin').value    = d.rangeMin    || '';
+    _addModal.querySelector('#ni_rangeMax').value    = d.rangeMax    || '';
+    _addModal.querySelector('#ni_alarmMin').value    = d.alarmMin    || '';
+    _addModal.querySelector('#ni_alarmMax').value    = d.alarmMax    || '';
 }
 
 function onParamChange(selectEl) {
     var opt = selectEl.options[selectEl.selectedIndex];
     if (!opt || !opt.value) return;
     _addModal.querySelector('#ni_headerText').value = opt.textContent;
+    _addModal.querySelector('#ni_format').value     = opt.dataset.defaultFormat || '';
 }
 
 function closeAddItemModal() {
@@ -165,18 +176,22 @@ function closeAddItemModal() {
 }
 
 function _resetModalDefaults() {
-    _addModal.querySelector('#ni_width').value   = '';
-    _addModal.querySelector('#ni_height').value  = '';
+    _addModal.querySelector('#ni_width').value       = '';
+    _addModal.querySelector('#ni_height').value      = '';
     _addModal.querySelector('#ni_headerText').value  = 'Заголовок';
     _addModal.querySelector('#ni_headerColor').value = '#c9d1d9';
     _addModal.querySelector('#ni_headerBg').value    = '#161b22';
     _addModal.querySelector('#ni_headerFont').value  = 'monospace';
     _addModal.querySelector('#ni_headerSize').value  = 14;
-    _addModal.querySelector('#ni_decimals').value    = 1;
+    _addModal.querySelector('#ni_format').value      = '';
     _addModal.querySelector('#ni_valueFont').value   = 'monospace';
     _addModal.querySelector('#ni_valueSize').value   = 48;
     _addModal.querySelector('#ni_valueColor').value  = '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = '#0d1117';
+    _addModal.querySelector('#ni_rangeMin').value    = 0;
+    _addModal.querySelector('#ni_rangeMax').value    = 100;
+    _addModal.querySelector('#ni_alarmMin').value    = 0;
+    _addModal.querySelector('#ni_alarmMax').value    = 100;
 }
 
 function selectItemType(type) {
@@ -193,6 +208,7 @@ function selectItemType(type) {
 
 function _readConfig() {
     function clamp(val, min, max) { return Math.min(max, Math.max(min, parseInt(val) || min)); }
+    function nullable(val) { var n = parseFloat(val); return isNaN(n) ? null : n; }
     var wRaw = parseInt(_addModal.querySelector('#ni_width').value);
     var hRaw = parseInt(_addModal.querySelector('#ni_height').value);
     var paramRaw = _addModal.querySelector('#ni_paramId').value;
@@ -205,11 +221,15 @@ function _readConfig() {
         headerBg:    _addModal.querySelector('#ni_headerBg').value,
         headerFont:  _addModal.querySelector('#ni_headerFont').value,
         headerSize:  clamp(_addModal.querySelector('#ni_headerSize').value, 8, 72),
-        decimals:    clamp(_addModal.querySelector('#ni_decimals').value, 0, 4),
+        format:      _addModal.querySelector('#ni_format').value,
         valueFont:   _addModal.querySelector('#ni_valueFont').value,
         valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 12, 120),
         valueColor:  _addModal.querySelector('#ni_valueColor').value,
-        valueBg:     _addModal.querySelector('#ni_valueBg').value
+        valueBg:     _addModal.querySelector('#ni_valueBg').value,
+        rangeMin:    nullable(_addModal.querySelector('#ni_rangeMin').value),
+        rangeMax:    nullable(_addModal.querySelector('#ni_rangeMax').value),
+        alarmMin:    nullable(_addModal.querySelector('#ni_alarmMin').value),
+        alarmMax:    nullable(_addModal.querySelector('#ni_alarmMax').value)
     };
 }
 
@@ -223,30 +243,48 @@ function _applyToHeader(headerEl, config) {
     headerEl.textContent           = config.headerText;
 }
 
+function _applyFormat(num, fmt) {
+    if (!fmt) return String(num);
+    var dotIdx = fmt.indexOf('.');
+    if (dotIdx === -1) {
+        var intLen = fmt.length;
+        return String(Math.round(num)).padStart(intLen, '0');
+    }
+    var decLen = fmt.length - dotIdx - 1;
+    var fixed  = num.toFixed(decLen);
+    var parts  = fixed.split('.');
+    return parts[0].padStart(dotIdx, '0') + '.' + parts[1];
+}
+
 function _applyToValue(valueEl, config, numericVal) {
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
     valueEl.style.fontFamily      = config.valueFont;
     valueEl.style.fontSize        = config.valueSize + 'px';
     valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
-    valueEl.textContent           = numericVal.toFixed(config.decimals);
+    valueEl.textContent           = _applyFormat(numericVal, config.format);
 }
 
 function _storeConfig(el, config) {
+    function n(v) { return v !== null && v !== undefined ? v : ''; }
     Object.assign(el.dataset, {
-        paramId:     config.paramId !== null ? config.paramId : '',
-        width:       config.width   !== null ? config.width   : '',
-        height:      config.height  !== null ? config.height  : '',
+        paramId:     n(config.paramId),
+        width:       n(config.width),
+        height:      n(config.height),
         headerText:  config.headerText,
         headerColor: config.headerColor,
         headerBg:    config.headerBg,
         headerFont:  config.headerFont,
         headerSize:  config.headerSize,
-        decimals:    config.decimals,
+        format:      config.format,
         valueFont:   config.valueFont,
         valueSize:   config.valueSize,
         valueColor:  config.valueColor,
-        valueBg:     config.valueBg
+        valueBg:     config.valueBg,
+        rangeMin:    n(config.rangeMin),
+        rangeMax:    n(config.rangeMax),
+        alarmMin:    n(config.alarmMin),
+        alarmMax:    n(config.alarmMax)
     });
 }
 
@@ -407,11 +445,15 @@ function _collectIndicators() {
             header_bg:    d.headerBg    || '#161b22',
             header_font:  d.headerFont  || 'monospace',
             header_size:  parseInt(d.headerSize) || 14,
-            decimals:     parseInt(d.decimals)   || 1,
+            format:       d.format || '',
             value_color:  d.valueColor  || '#38bdf8',
             value_bg:     d.valueBg     || '#0d1117',
             value_font:   d.valueFont   || 'monospace',
-            value_size:   parseInt(d.valueSize)  || 48
+            value_size:   parseInt(d.valueSize)  || 48,
+            range_min:    d.rangeMin !== '' && d.rangeMin !== undefined ? parseFloat(d.rangeMin) : null,
+            range_max:    d.rangeMax !== '' && d.rangeMax !== undefined ? parseFloat(d.rangeMax) : null,
+            alarm_min:    d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
+            alarm_max:    d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null
         });
     });
     return indicators;

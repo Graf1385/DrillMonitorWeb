@@ -3,6 +3,8 @@ const path = require('path');
 
 const db = new Database(path.join(__dirname, 'data', 'profiles.db'));
 
+// ── Profiles ──────────────────────────────────────────────────────────────────
+
 db.exec(`
     CREATE TABLE IF NOT EXISTS profiles (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,16 +16,73 @@ db.exec(`
     )
 `);
 
-// Add is_active column if migrating from older schema
 try { db.exec('ALTER TABLE profiles ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0'); } catch {}
 
-// Seed standard profile once
 db.prepare(`
     INSERT OR IGNORE INTO profiles (name, background, cell_size, is_default, is_active)
     VALUES ('Стандартный', '#000000', 20, 1, 1)
 `).run();
 
-// Seed drilling parameters
+const hasActive = db.prepare('SELECT COUNT(*) as c FROM profiles WHERE is_active = 1').get();
+if (hasActive.c === 0) {
+    db.prepare('UPDATE profiles SET is_active = 1 WHERE is_default = 1').run();
+}
+
+// ── Data types ────────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS data_types (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        name           TEXT    NOT NULL UNIQUE,
+        default_format TEXT    NOT NULL DEFAULT ''
+    )
+`);
+
+db.prepare('DELETE FROM data_types').run();
+db.prepare('DELETE FROM sqlite_sequence WHERE name = ?').run('data_types');
+const _seedDataTypes = [
+    [1, 'time',   'HH:mm:ss'],
+    [2, 'float',  '0000.00'],
+    [3, 'short',  '0000'],
+    [4, 'string', '""'],
+];
+const _insertDataType = db.prepare('INSERT INTO data_types (id, name, default_format) VALUES (?, ?, ?)');
+for (const [id, name, fmt] of _seedDataTypes) _insertDataType.run(id, name, fmt);
+
+// ── Parameters ────────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS parameters (
+        id      INTEGER PRIMARY KEY,
+        name    TEXT    NOT NULL UNIQUE,
+        type_id INTEGER
+    )
+`);
+
+// Migration: rename type TEXT → type_id INTEGER (for databases created before this version)
+const _paramCols = db.prepare('PRAGMA table_info(parameters)').all().map(c => c.name);
+if (_paramCols.includes('type') && !_paramCols.includes('type_id')) {
+    db.transaction(() => {
+        db.exec('ALTER TABLE parameters ADD COLUMN type_id INTEGER');
+        db.prepare(`
+            UPDATE parameters SET type_id = (
+                SELECT dt.id FROM data_types dt
+                WHERE (parameters.type = 'datetime' AND dt.name = 'time')
+                   OR (parameters.type != 'datetime' AND dt.name = parameters.type)
+            )
+        `).run();
+        db.exec(`CREATE TABLE parameters_new (
+            id      INTEGER PRIMARY KEY,
+            name    TEXT NOT NULL UNIQUE,
+            type_id INTEGER
+        )`);
+        db.exec('INSERT INTO parameters_new SELECT id, name, type_id FROM parameters');
+        db.exec('DROP TABLE parameters');
+        db.exec('ALTER TABLE parameters_new RENAME TO parameters');
+    })();
+}
+
+// Seed drilling parameters and always sync type_id to current data_types
 const _seedParams = [
     [0,  'Вес на крюке',                  'float'],
     [1,  'Давление в манифольде',          'float'],
@@ -35,24 +94,18 @@ const _seedParams = [
     [7,  'Глубина долота',                 'float'],
     [8,  'Температура бурового раствора',  'float'],
     [9,  'Плотность бурового раствора',    'float'],
-    [10, 'Время сбора данных',             'datetime'],
+    [10, 'Время сбора данных',             'time'],
 ];
-const _insertParam = db.prepare('INSERT OR IGNORE INTO parameters (id, name, type) VALUES (?, ?, ?)');
-for (const p of _seedParams) _insertParam.run(...p);
-
-// Ensure at least one active profile exists
-const hasActive = db.prepare('SELECT COUNT(*) as c FROM profiles WHERE is_active = 1').get();
-if (hasActive.c === 0) {
-    db.prepare('UPDATE profiles SET is_active = 1 WHERE is_default = 1').run();
+const _getTypeId   = db.prepare('SELECT id FROM data_types WHERE name = ?');
+const _insertParam = db.prepare('INSERT OR IGNORE INTO parameters (id, name, type_id) VALUES (?, ?, ?)');
+const _updateParam = db.prepare('UPDATE parameters SET type_id = ? WHERE id = ?');
+for (const [id, name, typeName] of _seedParams) {
+    const dt = _getTypeId.get(typeName);
+    _insertParam.run(id, name, dt ? dt.id : null);
+    if (dt) _updateParam.run(dt.id, id);
 }
 
-db.exec(`
-    CREATE TABLE IF NOT EXISTS parameters (
-        id   INTEGER PRIMARY KEY,
-        name TEXT    NOT NULL UNIQUE,
-        type TEXT    NOT NULL
-    )
-`);
+// ── Indicators ────────────────────────────────────────────────────────────────
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS indicators (
@@ -69,22 +122,78 @@ db.exec(`
         header_bg    TEXT    NOT NULL DEFAULT '#161b22',
         header_font  TEXT    NOT NULL DEFAULT 'monospace',
         header_size  INTEGER NOT NULL DEFAULT 14,
-        decimals     INTEGER NOT NULL DEFAULT 1,
+        format       TEXT    NOT NULL DEFAULT '',
         value_color  TEXT    NOT NULL DEFAULT '#38bdf8',
         value_bg     TEXT    NOT NULL DEFAULT '#0d1117',
         value_font   TEXT    NOT NULL DEFAULT 'monospace',
-        value_size   INTEGER NOT NULL DEFAULT 48
+        value_size   INTEGER NOT NULL DEFAULT 48,
+        range_min    REAL,
+        range_max    REAL,
+        alarm_min    REAL,
+        alarm_max    REAL
     )
 `);
 
-// Migrations for existing databases
-['pos_left INTEGER NOT NULL DEFAULT 0',
- 'pos_top  INTEGER NOT NULL DEFAULT 0',
- 'header_bg TEXT NOT NULL DEFAULT \'#161b22\'',
- 'value_bg  TEXT NOT NULL DEFAULT \'#0d1117\''
+[
+    'pos_left INTEGER NOT NULL DEFAULT 0',
+    'pos_top  INTEGER NOT NULL DEFAULT 0',
+    "header_bg TEXT NOT NULL DEFAULT '#161b22'",
+    "value_bg  TEXT NOT NULL DEFAULT '#0d1117'",
+    'range_min REAL',
+    'range_max REAL',
+    'alarm_min REAL',
+    'alarm_max REAL',
+    "format TEXT NOT NULL DEFAULT ''"
 ].forEach(col => {
     try { db.exec('ALTER TABLE indicators ADD COLUMN ' + col); } catch {}
 });
+
+// Migration: replace decimals column with format (recreate table if needed)
+const _indCols = db.prepare('PRAGMA table_info(indicators)').all().map(c => c.name);
+if (_indCols.includes('decimals') && !_indCols.includes('format')) {
+    db.transaction(() => {
+        db.exec("ALTER TABLE indicators ADD COLUMN format TEXT NOT NULL DEFAULT ''");
+        db.exec(`UPDATE indicators SET format = CASE
+            WHEN decimals = 0 THEN '0'
+            WHEN decimals = 1 THEN '0.0'
+            WHEN decimals = 2 THEN '0.00'
+            WHEN decimals = 3 THEN '0.000'
+            WHEN decimals = 4 THEN '0.0000'
+            ELSE '' END`);
+        db.exec(`CREATE TABLE indicators_new (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            param_id     INTEGER,
+            profile_id   INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+            type         TEXT    NOT NULL DEFAULT 'digitalIndicator',
+            pos_left     INTEGER NOT NULL DEFAULT 0,
+            pos_top      INTEGER NOT NULL DEFAULT 0,
+            height       INTEGER,
+            width        INTEGER,
+            header_text  TEXT    NOT NULL DEFAULT '',
+            header_color TEXT    NOT NULL DEFAULT '#c9d1d9',
+            header_bg    TEXT    NOT NULL DEFAULT '#161b22',
+            header_font  TEXT    NOT NULL DEFAULT 'monospace',
+            header_size  INTEGER NOT NULL DEFAULT 14,
+            format       TEXT    NOT NULL DEFAULT '',
+            value_color  TEXT    NOT NULL DEFAULT '#38bdf8',
+            value_bg     TEXT    NOT NULL DEFAULT '#0d1117',
+            value_font   TEXT    NOT NULL DEFAULT 'monospace',
+            value_size   INTEGER NOT NULL DEFAULT 48,
+            range_min    REAL,
+            range_max    REAL,
+            alarm_min    REAL,
+            alarm_max    REAL
+        )`);
+        db.exec(`INSERT INTO indicators_new
+            SELECT id, param_id, profile_id, type, pos_left, pos_top, height, width,
+                   header_text, header_color, header_bg, header_font, header_size,
+                   format, value_color, value_bg, value_font, value_size,
+                   range_min, range_max, alarm_min, alarm_max
+            FROM indicators`);
+        db.exec('DROP TABLE indicators');
+        db.exec('ALTER TABLE indicators_new RENAME TO indicators');
+    })();
+}
 
 module.exports = {
     getProfiles() {
@@ -123,21 +232,57 @@ module.exports = {
     // ── Parameters ───────────────────────────────────────────────────────────
 
     getParameters() {
-        return db.prepare('SELECT * FROM parameters ORDER BY id ASC').all();
+        return db.prepare(`
+            SELECT p.id, p.name, p.type_id, dt.name AS type_name, dt.default_format
+            FROM parameters p
+            LEFT JOIN data_types dt ON p.type_id = dt.id
+            ORDER BY p.id ASC
+        `).all();
     },
 
     getParameter(id) {
-        return db.prepare('SELECT * FROM parameters WHERE id = ?').get(id);
+        return db.prepare(`
+            SELECT p.id, p.name, p.type_id, dt.name AS type_name
+            FROM parameters p
+            LEFT JOIN data_types dt ON p.type_id = dt.id
+            WHERE p.id = ?
+        `).get(id);
     },
 
-    createParameter(id, name, type) {
+    createParameter(id, name, typeId) {
         return db.prepare(
-            'INSERT INTO parameters (id, name, type) VALUES (?, ?, ?)'
-        ).run(id, name, type);
+            'INSERT INTO parameters (id, name, type_id) VALUES (?, ?, ?)'
+        ).run(id, name, typeId);
     },
 
     deleteParameter(id) {
         return db.prepare('DELETE FROM parameters WHERE id = ?').run(id);
+    },
+
+    // ── Data types ────────────────────────────────────────────────────────────
+
+    getDataTypes() {
+        return db.prepare('SELECT * FROM data_types ORDER BY id ASC').all();
+    },
+
+    getDataType(id) {
+        return db.prepare('SELECT * FROM data_types WHERE id = ?').get(id);
+    },
+
+    createDataType(name, defaultFormat) {
+        return db.prepare(
+            'INSERT INTO data_types (name, default_format) VALUES (?, ?)'
+        ).run(name, defaultFormat);
+    },
+
+    updateDataType(id, name, defaultFormat) {
+        return db.prepare(
+            'UPDATE data_types SET name = ?, default_format = ? WHERE id = ?'
+        ).run(name, defaultFormat, id);
+    },
+
+    deleteDataType(id) {
+        return db.prepare('DELETE FROM data_types WHERE id = ?').run(id);
     },
 
     // ── Indicators ────────────────────────────────────────────────────────────
@@ -155,11 +300,13 @@ module.exports = {
                 INSERT INTO indicators
                     (param_id, profile_id, type, pos_left, pos_top, height, width,
                      header_text, header_color, header_bg, header_font, header_size,
-                     decimals, value_color, value_bg, value_font, value_size)
+                     format, value_color, value_bg, value_font, value_size,
+                     range_min, range_max, alarm_min, alarm_max)
                 VALUES
                     (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
                      @header_text, @header_color, @header_bg, @header_font, @header_size,
-                     @decimals, @value_color, @value_bg, @value_font, @value_size)
+                     @format, @value_color, @value_bg, @value_font, @value_size,
+                     @range_min, @range_max, @alarm_min, @alarm_max)
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();

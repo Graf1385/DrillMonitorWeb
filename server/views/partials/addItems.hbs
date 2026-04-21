@@ -76,8 +76,22 @@
             </td>
         </tr>
         <tr>
-            <td>Знаков после запятой</td>
-            <td><input type="number" class="settingsInput" id="ni_decimals" value="1" min="0" max="4"></td>
+            <td>Формат</td>
+            <td><input type="text" class="settingsInput" id="ni_format" placeholder="например: 0000.00"></td>
+        </tr>
+        <tr class="numericOnlyRow">
+            <td>Диапазон (мин / макс)</td>
+            <td class="paramCell">
+                <input type="number" step="any" class="settingsInput sizeInput" id="ni_rangeMin" value="0">
+                <input type="number" step="any" class="settingsInput sizeInput" id="ni_rangeMax" value="100">
+            </td>
+        </tr>
+        <tr class="numericOnlyRow">
+            <td>Сигнализация (мин / макс)</td>
+            <td class="paramCell">
+                <input type="number" step="any" class="settingsInput sizeInput" id="ni_alarmMin" value="0">
+                <input type="number" step="any" class="settingsInput sizeInput" id="ni_alarmMax" value="100">
+            </td>
         </tr>
         <tr>
             <td>Шрифт / размер</td>

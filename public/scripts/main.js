@@ -13,11 +13,15 @@ function _restoreIndicators(indicators) {
             headerBg:    ind.header_bg,
             headerFont:  ind.header_font,
             headerSize:  ind.header_size,
-            decimals:    ind.decimals,
+            format:      ind.format,
             valueColor:  ind.value_color,
             valueBg:     ind.value_bg,
             valueFont:   ind.value_font,
-            valueSize:   ind.value_size
+            valueSize:   ind.value_size,
+            rangeMin:    ind.range_min,
+            rangeMax:    ind.range_max,
+            alarmMin:    ind.alarm_min,
+            alarmMax:    ind.alarm_max
         };
         var el = ind.type === 'timeIndicator'
             ? _createTimeIndicator(config, ind.pos_left, ind.pos_top)
