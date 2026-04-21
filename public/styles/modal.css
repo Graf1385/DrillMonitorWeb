@@ -508,3 +508,49 @@ input[type=number]::-webkit-inner-spin-button {
     border: 1px solid var(--sidebar-border);
     border-radius: 8px;
 }
+
+
+/* ── Alarm Overview Modal ───────────────────────────────────────────────────── */
+
+.wideModal {
+    min-width: 480px;
+    max-width: 640px;
+}
+
+#alarmOverviewList {
+    max-height: 360px;
+    overflow-y: auto;
+    margin: 8px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-accent) transparent;
+}
+
+#alarmOverviewList::-webkit-scrollbar       { width: 5px; }
+#alarmOverviewList::-webkit-scrollbar-thumb { background: var(--sidebar-accent); border-radius: 4px; }
+
+.alarmOverviewEmpty {
+    text-align: center;
+    color: #6b7280;
+    padding: 24px 0;
+    font-size: 13px;
+}
+
+.aol-name  { font-weight: 500; min-width: 140px; }
+.aol-range { color: var(--sidebar-accent); font-family: monospace; white-space: nowrap; }
+.aol-color { width: 32px; text-align: center; }
+
+.aol-colorDot {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    vertical-align: middle;
+}
+
+.aol-editBtn {
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    height: 26px !important;
+    min-width: 70px;
+}

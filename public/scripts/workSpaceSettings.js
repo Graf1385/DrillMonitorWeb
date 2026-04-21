@@ -3,10 +3,13 @@ var _createProfileModal = document.querySelector('#createProfileModal');
 var _deleteProfileModal = document.querySelector('#deleteProfileModal');
 var _workSpace          = document.querySelector('#workSpace');
 
-let _pendingDeleteId  = null;
-let _activeProfileId  = null;
-let _savedBackground  = null;
-let _savedCellSize    = null;
+let _pendingDeleteId    = null;
+let _activeProfileId    = null;
+let _savedBackground    = null;
+let _savedCellSize      = null;
+let _alarmSoundId       = '';
+let _alarmVolume        = 50;
+let _alarmDelay         = 2;
 
 let _settings = {
     ip:      '',
@@ -31,23 +34,59 @@ let _settings = {
 
 // ── Profiles ──────────────────────────────────────────────────────────────────
 
-function _loadProfiles() {
-    var select = _modal.querySelector('#wsProfile');
-    return $.getJSON('/api/profiles').then(function (profiles) {
-        var prevId = _activeProfileId || (select.value || null);
-        select.innerHTML = '';
-        profiles.forEach(function (p) {
-            var opt = document.createElement('option');
-            opt.value              = p.id;
-            opt.textContent        = p.name;
-            opt.dataset.background = p.background;
-            opt.dataset.cellSize   = p.cell_size;
-            opt.dataset.isDefault  = p.is_default;
-            select.appendChild(opt);
+function _loadAlarmSounds(selectedId) {
+    var select   = _modal.querySelector('#ws_alarmSound');
+    var deferred = $.Deferred();
+    $.getJSON('/api/alarm-sounds')
+        .then(function (sounds) {
+            select.innerHTML = '<option value="">— без звука —</option>';
+            sounds.forEach(function (s) {
+                var opt = document.createElement('option');
+                opt.value       = s.id;
+                opt.textContent = s.name;
+                select.appendChild(opt);
+            });
+            select.value = selectedId || '';
+            deferred.resolve();
+        })
+        .fail(function (err) {
+            console.error('Ошибка загрузки звуков:', err);
+            select.innerHTML = '<option value="">— без звука —</option>';
+            deferred.resolve();
         });
-        if (prevId) select.value = prevId;
-        applyProfile(select, true);
-    });
+    return deferred.promise();
+}
+
+function _loadProfiles() {
+    var select   = _modal.querySelector('#wsProfile');
+    var deferred = $.Deferred();
+    $.getJSON('/api/profiles')
+        .then(function (profiles) {
+            var prevId = _activeProfileId || (select.value || null);
+            select.innerHTML = '';
+            profiles.forEach(function (p) {
+                var opt = document.createElement('option');
+                opt.value                = p.id;
+                opt.textContent          = p.name;
+                opt.dataset.background   = p.background;
+                opt.dataset.cellSize     = p.cell_size;
+                opt.dataset.isDefault    = p.is_default;
+                opt.dataset.alarmSoundId = p.alarm_sound_id || '';
+                opt.dataset.alarmVolume  = p.alarm_volume  !== null ? p.alarm_volume  : 50;
+                opt.dataset.alarmDelay   = p.alarm_delay   !== null ? p.alarm_delay   : 2;
+                select.appendChild(opt);
+            });
+            if (prevId) select.value = prevId;
+            _loadAlarmSounds().always(function () {
+                try { applyProfile(select, true); } catch (e) { console.error('applyProfile error:', e); }
+                deferred.resolve();
+            });
+        })
+        .fail(function (err) {
+            console.error('Ошибка загрузки профилей:', err);
+            deferred.resolve();
+        });
+    return deferred.promise();
 }
 
 function applyProfile(selectEl, silent) {
@@ -61,6 +100,15 @@ function applyProfile(selectEl, silent) {
     _modal.querySelector('#workSpaceColor').value = _savedBackground;
     _modal.querySelector('#cellSize').value        = _savedCellSize;
     _modal.querySelector('#deleteProfileBtn').disabled = opt.dataset.isDefault === '1';
+
+    _alarmSoundId = opt.dataset.alarmSoundId || '';
+    _alarmVolume  = opt.dataset.alarmVolume !== undefined ? parseInt(opt.dataset.alarmVolume) : 50;
+    _alarmDelay   = parseFloat(opt.dataset.alarmDelay) || 2;
+
+    _modal.querySelector('#ws_alarmSound').value           = _alarmSoundId;
+    _modal.querySelector('#ws_alarmVolume').value          = _alarmVolume;
+    _modal.querySelector('#ws_alarmVolumeVal').textContent = _alarmVolume;
+    _modal.querySelector('#ws_alarmDelay').value           = _alarmDelay;
 
     if (!silent) {
         $.ajax({ url: '/api/profiles/' + _activeProfileId + '/select', type: 'POST' });
@@ -166,9 +214,7 @@ function deleteProfileConfirm() {
 // ── Main settings modal ───────────────────────────────────────────────────────
 
 function showWorkSpaceSettings() {
-    _loadProfiles().then(function () {
-        _modal.showModal();
-    });
+    _loadProfiles().then(function () { _modal.showModal(); });
 }
 
 function closeWorkSpaceSettings() {
@@ -180,13 +226,15 @@ function applyWorkSpaceSettings() {
     if (isNaN(cellSize) || cellSize < 10) cellSize = 10;
     if (cellSize > 200)                   cellSize = 200;
 
-    var background = _modal.querySelector('#workSpaceColor').value;
-
-    _settings.background = background;
+    _settings.background = _modal.querySelector('#workSpaceColor').value;
     _settings.cellSize   = cellSize;
 
+    _alarmSoundId = _modal.querySelector('#ws_alarmSound').value;
+    _alarmVolume  = parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50;
+    _alarmDelay   = parseFloat(_modal.querySelector('#ws_alarmDelay').value) || 2;
+
     _modal.close();
-    saveSettings();
+    showSaveBtn();
 }
 
 // ── Save to DB ────────────────────────────────────────────────────────────────
@@ -194,11 +242,19 @@ function applyWorkSpaceSettings() {
 function saveSettings() {
     if (!_activeProfileId) return;
 
+    var data = {
+        background:   _settings.background,
+        cellSize:     _settings.cellSize,
+        alarmSoundId: _alarmSoundId,
+        alarmVolume:  _alarmVolume,
+        alarmDelay:   _alarmDelay
+    };
+
     $.ajax({
         url:         '/api/profiles/' + _activeProfileId,
         type:        'PUT',
         contentType: 'application/x-www-form-urlencoded',
-        data:        { background: _settings.background, cellSize: _settings.cellSize },
+        data:        data,
         success: function () {
             _savedBackground = _settings.background;
             _savedCellSize   = _settings.cellSize;
@@ -214,6 +270,31 @@ function saveSettings() {
             console.error('Ошибка сохранения в профиль:', xhr.responseJSON);
         }
     });
+}
+
+// ── Alarm sound test ─────────────────────────────────────────────────────────
+
+var _testAudio = null;
+
+function testAlarmSound() {
+    var soundId = _modal.querySelector('#ws_alarmSound').value;
+    if (!soundId) return;
+
+    var volume = (parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50) / 100;
+    var btn    = _modal.querySelector('#ws_alarmPlayBtn');
+
+    if (_testAudio && !_testAudio.paused) {
+        _testAudio.pause();
+        _testAudio.currentTime = 0;
+        btn.textContent = '▶';
+        return;
+    }
+
+    _testAudio = new Audio('/api/alarm-sounds/' + soundId + '/file');
+    _testAudio.volume = volume;
+    btn.textContent   = '■';
+    _testAudio.play();
+    _testAudio.addEventListener('ended', function () { btn.textContent = '▶'; });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

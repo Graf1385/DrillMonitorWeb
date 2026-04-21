@@ -21,6 +21,26 @@
             <td>Размер ячейки</td>
             <td><input type="number" class="settingsInput" id="cellSize" placeholder="20" min="10" max="200"></td>
         </tr>
+        <tr><td colspan="2" class="sectionLabel">Звуковая сигнализация</td></tr>
+        <tr>
+            <td>Звук</td>
+            <td class="paramCell">
+                <select class="settingsSelect" id="ws_alarmSound" style="flex:1"></select>
+                <button class="profileIconBtn" id="ws_alarmPlayBtn" onclick="testAlarmSound()" title="Тест">▶</button>
+            </td>
+        </tr>
+        <tr>
+            <td>Громкость</td>
+            <td class="paramCell">
+                <input type="range" id="ws_alarmVolume" min="0" max="100" value="50" class="alarmVolumeSlider"
+                    oninput="document.querySelector('#ws_alarmVolumeVal').textContent=this.value">
+                <span id="ws_alarmVolumeVal" class="alarmVolumeNum">50</span>
+            </td>
+        </tr>
+        <tr>
+            <td>Задержка (сек)</td>
+            <td><input type="number" step="0.5" min="0.5" max="60" class="settingsInput" id="ws_alarmDelay" value="2"></td>
+        </tr>
     </table>
     <footer>
         <button class="modalButton okBtn"     onclick="applyWorkSpaceSettings()">OK</button>

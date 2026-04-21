@@ -141,30 +141,6 @@
             <td>Цвет световой сигнализации</td>
             <td><input type="color" id="as_alarmColor" value="#ff0000"></td>
         </tr>
-        <tr><td colspan="2" class="sectionLabel">Звуковая сигнализация</td></tr>
-        <tr>
-            <td>Звук</td>
-            <td>
-                <select class="settingsSelect" id="as_alarmSound">
-                    <option value="">— без звука —</option>
-                    <option value="beep">Звуковой сигнал</option>
-                    <option value="siren">Сирена</option>
-                    <option value="pulse">Импульс</option>
-                    <option value="alert">Тревога</option>
-                </select>
-            </td>
-        </tr>
-        <tr>
-            <td>Громкость</td>
-            <td class="paramCell">
-                <input type="range" id="as_alarmVolume" min="0" max="100" value="50" class="alarmVolumeSlider" oninput="document.querySelector('#as_alarmVolumeVal').textContent=this.value">
-                <span id="as_alarmVolumeVal" class="alarmVolumeNum">50</span>
-            </td>
-        </tr>
-        <tr>
-            <td>Задержка (сек)</td>
-            <td><input type="number" step="0.5" min="0.5" max="60" class="settingsInput" id="as_alarmDelay" value="2"></td>
-        </tr>
     </table>
     <footer>
         <button class="modalButton okBtn"     onclick="applyAlarmSettings()">Применить</button>
@@ -178,6 +154,14 @@
     <footer>
         <button class="modalButton deleteBtn" onclick="confirmDeleteIndicator()">Да</button>
         <button class="modalButton cancelBtn" onclick="document.querySelector('#deleteConfirmModal').close()">Нет</button>
+    </footer>
+</dialog>
+
+<dialog class="settingsModal wideModal" id="alarmOverviewModal">
+    <h1>Управление сигнализацией</h1>
+    <div id="alarmOverviewList"></div>
+    <footer>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#alarmOverviewModal').close()">Закрыть</button>
     </footer>
 </dialog>
 

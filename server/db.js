@@ -16,7 +16,10 @@ db.exec(`
     )
 `);
 
-try { db.exec('ALTER TABLE profiles ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE profiles ADD COLUMN is_active        INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_sound_id  INTEGER'); } catch {}
+try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_volume    INTEGER NOT NULL DEFAULT 50'); } catch {}
+try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_delay     REAL    NOT NULL DEFAULT 2'); } catch {}
 
 db.prepare(`
     INSERT OR IGNORE INTO profiles (name, background, cell_size, is_default, is_active)
@@ -203,6 +206,17 @@ if (_indCols.includes('decimals') && !_indCols.includes('format')) {
     })();
 }
 
+// ── Alarm sounds ─────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS alarm_sounds (
+        id   INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT    NOT NULL UNIQUE,
+        file BLOB    NOT NULL
+    )
+`);
+
+
 module.exports = {
     getProfiles() {
         return db.prepare('SELECT * FROM profiles ORDER BY is_default DESC, id ASC').all();
@@ -214,7 +228,7 @@ module.exports = {
 
     createProfile(name, background, cellSize) {
         return db.prepare(
-            'INSERT INTO profiles (name, background, cell_size) VALUES (?, ?, ?)'
+            'INSERT INTO profiles (name, background, cell_size, alarm_volume, alarm_delay) VALUES (?, ?, ?, 50, 2)'
         ).run(name, background, cellSize);
     },
 
@@ -230,12 +244,14 @@ module.exports = {
         })();
     },
 
-    updateProfile(id, background, cellSize) {
+    updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay) {
         return db.transaction(() => {
             db.prepare('UPDATE profiles SET is_active = 0').run();
-            return db.prepare(
-                'UPDATE profiles SET background = ?, cell_size = ?, is_active = 1 WHERE id = ?'
-            ).run(background, cellSize, id);
+            return db.prepare(`
+                UPDATE profiles
+                SET background = ?, cell_size = ?, alarm_sound_id = ?, alarm_volume = ?, alarm_delay = ?, is_active = 1
+                WHERE id = ?
+            `).run(background, cellSize, alarmSoundId || null, alarmVolume, alarmDelay, id);
         })();
     },
 
@@ -317,16 +333,33 @@ module.exports = {
                     (param_id, profile_id, type, pos_left, pos_top, height, width,
                      header_text, header_color, header_bg, header_font, header_size,
                      format, value_color, value_bg, value_font, value_size,
-                     range_min, range_max, alarm_min, alarm_max,
-                     alarm_color, alarm_sound, alarm_volume, alarm_delay)
+                     range_min, range_max, alarm_min, alarm_max, alarm_color)
                 VALUES
                     (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
                      @header_text, @header_color, @header_bg, @header_font, @header_size,
                      @format, @value_color, @value_bg, @value_font, @value_size,
-                     @range_min, @range_max, @alarm_min, @alarm_max,
-                     @alarm_color, @alarm_sound, @alarm_volume, @alarm_delay)
+                     @range_min, @range_max, @alarm_min, @alarm_max, @alarm_color)
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();
-    }
+    },
+
+    // ── Alarm sounds ──────────────────────────────────────────────────────────
+
+    getAlarmSounds() {
+        return db.prepare('SELECT id, name FROM alarm_sounds ORDER BY id ASC').all();
+    },
+
+    getAlarmSoundFile(id) {
+        return db.prepare('SELECT file FROM alarm_sounds WHERE id = ?').get(id);
+    },
+
+    createAlarmSound(name, fileBuffer) {
+        return db.prepare('INSERT INTO alarm_sounds (name, file) VALUES (?, ?)').run(name, fileBuffer);
+    },
+
+    deleteAlarmSound(id) {
+        return db.prepare('DELETE FROM alarm_sounds WHERE id = ?').run(id);
+    },
+
 };

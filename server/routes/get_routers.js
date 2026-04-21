@@ -55,6 +55,28 @@ router.get('/api/profiles/:id/indicators', (req, res) => {
     }
 });
 
+router.get('/api/alarm-sounds', (req, res) => {
+    try {
+        res.status(200).json(db.getAlarmSounds());
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/api/alarm-sounds/:id/file', (req, res) => {
+    try {
+        const row = db.getAlarmSoundFile(parseInt(req.params.id));
+        if (!row) return res.status(404).end();
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.send(row.file);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 router.get('/api/events', (req, res) => {
     res.setHeader('Content-Type',  'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');

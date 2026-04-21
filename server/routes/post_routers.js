@@ -3,6 +3,16 @@ const router = express.Router();
 const helper = require('../helper');
 const db = require('../db');
 const sse = require('../sse');
+const multer = require('multer');
+
+const _upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'audio/mpeg' || file.originalname.endsWith('.mp3')) cb(null, true);
+        else cb(new Error('Только MP3 файлы'));
+    }
+});
 
 router.post('/setSettings', (req, res) => {
     try {
@@ -32,11 +42,18 @@ router.post('/api/profiles', (req, res) => {
 
 router.put('/api/profiles/:id', (req, res) => {
     try {
-        const { background, cellSize } = req.body;
+        const { background, cellSize, alarmSoundId, alarmVolume, alarmDelay } = req.body;
         if (!background || !cellSize) {
             return res.status(400).json({ error: 'background и cellSize обязательны' });
         }
-        const result = db.updateProfile(parseInt(req.params.id), background, parseInt(cellSize));
+        const result = db.updateProfile(
+            parseInt(req.params.id),
+            background,
+            parseInt(cellSize),
+            alarmSoundId ? parseInt(alarmSoundId) : null,
+            parseInt(alarmVolume) || 50,
+            parseFloat(alarmDelay) || 2
+        );
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Профиль не найден' });
         }
@@ -74,6 +91,32 @@ router.post('/api/profiles/:id/indicators', (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+router.post('/api/alarm-sounds', _upload.single('file'), (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !req.file) {
+            return res.status(400).json({ error: 'name и file обязательны' });
+        }
+        const result = db.createAlarmSound(name, req.file.buffer);
+        res.status(201).json({ id: result.lastInsertRowid });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/api/alarm-sounds/:id', (req, res) => {
+    try {
+        const result = db.deleteAlarmSound(parseInt(req.params.id));
+        if (result.changes === 0) return res.status(404).json({ error: 'Звук не найден' });
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 router.delete('/api/profiles/:id', (req, res) => {
     try {

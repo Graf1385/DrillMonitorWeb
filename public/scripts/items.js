@@ -49,26 +49,18 @@ function ctxOpenAlarmSettings() {
     _alarmTarget = _ctxTarget;
     _ctxTarget = null;
     var d = _alarmTarget.dataset;
-    document.querySelector('#as_alarmMin').value    = d.alarmMin    !== '' && d.alarmMin    !== undefined ? d.alarmMin    : '';
-    document.querySelector('#as_alarmMax').value    = d.alarmMax    !== '' && d.alarmMax    !== undefined ? d.alarmMax    : '';
-    document.querySelector('#as_alarmColor').value  = d.alarmColor  || '#ff0000';
-    document.querySelector('#as_alarmSound').value  = d.alarmSound  || '';
-    var vol = d.alarmVolume !== undefined && d.alarmVolume !== '' ? parseInt(d.alarmVolume) : 50;
-    document.querySelector('#as_alarmVolume').value = vol;
-    document.querySelector('#as_alarmVolumeVal').textContent = vol;
-    document.querySelector('#as_alarmDelay').value  = d.alarmDelay  !== '' && d.alarmDelay  !== undefined ? d.alarmDelay  : 2;
+    document.querySelector('#as_alarmMin').value   = d.alarmMin !== '' && d.alarmMin !== undefined ? d.alarmMin : '';
+    document.querySelector('#as_alarmMax').value   = d.alarmMax !== '' && d.alarmMax !== undefined ? d.alarmMax : '';
+    document.querySelector('#as_alarmColor').value = d.alarmColor || '#ff0000';
     document.querySelector('#alarmSettingsModal').showModal();
 }
 
 function applyAlarmSettings() {
     if (!_alarmTarget) { document.querySelector('#alarmSettingsModal').close(); return; }
     function nullable(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; }
-    _alarmTarget.dataset.alarmMin    = nullable(document.querySelector('#as_alarmMin').value);
-    _alarmTarget.dataset.alarmMax    = nullable(document.querySelector('#as_alarmMax').value);
-    _alarmTarget.dataset.alarmColor  = document.querySelector('#as_alarmColor').value;
-    _alarmTarget.dataset.alarmSound  = document.querySelector('#as_alarmSound').value;
-    _alarmTarget.dataset.alarmVolume = parseInt(document.querySelector('#as_alarmVolume').value) || 50;
-    _alarmTarget.dataset.alarmDelay  = parseFloat(document.querySelector('#as_alarmDelay').value) || 2;
+    _alarmTarget.dataset.alarmMin   = nullable(document.querySelector('#as_alarmMin').value);
+    _alarmTarget.dataset.alarmMax   = nullable(document.querySelector('#as_alarmMax').value);
+    _alarmTarget.dataset.alarmColor = document.querySelector('#as_alarmColor').value;
     _alarmTarget = null;
     document.querySelector('#alarmSettingsModal').close();
     showSaveBtn();
@@ -315,12 +307,9 @@ function _readConfig() {
         valueBg:     _addModal.querySelector('#ni_valueBg').value,
         rangeMin:    nullable(_addModal.querySelector('#ni_rangeMin').value),
         rangeMax:    nullable(_addModal.querySelector('#ni_rangeMax').value),
-        alarmMin:    null,
-        alarmMax:    null,
-        alarmColor:  '#ff0000',
-        alarmSound:  '',
-        alarmVolume: 50,
-        alarmDelay:  2
+        alarmMin:   null,
+        alarmMax:   null,
+        alarmColor: '#ff0000'
     };
 }
 
@@ -374,12 +363,9 @@ function _storeConfig(el, config) {
         valueBg:     config.valueBg,
         rangeMin:    n(config.rangeMin),
         rangeMax:    n(config.rangeMax),
-        alarmMin:    n(config.alarmMin),
-        alarmMax:    n(config.alarmMax),
-        alarmColor:  config.alarmColor  || '#ff0000',
-        alarmSound:  config.alarmSound  || '',
-        alarmVolume: config.alarmVolume !== undefined ? config.alarmVolume : 50,
-        alarmDelay:  config.alarmDelay  !== undefined ? config.alarmDelay  : 2
+        alarmMin:   n(config.alarmMin),
+        alarmMax:   n(config.alarmMax),
+        alarmColor: config.alarmColor || '#ff0000'
     });
 }
 
@@ -547,12 +533,9 @@ function _collectIndicators() {
             value_size:   parseInt(d.valueSize)  || 48,
             range_min:    d.rangeMin !== '' && d.rangeMin !== undefined ? parseFloat(d.rangeMin) : null,
             range_max:    d.rangeMax !== '' && d.rangeMax !== undefined ? parseFloat(d.rangeMax) : null,
-            alarm_min:    d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
-            alarm_max:    d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null,
-            alarm_color:  d.alarmColor  || '#ff0000',
-            alarm_sound:  d.alarmSound  || '',
-            alarm_volume: d.alarmVolume !== undefined && d.alarmVolume !== '' ? parseInt(d.alarmVolume) : 50,
-            alarm_delay:  d.alarmDelay  !== undefined && d.alarmDelay  !== '' ? parseFloat(d.alarmDelay) : 2
+            alarm_min:   d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
+            alarm_max:   d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null,
+            alarm_color: d.alarmColor || '#ff0000'
         });
     });
     return indicators;
