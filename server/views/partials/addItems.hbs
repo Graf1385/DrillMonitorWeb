@@ -121,6 +121,41 @@
     </footer>
 </dialog>
 
+<div id="indicatorContextMenu" class="indicatorCtxMenu">
+    <button onclick="ctxOpenValueSettings()">Настройка значения</button>
+    <button onclick="ctxOpenAlarmSettings()">Настройка сигнализации</button>
+</div>
+
+<dialog class="settingsModal" id="alarmSettingsModal">
+    <h1>Настройка сигнализации</h1>
+    <table class="settingsTable">
+        <tr>
+            <th>Параметр</th>
+            <th>Значение</th>
+        </tr>
+        <tr><td colspan="2" class="sectionLabel">Диапазон</td></tr>
+        <tr>
+            <td>Мин / Макс</td>
+            <td class="paramCell">
+                <input type="number" step="any" class="settingsInput sizeInput" id="as_rangeMin" placeholder="—">
+                <input type="number" step="any" class="settingsInput sizeInput" id="as_rangeMax" placeholder="—">
+            </td>
+        </tr>
+        <tr><td colspan="2" class="sectionLabel">Сигнализация</td></tr>
+        <tr>
+            <td>Мин / Макс</td>
+            <td class="paramCell">
+                <input type="number" step="any" class="settingsInput sizeInput" id="as_alarmMin" placeholder="—">
+                <input type="number" step="any" class="settingsInput sizeInput" id="as_alarmMax" placeholder="—">
+            </td>
+        </tr>
+    </table>
+    <footer>
+        <button class="modalButton okBtn"     onclick="applyAlarmSettings()">Применить</button>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#alarmSettingsModal').close()">Отмена</button>
+    </footer>
+</dialog>
+
 <dialog class="settingsModal" id="addItemErrorModal">
     <h1>Ошибка</h1>
     <p class="modalMessage">Необходимо выбрать параметр индикатора.</p>

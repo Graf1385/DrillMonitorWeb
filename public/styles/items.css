@@ -80,6 +80,37 @@
     letter-spacing: 0.05em;
 }
 
+/* Context menu */
+.indicatorCtxMenu {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    padding: 4px 0;
+    min-width: 190px;
+}
+
+.indicatorCtxMenu button {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    color: #c9d1d9;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.indicatorCtxMenu button:hover {
+    background: #21262d;
+    color: #58a6ff;
+}
+
 .digitalIndicator > .indicatorValue {
     text-align: center;
     margin: 0;

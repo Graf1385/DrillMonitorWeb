@@ -3,6 +3,67 @@ var _errorModal    = document.querySelector('#addItemErrorModal');
 var _activeType    = 'digitalIndicator';
 var _editingEl     = null;
 
+// ── Context menu ──────────────────────────────────────────────────────────────
+
+var _ctxMenu   = document.querySelector('#indicatorContextMenu');
+var _ctxTarget = null;
+
+document.addEventListener('contextmenu', function (e) {
+    var indicator = e.target.closest('.indicator');
+    if (!indicator) return;
+    e.preventDefault();
+    _ctxTarget = indicator;
+    _ctxMenu.style.display = 'block';
+    var x = e.clientX, y = e.clientY;
+    var menuW = _ctxMenu.offsetWidth  || 190;
+    var menuH = _ctxMenu.offsetHeight || 80;
+    if (x + menuW > window.innerWidth)  x = window.innerWidth  - menuW - 4;
+    if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 4;
+    _ctxMenu.style.left = x + 'px';
+    _ctxMenu.style.top  = y + 'px';
+});
+
+document.addEventListener('mousedown', function (e) {
+    if (!_ctxMenu.contains(e.target)) {
+        _ctxMenu.style.display = 'none';
+        _ctxTarget = null;
+    }
+}, true);
+
+document.addEventListener('scroll', function () {
+    _ctxMenu.style.display = 'none';
+    _ctxTarget = null;
+}, true);
+
+function ctxOpenValueSettings() {
+    _ctxMenu.style.display = 'none';
+    if (_ctxTarget) _openEditModal(_ctxTarget);
+    _ctxTarget = null;
+}
+
+function ctxOpenAlarmSettings() {
+    _ctxMenu.style.display = 'none';
+    if (!_ctxTarget) return;
+    var d = _ctxTarget.dataset;
+    document.querySelector('#as_rangeMin').value = d.rangeMin !== undefined && d.rangeMin !== '' ? d.rangeMin : '';
+    document.querySelector('#as_rangeMax').value = d.rangeMax !== undefined && d.rangeMax !== '' ? d.rangeMax : '';
+    document.querySelector('#as_alarmMin').value = d.alarmMin !== undefined && d.alarmMin !== '' ? d.alarmMin : '';
+    document.querySelector('#as_alarmMax').value = d.alarmMax !== undefined && d.alarmMax !== '' ? d.alarmMax : '';
+    document.querySelector('#alarmSettingsModal').showModal();
+}
+
+function applyAlarmSettings() {
+    if (!_ctxTarget) { document.querySelector('#alarmSettingsModal').close(); return; }
+    function nullable(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; }
+    _ctxTarget.dataset.rangeMin = nullable(document.querySelector('#as_rangeMin').value);
+    _ctxTarget.dataset.rangeMax = nullable(document.querySelector('#as_rangeMax').value);
+    _ctxTarget.dataset.alarmMin = nullable(document.querySelector('#as_alarmMin').value);
+    _ctxTarget.dataset.alarmMax = nullable(document.querySelector('#as_alarmMax').value);
+    _ctxTarget = null;
+    document.querySelector('#alarmSettingsModal').close();
+    showSaveBtn();
+}
+
 // ── Drag ──────────────────────────────────────────────────────────────────────
 
 var _drag   = { el: null, startX: 0, startY: 0, origLeft: 0, origTop: 0 };
