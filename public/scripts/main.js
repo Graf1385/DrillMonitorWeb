@@ -1,3 +1,5 @@
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
 getSettings();
 
 function _restoreIndicators(indicators) {
