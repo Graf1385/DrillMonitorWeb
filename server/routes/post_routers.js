@@ -49,7 +49,7 @@ router.put('/api/profiles/:id', (req, res) => {
 
 router.post('/api/profiles/:id/select', (req, res) => {
     try {
-        const profile = db.getProfile(parseInt(req.params.id));
+        const profile = db.selectProfile(parseInt(req.params.id));
         if (!profile) return res.status(404).json({ error: 'Профиль не найден' });
         sse.broadcast('profile-selected', profile);
         res.status(200).json({ ok: true });

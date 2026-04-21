@@ -222,6 +222,14 @@ module.exports = {
         return db.prepare('SELECT * FROM profiles WHERE is_active = 1').get();
     },
 
+    selectProfile(id) {
+        return db.transaction(() => {
+            db.prepare('UPDATE profiles SET is_active = 0').run();
+            db.prepare('UPDATE profiles SET is_active = 1 WHERE id = ?').run(id);
+            return db.prepare('SELECT * FROM profiles WHERE id = ?').get(id);
+        })();
+    },
+
     updateProfile(id, background, cellSize) {
         return db.transaction(() => {
             db.prepare('UPDATE profiles SET is_active = 0').run();
