@@ -111,6 +111,15 @@
     color: #58a6ff;
 }
 
+.indicatorCtxMenu button.ctxMenuDanger {
+    color: #f87171;
+}
+
+.indicatorCtxMenu button.ctxMenuDanger:hover {
+    color: #f87171;
+    background: #2a1a1a;
+}
+
 .digitalIndicator > .indicatorValue {
     text-align: center;
     margin: 0;

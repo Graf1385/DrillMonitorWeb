@@ -64,6 +64,14 @@ function applyAlarmSettings() {
     showSaveBtn();
 }
 
+function ctxDeleteIndicator() {
+    _ctxMenu.style.display = 'none';
+    if (!_ctxTarget) return;
+    _ctxTarget.remove();
+    _ctxTarget = null;
+    showSaveBtn();
+}
+
 // ── Drag ──────────────────────────────────────────────────────────────────────
 
 var _drag   = { el: null, startX: 0, startY: 0, origLeft: 0, origTop: 0 };
