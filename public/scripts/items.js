@@ -41,25 +41,35 @@ function ctxOpenValueSettings() {
     _ctxTarget = null;
 }
 
+var _alarmTarget = null;
+
 function ctxOpenAlarmSettings() {
     _ctxMenu.style.display = 'none';
     if (!_ctxTarget) return;
-    var d = _ctxTarget.dataset;
-    document.querySelector('#as_rangeMin').value = d.rangeMin !== undefined && d.rangeMin !== '' ? d.rangeMin : '';
-    document.querySelector('#as_rangeMax').value = d.rangeMax !== undefined && d.rangeMax !== '' ? d.rangeMax : '';
-    document.querySelector('#as_alarmMin').value = d.alarmMin !== undefined && d.alarmMin !== '' ? d.alarmMin : '';
-    document.querySelector('#as_alarmMax').value = d.alarmMax !== undefined && d.alarmMax !== '' ? d.alarmMax : '';
+    _alarmTarget = _ctxTarget;
+    _ctxTarget = null;
+    var d = _alarmTarget.dataset;
+    document.querySelector('#as_alarmMin').value    = d.alarmMin    !== '' && d.alarmMin    !== undefined ? d.alarmMin    : '';
+    document.querySelector('#as_alarmMax').value    = d.alarmMax    !== '' && d.alarmMax    !== undefined ? d.alarmMax    : '';
+    document.querySelector('#as_alarmColor').value  = d.alarmColor  || '#ff0000';
+    document.querySelector('#as_alarmSound').value  = d.alarmSound  || '';
+    var vol = d.alarmVolume !== undefined && d.alarmVolume !== '' ? parseInt(d.alarmVolume) : 50;
+    document.querySelector('#as_alarmVolume').value = vol;
+    document.querySelector('#as_alarmVolumeVal').textContent = vol;
+    document.querySelector('#as_alarmDelay').value  = d.alarmDelay  !== '' && d.alarmDelay  !== undefined ? d.alarmDelay  : 2;
     document.querySelector('#alarmSettingsModal').showModal();
 }
 
 function applyAlarmSettings() {
-    if (!_ctxTarget) { document.querySelector('#alarmSettingsModal').close(); return; }
+    if (!_alarmTarget) { document.querySelector('#alarmSettingsModal').close(); return; }
     function nullable(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; }
-    _ctxTarget.dataset.rangeMin = nullable(document.querySelector('#as_rangeMin').value);
-    _ctxTarget.dataset.rangeMax = nullable(document.querySelector('#as_rangeMax').value);
-    _ctxTarget.dataset.alarmMin = nullable(document.querySelector('#as_alarmMin').value);
-    _ctxTarget.dataset.alarmMax = nullable(document.querySelector('#as_alarmMax').value);
-    _ctxTarget = null;
+    _alarmTarget.dataset.alarmMin    = nullable(document.querySelector('#as_alarmMin').value);
+    _alarmTarget.dataset.alarmMax    = nullable(document.querySelector('#as_alarmMax').value);
+    _alarmTarget.dataset.alarmColor  = document.querySelector('#as_alarmColor').value;
+    _alarmTarget.dataset.alarmSound  = document.querySelector('#as_alarmSound').value;
+    _alarmTarget.dataset.alarmVolume = parseInt(document.querySelector('#as_alarmVolume').value) || 50;
+    _alarmTarget.dataset.alarmDelay  = parseFloat(document.querySelector('#as_alarmDelay').value) || 2;
+    _alarmTarget = null;
     document.querySelector('#alarmSettingsModal').close();
     showSaveBtn();
 }
@@ -202,7 +212,8 @@ function showNewItems() {
     _editingEl = null;
     _addModal.querySelector('h1').textContent = 'Добавить элемент';
     _addModal.querySelector('.okBtn').textContent = 'Добавить';
-    _addModal.querySelector('.itemTypeRow').style.display = '';
+    _addModal.querySelector('#itemTypeList').style.display = '';
+    _addModal.querySelector('#ni_settingsBody').style.display = 'none';
     _resetModalDefaults();
     _loadParameters().then(function () {
         _applyTypeToParamSelect(_activeType);
@@ -214,7 +225,8 @@ function _openEditModal(indicator) {
     _editingEl = indicator;
     _addModal.querySelector('h1').textContent = 'Настройки индикатора';
     _addModal.querySelector('.okBtn').textContent = 'Применить';
-    _addModal.querySelector('.itemTypeRow').style.display = 'none';
+    _addModal.querySelector('#itemTypeList').style.display = 'none';
+    _addModal.querySelector('#ni_settingsBody').style.display = '';
 
     var indType = indicator.classList.contains('timeIndicator') ? 'timeIndicator'
                 : indicator.classList.contains('dateIndicator')  ? 'dateIndicator'
@@ -238,8 +250,6 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#ni_valueBg').value     = d.valueBg     || '#0d1117';
     _addModal.querySelector('#ni_rangeMin').value    = d.rangeMin    || '';
     _addModal.querySelector('#ni_rangeMax').value    = d.rangeMax    || '';
-    _addModal.querySelector('#ni_alarmMin').value    = d.alarmMin    || '';
-    _addModal.querySelector('#ni_alarmMax').value    = d.alarmMax    || '';
 }
 
 function onParamChange(selectEl) {
@@ -269,8 +279,6 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_valueBg').value     = '#0d1117';
     _addModal.querySelector('#ni_rangeMin').value    = 0;
     _addModal.querySelector('#ni_rangeMax').value    = 100;
-    _addModal.querySelector('#ni_alarmMin').value    = 0;
-    _addModal.querySelector('#ni_alarmMax').value    = 100;
 }
 
 function selectItemType(type) {
@@ -307,8 +315,12 @@ function _readConfig() {
         valueBg:     _addModal.querySelector('#ni_valueBg').value,
         rangeMin:    nullable(_addModal.querySelector('#ni_rangeMin').value),
         rangeMax:    nullable(_addModal.querySelector('#ni_rangeMax').value),
-        alarmMin:    nullable(_addModal.querySelector('#ni_alarmMin').value),
-        alarmMax:    nullable(_addModal.querySelector('#ni_alarmMax').value)
+        alarmMin:    null,
+        alarmMax:    null,
+        alarmColor:  '#ff0000',
+        alarmSound:  '',
+        alarmVolume: 50,
+        alarmDelay:  2
     };
 }
 
@@ -363,7 +375,11 @@ function _storeConfig(el, config) {
         rangeMin:    n(config.rangeMin),
         rangeMax:    n(config.rangeMax),
         alarmMin:    n(config.alarmMin),
-        alarmMax:    n(config.alarmMax)
+        alarmMax:    n(config.alarmMax),
+        alarmColor:  config.alarmColor  || '#ff0000',
+        alarmSound:  config.alarmSound  || '',
+        alarmVolume: config.alarmVolume !== undefined ? config.alarmVolume : 50,
+        alarmDelay:  config.alarmDelay  !== undefined ? config.alarmDelay  : 2
     });
 }
 
@@ -459,7 +475,8 @@ function _createDateIndicator(config, left, top) {
 // ── Add / apply ───────────────────────────────────────────────────────────────
 
 function addNewItem() {
-    var config = _readConfig();
+    var config;
+    try { config = _readConfig(); } catch(err) { console.error('_readConfig error:', err); return; }
 
     if (_activeType === 'digitalIndicator' && config.paramId === null) {
         _addModal.close();
@@ -536,7 +553,11 @@ function _collectIndicators() {
             range_min:    d.rangeMin !== '' && d.rangeMin !== undefined ? parseFloat(d.rangeMin) : null,
             range_max:    d.rangeMax !== '' && d.rangeMax !== undefined ? parseFloat(d.rangeMax) : null,
             alarm_min:    d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
-            alarm_max:    d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null
+            alarm_max:    d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null,
+            alarm_color:  d.alarmColor  || '#ff0000',
+            alarm_sound:  d.alarmSound  || '',
+            alarm_volume: d.alarmVolume !== undefined && d.alarmVolume !== '' ? parseInt(d.alarmVolume) : 50,
+            alarm_delay:  d.alarmDelay  !== undefined && d.alarmDelay  !== '' ? parseFloat(d.alarmDelay) : 2
         });
     });
     return indicators;

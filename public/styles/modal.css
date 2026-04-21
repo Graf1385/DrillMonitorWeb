@@ -379,26 +379,51 @@ input[type=number]::-webkit-inner-spin-button {
 .deleteBtn:not(:disabled):hover { border-color: #f87171; box-shadow: 0 0 8px rgba(248,113,113,0.2); }
 
 /* Add item modal */
-.itemTypeRow {
+.itemTypeList {
     display: flex;
-    gap: 10px;
-    padding: 12px 16px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    max-height: 280px;
+    overflow-y: auto;
     border-bottom: 1px solid var(--sidebar-border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-accent) var(--sidebar-btn-bg);
+}
+
+.itemTypeList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.itemTypeList::-webkit-scrollbar-track {
+    background: var(--sidebar-btn-bg);
+    border-radius: 3px;
+}
+
+.itemTypeList::-webkit-scrollbar-thumb {
+    background-color: var(--sidebar-border);
+    border-radius: 3px;
+}
+
+.itemTypeList::-webkit-scrollbar-thumb:hover {
+    background-color: var(--sidebar-accent);
 }
 
 .itemTypeCard {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 14px;
     padding: 10px 14px;
     background-color: var(--sidebar-btn-bg);
     border: 1px solid var(--sidebar-border);
     border-radius: 10px;
     color: #8b949e;
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
+    width: 100%;
+    text-align: left;
 }
 
 .itemTypeCard.selected,

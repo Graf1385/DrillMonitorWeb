@@ -130,7 +130,11 @@ db.exec(`
         range_min    REAL,
         range_max    REAL,
         alarm_min    REAL,
-        alarm_max    REAL
+        alarm_max    REAL,
+        alarm_color  TEXT    NOT NULL DEFAULT '#ff0000',
+        alarm_sound  TEXT    NOT NULL DEFAULT '',
+        alarm_volume INTEGER NOT NULL DEFAULT 50,
+        alarm_delay  REAL    NOT NULL DEFAULT 2
     )
 `);
 
@@ -143,7 +147,11 @@ db.exec(`
     'range_max REAL',
     'alarm_min REAL',
     'alarm_max REAL',
-    "format TEXT NOT NULL DEFAULT ''"
+    "format TEXT NOT NULL DEFAULT ''",
+    "alarm_color  TEXT    NOT NULL DEFAULT '#ff0000'",
+    "alarm_sound  TEXT    NOT NULL DEFAULT ''",
+    'alarm_volume INTEGER NOT NULL DEFAULT 50',
+    'alarm_delay  REAL    NOT NULL DEFAULT 2'
 ].forEach(col => {
     try { db.exec('ALTER TABLE indicators ADD COLUMN ' + col); } catch {}
 });
@@ -301,12 +309,14 @@ module.exports = {
                     (param_id, profile_id, type, pos_left, pos_top, height, width,
                      header_text, header_color, header_bg, header_font, header_size,
                      format, value_color, value_bg, value_font, value_size,
-                     range_min, range_max, alarm_min, alarm_max)
+                     range_min, range_max, alarm_min, alarm_max,
+                     alarm_color, alarm_sound, alarm_volume, alarm_delay)
                 VALUES
                     (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
                      @header_text, @header_color, @header_bg, @header_font, @header_size,
                      @format, @value_color, @value_bg, @value_font, @value_size,
-                     @range_min, @range_max, @alarm_min, @alarm_max)
+                     @range_min, @range_max, @alarm_min, @alarm_max,
+                     @alarm_color, @alarm_sound, @alarm_volume, @alarm_delay)
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();

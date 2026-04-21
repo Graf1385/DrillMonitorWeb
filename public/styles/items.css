@@ -80,6 +80,20 @@
     letter-spacing: 0.05em;
 }
 
+/* Alarm volume slider */
+.alarmVolumeSlider {
+    flex: 1;
+    accent-color: #38bdf8;
+    cursor: pointer;
+}
+
+.alarmVolumeNum {
+    min-width: 28px;
+    text-align: right;
+    color: #c9d1d9;
+    font-size: 13px;
+}
+
 /* Context menu */
 .indicatorCtxMenu {
     display: none;

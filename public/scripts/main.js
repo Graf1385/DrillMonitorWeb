@@ -23,7 +23,11 @@ function _restoreIndicators(indicators) {
             rangeMin:    ind.range_min,
             rangeMax:    ind.range_max,
             alarmMin:    ind.alarm_min,
-            alarmMax:    ind.alarm_max
+            alarmMax:    ind.alarm_max,
+            alarmColor:  ind.alarm_color  || '#ff0000',
+            alarmSound:  ind.alarm_sound  || '',
+            alarmVolume: ind.alarm_volume !== null && ind.alarm_volume !== undefined ? ind.alarm_volume : 50,
+            alarmDelay:  ind.alarm_delay  !== null && ind.alarm_delay  !== undefined ? ind.alarm_delay  : 2
         };
         var el = ind.type === 'timeIndicator'
             ? _createTimeIndicator(config, ind.pos_left, ind.pos_top)
