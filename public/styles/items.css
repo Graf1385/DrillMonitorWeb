@@ -13,6 +13,10 @@
     flex-direction: column;
 }
 
+.indicator:hover {
+    box-shadow: 0 0 20px var(--value-color);
+}
+
 .indicator.selected {
     box-shadow: 0 0 20px currentColor;
 }

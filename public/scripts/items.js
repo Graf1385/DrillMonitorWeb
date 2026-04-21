@@ -302,6 +302,7 @@ function _createDigitalIndicator(config, left, top) {
     el.style.left        = left + 'px';
     el.style.top         = top  + 'px';
     el.style.borderColor = config.valueColor;
+    el.style.setProperty('--value-color', config.valueColor);
     _applySize(el, config);
     _storeConfig(el, config);
 
@@ -325,6 +326,7 @@ function _createTimeIndicator(config, left, top) {
     el.style.left        = left + 'px';
     el.style.top         = top  + 'px';
     el.style.borderColor = config.valueColor;
+    el.style.setProperty('--value-color', config.valueColor);
     _applySize(el, config);
     _storeConfig(el, config);
 
@@ -353,6 +355,7 @@ function _createDateIndicator(config, left, top) {
     el.style.left        = left + 'px';
     el.style.top         = top  + 'px';
     el.style.borderColor = config.valueColor;
+    el.style.setProperty('--value-color', config.valueColor);
     _applySize(el, config);
     _storeConfig(el, config);
 
@@ -389,6 +392,7 @@ function addNewItem() {
         var isDatetime = _editingEl.classList.contains('timeIndicator') ||
                          _editingEl.classList.contains('dateIndicator');
         _editingEl.style.borderColor = config.valueColor;
+        _editingEl.style.setProperty('--value-color', config.valueColor);
         _applySize(_editingEl, config);
         _storeConfig(_editingEl, config);
         _applyToHeader(_editingEl.querySelector('.indicatorHeader'), config);
