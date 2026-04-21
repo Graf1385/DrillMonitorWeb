@@ -513,15 +513,18 @@ input[type=number]::-webkit-inner-spin-button {
 /* ── Alarm Overview Modal ───────────────────────────────────────────────────── */
 
 .wideModal {
-    min-width: 480px;
-    max-width: 640px;
+    width: 600px;
+}
+
+#alarmOverviewList table {
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
 }
 
 #alarmOverviewList {
     max-height: 360px;
-    overflow-y: auto;
-    margin: 8px 0;
-    scrollbar-width: thin;
+    overflow: auto;    
     scrollbar-color: var(--sidebar-accent) transparent;
 }
 
@@ -535,9 +538,9 @@ input[type=number]::-webkit-inner-spin-button {
     font-size: 13px;
 }
 
-.aol-name  { font-weight: 500; min-width: 140px; }
-.aol-range { color: var(--sidebar-accent); font-family: monospace; white-space: nowrap; }
-.aol-color { width: 32px; text-align: center; }
+.aol-name  { font-weight: 500; }
+.aol-range { color: var(--sidebar-accent); font-family: monospace; white-space: nowrap; width: 50px; text-align: center; }
+.aol-color { width: 50px; text-align: center; }
 
 .aol-colorDot {
     display: inline-block;

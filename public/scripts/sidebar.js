@@ -28,26 +28,29 @@ function hideSaveBtn(){
 
 
 function showAlarmSettings() {
-    var indicators = document.querySelectorAll('#workSpace .indicator');
+    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'))
+        .filter(function(ind) { return ind.dataset.alarmEnabled === '1'; });
     var list = document.querySelector('#alarmOverviewList');
     if (indicators.length === 0) {
-        list.innerHTML = '<p class="alarmOverviewEmpty">Нет индикаторов на рабочей области</p>';
+        list.innerHTML = '<p class="alarmOverviewEmpty">Нет индикаторов с включённой сигнализацией</p>';
     } else {
-        var rows = Array.from(indicators).map(function(ind) {
+        var rows = indicators.map(function(ind) {
             var d = ind.dataset;
-            var header = ind.querySelector('.indicatorHeader');
-            var label  = (header ? header.textContent.trim() : '') || 'Индикатор';
-            var minVal = d.alarmMin  !== '' && d.alarmMin  !== undefined ? d.alarmMin  : '—';
-            var maxVal = d.alarmMax  !== '' && d.alarmMax  !== undefined ? d.alarmMax  : '—';
+            var name   = d.headerText || 'Индикатор';
+            var minVal = d.alarmMin !== '' && d.alarmMin !== undefined ? d.alarmMin : '—';
+            var maxVal = d.alarmMax !== '' && d.alarmMax !== undefined ? d.alarmMax : '—';
             var color  = d.alarmColor || '#ff0000';
             return '<tr>' +
-                '<td class="aol-name">' + label + '</td>' +
-                '<td class="aol-range">' + minVal + ' / ' + maxVal + '</td>' +
+                '<td class="aol-name">' + name + '</td>' +
+                '<td class="aol-range">' + minVal + '</td>' +
+                '<td class="aol-range">' + maxVal + '</td>' +
                 '<td class="aol-color"><span class="aol-colorDot" style="background:' + color + '"></span></td>' +
             '</tr>';
         });
-        list.innerHTML = '<table class="settingsTable"><thead><tr>' +
-            '<th>Индикатор</th><th>Мин / Макс</th><th>Цвет</th>' +
+        list.innerHTML = '<table class="settingsTable aol-table">' +
+            '<colgroup><col><col style="width:50px"><col style="width:50px"><col style="width:50px"></colgroup>' +
+            '<thead><tr>' +
+            '<th>Параметр</th><th>Мин</th><th>Макс</th><th>Цвет</th>' +
             '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
     }
     document.querySelector('#alarmOverviewModal').showModal();

@@ -223,14 +223,30 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#ni_alarmMin').value       = d.alarmMin   || '';
     _addModal.querySelector('#ni_alarmMax').value       = d.alarmMax   || '';
     _addModal.querySelector('#ni_alarmColor').value     = d.alarmColor || '#ff0000';
-    toggleAlarmFields(alarmOn);
+    _toggleValueFields(!!(d.paramId));
 }
 
 function onParamChange(selectEl) {
+    var hasParam = !!(selectEl.value);
+    _toggleValueFields(hasParam);
+    if (!hasParam) return;
     var opt = selectEl.options[selectEl.selectedIndex];
-    if (!opt || !opt.value) return;
     _addModal.querySelector('#ni_headerText').value = opt.textContent;
     _addModal.querySelector('#ni_format').value     = opt.dataset.defaultFormat || '';
+}
+
+function _toggleValueFields(enabled) {
+    ['#ni_format', '#ni_rangeMin', '#ni_rangeMax',
+     '#ni_valueFont', '#ni_valueSize', '#ni_valueColor', '#ni_valueBg',
+     '#ni_alarmEnabled', '#ni_alarmColor'].forEach(function (id) {
+        var el = _addModal.querySelector(id);
+        if (el) el.disabled = !enabled;
+    });
+    if (!enabled) {
+        toggleAlarmFields(false);
+    } else {
+        toggleAlarmFields(_addModal.querySelector('#ni_alarmEnabled').checked);
+    }
 }
 
 function toggleAlarmFields(enabled) {
@@ -263,7 +279,7 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_alarmMin').value       = '';
     _addModal.querySelector('#ni_alarmMax').value       = '';
     _addModal.querySelector('#ni_alarmColor').value     = '#ff0000';
-    toggleAlarmFields(false);
+    _toggleValueFields(false);
 }
 
 function selectItemType(type) {
