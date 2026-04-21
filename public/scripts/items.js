@@ -478,11 +478,6 @@ function addNewItem() {
     var config;
     try { config = _readConfig(); } catch(err) { console.error('_readConfig error:', err); return; }
 
-    if (_activeType === 'digitalIndicator' && config.paramId === null) {
-        _addModal.close();
-        _errorModal.showModal();
-        return;
-    }
 
     if (_editingEl) {
         var isDatetime = _editingEl.classList.contains('timeIndicator') ||
