@@ -554,3 +554,17 @@ input[type=number]::-webkit-inner-spin-button {
     height: 26px !important;
     min-width: 70px;
 }
+
+.settingsCheckbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--sidebar-accent);
+    cursor: pointer;
+}
+
+.settingsInput:disabled,
+.settingsSelect:disabled,
+input[type="color"]:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}

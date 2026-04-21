@@ -24,7 +24,8 @@ function _restoreIndicators(indicators) {
             rangeMax:    ind.range_max,
             alarmMin:    ind.alarm_min,
             alarmMax:    ind.alarm_max,
-            alarmColor:  ind.alarm_color  || '#ff0000'
+            alarmEnabled: ind.alarm_enabled ? true : false,
+            alarmColor:   ind.alarm_color  || '#ff0000'
         };
         var el = ind.type === 'timeIndicator'
             ? _createTimeIndicator(config, ind.pos_left, ind.pos_top)

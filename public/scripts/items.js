@@ -41,30 +41,6 @@ function ctxOpenValueSettings() {
     _ctxTarget = null;
 }
 
-var _alarmTarget = null;
-
-function ctxOpenAlarmSettings() {
-    _ctxMenu.style.display = 'none';
-    if (!_ctxTarget) return;
-    _alarmTarget = _ctxTarget;
-    _ctxTarget = null;
-    var d = _alarmTarget.dataset;
-    document.querySelector('#as_alarmMin').value   = d.alarmMin !== '' && d.alarmMin !== undefined ? d.alarmMin : '';
-    document.querySelector('#as_alarmMax').value   = d.alarmMax !== '' && d.alarmMax !== undefined ? d.alarmMax : '';
-    document.querySelector('#as_alarmColor').value = d.alarmColor || '#ff0000';
-    document.querySelector('#alarmSettingsModal').showModal();
-}
-
-function applyAlarmSettings() {
-    if (!_alarmTarget) { document.querySelector('#alarmSettingsModal').close(); return; }
-    function nullable(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; }
-    _alarmTarget.dataset.alarmMin   = nullable(document.querySelector('#as_alarmMin').value);
-    _alarmTarget.dataset.alarmMax   = nullable(document.querySelector('#as_alarmMax').value);
-    _alarmTarget.dataset.alarmColor = document.querySelector('#as_alarmColor').value;
-    _alarmTarget = null;
-    document.querySelector('#alarmSettingsModal').close();
-    showSaveBtn();
-}
 
 var _deleteTarget = null;
 
@@ -240,8 +216,14 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#ni_valueSize').value   = d.valueSize   || 48;
     _addModal.querySelector('#ni_valueColor').value  = d.valueColor  || '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = d.valueBg     || '#0d1117';
-    _addModal.querySelector('#ni_rangeMin').value    = d.rangeMin    || '';
-    _addModal.querySelector('#ni_rangeMax').value    = d.rangeMax    || '';
+    _addModal.querySelector('#ni_rangeMin').value       = d.rangeMin    || '';
+    _addModal.querySelector('#ni_rangeMax').value       = d.rangeMax    || '';
+    var alarmOn = d.alarmEnabled === '1';
+    _addModal.querySelector('#ni_alarmEnabled').checked = alarmOn;
+    _addModal.querySelector('#ni_alarmMin').value       = d.alarmMin   || '';
+    _addModal.querySelector('#ni_alarmMax').value       = d.alarmMax   || '';
+    _addModal.querySelector('#ni_alarmColor').value     = d.alarmColor || '#ff0000';
+    toggleAlarmFields(alarmOn);
 }
 
 function onParamChange(selectEl) {
@@ -249,6 +231,12 @@ function onParamChange(selectEl) {
     if (!opt || !opt.value) return;
     _addModal.querySelector('#ni_headerText').value = opt.textContent;
     _addModal.querySelector('#ni_format').value     = opt.dataset.defaultFormat || '';
+}
+
+function toggleAlarmFields(enabled) {
+    _addModal.querySelector('#ni_alarmMin').disabled   = !enabled;
+    _addModal.querySelector('#ni_alarmMax').disabled   = !enabled;
+    _addModal.querySelector('#ni_alarmColor').disabled = !enabled;
 }
 
 function closeAddItemModal() {
@@ -269,8 +257,13 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_valueSize').value   = 48;
     _addModal.querySelector('#ni_valueColor').value  = '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = '#0d1117';
-    _addModal.querySelector('#ni_rangeMin').value    = 0;
-    _addModal.querySelector('#ni_rangeMax').value    = 100;
+    _addModal.querySelector('#ni_rangeMin').value      = 0;
+    _addModal.querySelector('#ni_rangeMax').value      = 100;
+    _addModal.querySelector('#ni_alarmEnabled').checked = false;
+    _addModal.querySelector('#ni_alarmMin').value       = '';
+    _addModal.querySelector('#ni_alarmMax').value       = '';
+    _addModal.querySelector('#ni_alarmColor').value     = '#ff0000';
+    toggleAlarmFields(false);
 }
 
 function selectItemType(type) {
@@ -305,11 +298,12 @@ function _readConfig() {
         valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 12, 120),
         valueColor:  _addModal.querySelector('#ni_valueColor').value,
         valueBg:     _addModal.querySelector('#ni_valueBg').value,
-        rangeMin:    nullable(_addModal.querySelector('#ni_rangeMin').value),
-        rangeMax:    nullable(_addModal.querySelector('#ni_rangeMax').value),
-        alarmMin:   null,
-        alarmMax:   null,
-        alarmColor: '#ff0000'
+        rangeMin:     nullable(_addModal.querySelector('#ni_rangeMin').value),
+        rangeMax:     nullable(_addModal.querySelector('#ni_rangeMax').value),
+        alarmEnabled: _addModal.querySelector('#ni_alarmEnabled').checked,
+        alarmMin:     nullable(_addModal.querySelector('#ni_alarmMin').value),
+        alarmMax:     nullable(_addModal.querySelector('#ni_alarmMax').value),
+        alarmColor:   _addModal.querySelector('#ni_alarmColor').value
     };
 }
 
@@ -363,9 +357,10 @@ function _storeConfig(el, config) {
         valueBg:     config.valueBg,
         rangeMin:    n(config.rangeMin),
         rangeMax:    n(config.rangeMax),
-        alarmMin:   n(config.alarmMin),
-        alarmMax:   n(config.alarmMax),
-        alarmColor: config.alarmColor || '#ff0000'
+        alarmEnabled: config.alarmEnabled ? '1' : '0',
+        alarmMin:     n(config.alarmMin),
+        alarmMax:     n(config.alarmMax),
+        alarmColor:   config.alarmColor || '#ff0000'
     });
 }
 
@@ -533,9 +528,10 @@ function _collectIndicators() {
             value_size:   parseInt(d.valueSize)  || 48,
             range_min:    d.rangeMin !== '' && d.rangeMin !== undefined ? parseFloat(d.rangeMin) : null,
             range_max:    d.rangeMax !== '' && d.rangeMax !== undefined ? parseFloat(d.rangeMax) : null,
-            alarm_min:   d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
-            alarm_max:   d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null,
-            alarm_color: d.alarmColor || '#ff0000'
+            alarm_enabled: d.alarmEnabled === '1' ? 1 : 0,
+            alarm_min:     d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
+            alarm_max:     d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null,
+            alarm_color:   d.alarmColor || '#ff0000'
         });
     });
     return indicators;

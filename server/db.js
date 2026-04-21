@@ -151,10 +151,11 @@ db.exec(`
     'alarm_min REAL',
     'alarm_max REAL',
     "format TEXT NOT NULL DEFAULT ''",
-    "alarm_color  TEXT    NOT NULL DEFAULT '#ff0000'",
-    "alarm_sound  TEXT    NOT NULL DEFAULT ''",
-    'alarm_volume INTEGER NOT NULL DEFAULT 50',
-    'alarm_delay  REAL    NOT NULL DEFAULT 2'
+    "alarm_color   TEXT    NOT NULL DEFAULT '#ff0000'",
+    "alarm_sound   TEXT    NOT NULL DEFAULT ''",
+    'alarm_volume  INTEGER NOT NULL DEFAULT 50',
+    'alarm_delay   REAL    NOT NULL DEFAULT 2',
+    'alarm_enabled INTEGER NOT NULL DEFAULT 0'
 ].forEach(col => {
     try { db.exec('ALTER TABLE indicators ADD COLUMN ' + col); } catch {}
 });
@@ -333,12 +334,12 @@ module.exports = {
                     (param_id, profile_id, type, pos_left, pos_top, height, width,
                      header_text, header_color, header_bg, header_font, header_size,
                      format, value_color, value_bg, value_font, value_size,
-                     range_min, range_max, alarm_min, alarm_max, alarm_color)
+                     range_min, range_max, alarm_enabled, alarm_min, alarm_max, alarm_color)
                 VALUES
                     (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
                      @header_text, @header_color, @header_bg, @header_font, @header_size,
                      @format, @value_color, @value_bg, @value_font, @value_size,
-                     @range_min, @range_max, @alarm_min, @alarm_max, @alarm_color)
+                     @range_min, @range_max, @alarm_enabled, @alarm_min, @alarm_max, @alarm_color)
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();

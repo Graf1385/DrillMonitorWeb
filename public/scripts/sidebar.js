@@ -36,7 +36,7 @@ function showAlarmSettings() {
         var rows = Array.from(indicators).map(function(ind) {
             var d = ind.dataset;
             var header = ind.querySelector('.indicatorHeader');
-            var label  = (header ? header.textContent.trim() : '') || ('Индикатор');
+            var label  = (header ? header.textContent.trim() : '') || 'Индикатор';
             var minVal = d.alarmMin  !== '' && d.alarmMin  !== undefined ? d.alarmMin  : '—';
             var maxVal = d.alarmMax  !== '' && d.alarmMax  !== undefined ? d.alarmMax  : '—';
             var color  = d.alarmColor || '#ff0000';
@@ -44,24 +44,11 @@ function showAlarmSettings() {
                 '<td class="aol-name">' + label + '</td>' +
                 '<td class="aol-range">' + minVal + ' / ' + maxVal + '</td>' +
                 '<td class="aol-color"><span class="aol-colorDot" style="background:' + color + '"></span></td>' +
-                '<td><button class="aol-editBtn modalButton okBtn" data-idx="' + ind.dataset.indicatorId + '">Настроить</button></td>' +
             '</tr>';
         });
         list.innerHTML = '<table class="settingsTable"><thead><tr>' +
-            '<th>Индикатор</th><th>Мин / Макс</th><th>Цвет</th><th></th>' +
+            '<th>Индикатор</th><th>Мин / Макс</th><th>Цвет</th>' +
             '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
-        var allInds = Array.from(indicators);
-        list.querySelectorAll('.aol-editBtn').forEach(function(btn, i) {
-            btn.addEventListener('click', function() {
-                document.querySelector('#alarmOverviewModal').close();
-                _alarmTarget = allInds[i];
-                var d = _alarmTarget.dataset;
-                document.querySelector('#as_alarmMin').value   = d.alarmMin !== '' && d.alarmMin !== undefined ? d.alarmMin : '';
-                document.querySelector('#as_alarmMax').value   = d.alarmMax !== '' && d.alarmMax !== undefined ? d.alarmMax : '';
-                document.querySelector('#as_alarmColor').value = d.alarmColor || '#ff0000';
-                document.querySelector('#alarmSettingsModal').showModal();
-            });
-        });
     }
     document.querySelector('#alarmOverviewModal').showModal();
 }

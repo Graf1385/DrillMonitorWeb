@@ -107,6 +107,23 @@
                 <input type="color" id="ni_valueBg"    value="#0d1117">
             </td>
         </tr>
+
+        <tr class="numericOnlyRow"><td colspan="2" class="sectionLabel">Сигнализация</td></tr>
+        <tr class="numericOnlyRow">
+            <td>Включить сигнализацию</td>
+            <td><input type="checkbox" id="ni_alarmEnabled" class="settingsCheckbox" onchange="toggleAlarmFields(this.checked)"></td>
+        </tr>
+        <tr class="numericOnlyRow">
+            <td>Порог срабатывания (мин / макс)</td>
+            <td class="paramCell">
+                <input type="number" step="any" class="settingsInput sizeInput" id="ni_alarmMin" placeholder="—">
+                <input type="number" step="any" class="settingsInput sizeInput" id="ni_alarmMax" placeholder="—">
+            </td>
+        </tr>
+        <tr class="numericOnlyRow">
+            <td>Цвет световой сигнализации</td>
+            <td><input type="color" id="ni_alarmColor" value="#ff0000"></td>
+        </tr>
     </table>
     </div>
 
@@ -118,35 +135,8 @@
 
 <div id="indicatorContextMenu" class="indicatorCtxMenu">
     <button onclick="ctxOpenValueSettings()">Настройка значения</button>
-    <button onclick="ctxOpenAlarmSettings()">Настройка сигнализации</button>
     <button class="ctxMenuDanger" onclick="ctxDeleteIndicator()">Удалить</button>
 </div>
-
-<dialog class="settingsModal" id="alarmSettingsModal">
-    <h1>Настройка сигнализации</h1>
-    <table class="settingsTable">
-        <tr>
-            <th>Параметр</th>
-            <th>Значение</th>
-        </tr>
-        <tr><td colspan="2" class="sectionLabel">Сигнализация</td></tr>
-        <tr>
-            <td>Мин / Макс</td>
-            <td class="paramCell">
-                <input type="number" step="any" class="settingsInput sizeInput" id="as_alarmMin" placeholder="—">
-                <input type="number" step="any" class="settingsInput sizeInput" id="as_alarmMax" placeholder="—">
-            </td>
-        </tr>
-        <tr>
-            <td>Цвет световой сигнализации</td>
-            <td><input type="color" id="as_alarmColor" value="#ff0000"></td>
-        </tr>
-    </table>
-    <footer>
-        <button class="modalButton okBtn"     onclick="applyAlarmSettings()">Применить</button>
-        <button class="modalButton cancelBtn" onclick="document.querySelector('#alarmSettingsModal').close()">Отмена</button>
-    </footer>
-</dialog>
 
 <dialog class="settingsModal" id="deleteConfirmModal">
     <h1>Удаление индикатора</h1>
