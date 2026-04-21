@@ -70,6 +70,7 @@ $.getJSON('/api/profiles/active', function (profile) {
         _settings.cellSize   = profile.cell_size;
         applyProfileFromSSE(profile);
         _loadIndicatorsForProfile(profile.id);
+        if (window.profileSwitcherSetActive) profileSwitcherSetActive(profile.id);
     });
 
     evtSource.onerror = function () {

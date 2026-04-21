@@ -1,0 +1,32 @@
+<div id="profileSwitcher">
+    <select id="profileSelect" onchange="switchProfile(this.value)"></select>
+</div>
+
+<script>
+(function () {
+    function loadProfiles() {
+        $.getJSON('/api/profiles', function (profiles) {
+            var sel = document.querySelector('#profileSelect');
+            sel.innerHTML = '';
+            profiles.forEach(function (p) {
+                var opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                if (p.is_active) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        });
+    }
+
+    window.switchProfile = function (id) {
+        $.ajax({ url: '/api/profiles/' + id + '/select', type: 'POST' });
+    };
+
+    window.profileSwitcherSetActive = function (id) {
+        var sel = document.querySelector('#profileSelect');
+        if (sel) sel.value = id;
+    };
+
+    loadProfiles();
+})();
+</script>

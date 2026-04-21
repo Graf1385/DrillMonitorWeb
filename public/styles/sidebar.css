@@ -147,3 +147,51 @@
 #saveButton.visible {
 	visibility: visible;
 }
+
+/* ── Profile switcher ──────────────────────────────────────────────────────── */
+
+#profileSwitcher {
+	position: fixed;
+	top: var(--sb-gap);
+	right: var(--sb-gap);
+	z-index: 10;
+	background-color: var(--sidebar-bg);
+	border: 1px solid var(--sidebar-border);
+	border-radius: 8px;
+	padding: 0 8px 0 10px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	opacity: 0.2;
+	transition: opacity 0.9s, box-shadow 0.2s;
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+#profileSwitcher:hover {
+	opacity: 1;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--sidebar-border);
+}
+
+#profileSelect {
+	background: transparent;
+	border: none;
+	outline: none;
+	color: var(--sidebar-accent);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	appearance: none;
+	-webkit-appearance: none;
+	padding-right: 14px;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath fill='%2338bdf8' d='M1 1l3 3 3-3'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0 center;
+	min-width: 80px;
+	max-width: 160px;
+}
+
+#profileSelect option {
+	background-color: var(--sidebar-btn-bg);
+	color: #c9d1d9;
+	font-size: 13px;
+}
