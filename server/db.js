@@ -128,12 +128,12 @@ db.exec(`
         header_text  TEXT    NOT NULL DEFAULT '',
         header_color TEXT    NOT NULL DEFAULT '#c9d1d9',
         header_bg    TEXT    NOT NULL DEFAULT '#161b22',
-        header_font  TEXT    NOT NULL DEFAULT 'monospace',
+        header_font  INTEGER NOT NULL DEFAULT 0,
         header_size  INTEGER NOT NULL DEFAULT 14,
         format       TEXT    NOT NULL DEFAULT '',
         value_color  TEXT    NOT NULL DEFAULT '#38bdf8',
         value_bg     TEXT    NOT NULL DEFAULT '#0d1117',
-        value_font   TEXT    NOT NULL DEFAULT 'monospace',
+        value_font   INTEGER NOT NULL DEFAULT 0,
         value_size   INTEGER NOT NULL DEFAULT 48,
         range_min    REAL,
         range_max    REAL,
@@ -212,6 +212,52 @@ if (_indCols.includes('decimals') && !_indCols.includes('format')) {
     })();
 }
 
+// Migration: change header_font and value_font from TEXT to INTEGER
+const _fontColInfo = db.prepare('PRAGMA table_info(indicators)').all();
+const _headerFontCol = _fontColInfo.find(c => c.name === 'header_font');
+if (_headerFontCol && _headerFontCol.type === 'TEXT') {
+    db.transaction(() => {
+        db.exec(`CREATE TABLE indicators_new (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            param_id     INTEGER,
+            profile_id   INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+            type         TEXT    NOT NULL DEFAULT 'digitalIndicator',
+            pos_left     INTEGER NOT NULL DEFAULT 0,
+            pos_top      INTEGER NOT NULL DEFAULT 0,
+            height       INTEGER,
+            width        INTEGER,
+            header_text  TEXT    NOT NULL DEFAULT '',
+            header_color TEXT    NOT NULL DEFAULT '#c9d1d9',
+            header_bg    TEXT    NOT NULL DEFAULT '#161b22',
+            header_font  INTEGER NOT NULL DEFAULT 0,
+            header_size  INTEGER NOT NULL DEFAULT 14,
+            format       TEXT    NOT NULL DEFAULT '',
+            value_color  TEXT    NOT NULL DEFAULT '#38bdf8',
+            value_bg     TEXT    NOT NULL DEFAULT '#0d1117',
+            value_font   INTEGER NOT NULL DEFAULT 0,
+            value_size   INTEGER NOT NULL DEFAULT 48,
+            range_min    REAL,
+            range_max    REAL,
+            alarm_min    REAL,
+            alarm_max    REAL,
+            alarm_color  TEXT    NOT NULL DEFAULT '#ff0000',
+            alarm_sound  TEXT    NOT NULL DEFAULT '',
+            alarm_volume INTEGER NOT NULL DEFAULT 50,
+            alarm_delay  REAL    NOT NULL DEFAULT 2,
+            alarm_enabled INTEGER NOT NULL DEFAULT 0
+        )`);
+        db.exec(`INSERT INTO indicators_new
+            SELECT id, param_id, profile_id, type, pos_left, pos_top, height, width,
+                   header_text, header_color, header_bg, 0, header_size,
+                   format, value_color, value_bg, 0, value_size,
+                   range_min, range_max, alarm_min, alarm_max,
+                   alarm_color, alarm_sound, alarm_volume, alarm_delay, alarm_enabled
+            FROM indicators`);
+        db.exec('DROP TABLE indicators');
+        db.exec('ALTER TABLE indicators_new RENAME TO indicators');
+    })();
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 db.exec(`
@@ -225,6 +271,16 @@ db.exec(`
 db.prepare(`
     INSERT OR IGNORE INTO users (name, password) VALUES ('admin', ?)
 `).run(_sha256('RFVtgb12345678'));
+
+// ── Fonts ─────────────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS fonts (
+        id   INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT    NOT NULL UNIQUE,
+        font BLOB    NOT NULL
+    )
+`);
 
 // ── Alarm sounds ─────────────────────────────────────────────────────────────
 
