@@ -55,6 +55,28 @@ router.get('/api/profiles/:id/indicators', (req, res) => {
     }
 });
 
+router.get('/api/fonts', (req, res) => {
+    try {
+        res.status(200).json(db.getFonts());
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/api/fonts/:id/file', (req, res) => {
+    try {
+        const row = db.getFontFile(parseInt(req.params.id));
+        if (!row) return res.status(404).end();
+        res.setHeader('Content-Type', row.mime_type || 'font/otf');
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        res.send(row.font);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/api/alarm-sounds', (req, res) => {
     try {
         res.status(200).json(db.getAlarmSounds());

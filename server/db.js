@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 function _sha256(str) {
     return crypto.createHash('sha256').update(str).digest('hex');
@@ -276,11 +277,24 @@ db.prepare(`
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS fonts (
-        id   INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT    NOT NULL UNIQUE,
-        font BLOB    NOT NULL
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        name      TEXT    NOT NULL UNIQUE,
+        font      BLOB    NOT NULL,
+        mime_type TEXT    NOT NULL DEFAULT ''
     )
 `);
+try { db.exec("ALTER TABLE fonts ADD COLUMN mime_type TEXT NOT NULL DEFAULT ''"); } catch {}
+
+const _fontsDir = path.join(__dirname, '../fonts');
+if (fs.existsSync(_fontsDir)) {
+    const _insertFont = db.prepare('INSERT OR IGNORE INTO fonts (name, font, mime_type) VALUES (?, ?, ?)');
+    for (const file of fs.readdirSync(_fontsDir)) {
+        const ext = path.extname(file).toLowerCase();
+        if (ext !== '.otf' && ext !== '.ttf') continue;
+        const mime = ext === '.otf' ? 'font/otf' : 'font/ttf';
+        _insertFont.run(path.basename(file, ext), fs.readFileSync(path.join(_fontsDir, file)), mime);
+    }
+}
 
 // ── Alarm sounds ─────────────────────────────────────────────────────────────
 
@@ -418,6 +432,16 @@ module.exports = {
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();
+    },
+
+    // ── Fonts ─────────────────────────────────────────────────────────────────
+
+    getFonts() {
+        return db.prepare('SELECT id, name FROM fonts ORDER BY name ASC').all();
+    },
+
+    getFontFile(id) {
+        return db.prepare('SELECT font, mime_type FROM fonts WHERE id = ?').get(id);
     },
 
     // ── Alarm sounds ──────────────────────────────────────────────────────────

@@ -65,8 +65,11 @@ function _restoreIndicators(indicators) {
 }
 
 function _loadIndicatorsForProfile(profileId) {
-    $.getJSON('/api/profiles/' + profileId + '/indicators', function(indicators) {
-        _restoreIndicators(indicators);
+    $.when(
+        $.getJSON('/api/profiles/' + profileId + '/indicators'),
+        _loadFonts()
+    ).then(function(indicatorsResp) {
+        _restoreIndicators(indicatorsResp[0]);
     });
 }
 

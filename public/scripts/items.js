@@ -3,6 +3,37 @@ var _errorModal    = document.querySelector('#addItemErrorModal');
 var _activeType    = 'digitalIndicator';
 var _editingEl     = null;
 
+var _fontMap     = {};
+var _fontsPromise = null;
+
+function _getFontFamily(fontId) {
+    var id = parseInt(fontId) || 0;
+    return id && _fontMap[id] ? _fontMap[id] : 'monospace';
+}
+
+function _loadFonts() {
+    if (_fontsPromise) return _fontsPromise;
+    _fontsPromise = $.getJSON('/api/fonts').then(function (fonts) {
+        var styleEl = document.createElement('style');
+        fonts.forEach(function (f) {
+            var family = 'font-id-' + f.id;
+            _fontMap[f.id] = family;
+            styleEl.textContent += '@font-face{font-family:"' + family + '";src:url("/api/fonts/' + f.id + '/file");}\n';
+        });
+        document.head.appendChild(styleEl);
+        ['#ni_headerFont', '#ni_valueFont'].forEach(function (selId) {
+            var sel = _addModal.querySelector(selId);
+            fonts.forEach(function (f) {
+                var opt = document.createElement('option');
+                opt.value       = f.id;
+                opt.textContent = f.name;
+                sel.appendChild(opt);
+            });
+        });
+    });
+    return _fontsPromise;
+}
+
 // ── Context menu ──────────────────────────────────────────────────────────────
 
 var _ctxMenu   = document.querySelector('#indicatorContextMenu');
@@ -183,7 +214,7 @@ function showNewItems() {
     _addModal.querySelector('#itemTypeList').style.display = '';
     _addModal.querySelector('#ni_settingsBody').style.display = 'none';
     _resetModalDefaults();
-    _loadParameters().then(function () {
+    $.when(_loadParameters(), _loadFonts()).then(function () {
         _applyTypeToParamSelect(_activeType);
         _addModal.showModal();
     });
@@ -200,7 +231,7 @@ function _openEditModal(indicator) {
                 : indicator.classList.contains('dateIndicator')  ? 'dateIndicator'
                 : 'digitalIndicator';
     var d = indicator.dataset;
-    _loadParameters(d.paramId || '').then(function () {
+    $.when(_loadParameters(d.paramId || ''), _loadFonts()).then(function () {
         _applyTypeToParamSelect(indType);
         _addModal.showModal();
     });
@@ -209,10 +240,10 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#ni_headerText').value  = d.headerText  || '';
     _addModal.querySelector('#ni_headerColor').value = d.headerColor || '#c9d1d9';
     _addModal.querySelector('#ni_headerBg').value    = d.headerBg    || '#161b22';
-    _addModal.querySelector('#ni_headerFont').value  = d.headerFont  || 'monospace';
+    _addModal.querySelector('#ni_headerFont').value  = parseInt(d.headerFont) || 0;
     _addModal.querySelector('#ni_headerSize').value  = d.headerSize  || 14;
     _addModal.querySelector('#ni_format').value      = d.format      || '';
-    _addModal.querySelector('#ni_valueFont').value   = d.valueFont   || 'monospace';
+    _addModal.querySelector('#ni_valueFont').value   = parseInt(d.valueFont)  || 0;
     _addModal.querySelector('#ni_valueSize').value   = d.valueSize   || 48;
     _addModal.querySelector('#ni_valueColor').value  = d.valueColor  || '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = d.valueBg     || '#0d1117';
@@ -266,10 +297,10 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_headerText').value  = 'Заголовок';
     _addModal.querySelector('#ni_headerColor').value = '#c9d1d9';
     _addModal.querySelector('#ni_headerBg').value    = '#161b22';
-    _addModal.querySelector('#ni_headerFont').value  = 'monospace';
+    _addModal.querySelector('#ni_headerFont').value  = 0;
     _addModal.querySelector('#ni_headerSize').value  = 14;
     _addModal.querySelector('#ni_format').value      = '';
-    _addModal.querySelector('#ni_valueFont').value   = 'monospace';
+    _addModal.querySelector('#ni_valueFont').value   = 0;
     _addModal.querySelector('#ni_valueSize').value   = 48;
     _addModal.querySelector('#ni_valueColor').value  = '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = '#0d1117';
@@ -307,10 +338,10 @@ function _readConfig() {
         headerText:  _addModal.querySelector('#ni_headerText').value || 'Заголовок',
         headerColor: _addModal.querySelector('#ni_headerColor').value,
         headerBg:    _addModal.querySelector('#ni_headerBg').value,
-        headerFont:  _addModal.querySelector('#ni_headerFont').value,
+        headerFont:  parseInt(_addModal.querySelector('#ni_headerFont').value) || 0,
         headerSize:  clamp(_addModal.querySelector('#ni_headerSize').value, 8, 72),
         format:      _addModal.querySelector('#ni_format').value,
-        valueFont:   _addModal.querySelector('#ni_valueFont').value,
+        valueFont:   parseInt(_addModal.querySelector('#ni_valueFont').value) || 0,
         valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 12, 120),
         valueColor:  _addModal.querySelector('#ni_valueColor').value,
         valueBg:     _addModal.querySelector('#ni_valueBg').value,
@@ -328,7 +359,7 @@ function _readConfig() {
 function _applyToHeader(headerEl, config) {
     headerEl.style.color           = config.headerColor;
     headerEl.style.backgroundColor = config.headerBg;
-    headerEl.style.fontFamily      = config.headerFont;
+    headerEl.style.fontFamily      = _getFontFamily(config.headerFont);
     headerEl.style.fontSize        = config.headerSize + 'px';
     headerEl.textContent           = config.headerText;
 }
@@ -349,7 +380,7 @@ function _applyFormat(num, fmt) {
 function _applyToValue(valueEl, config, numericVal) {
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
-    valueEl.style.fontFamily      = config.valueFont;
+    valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
     valueEl.style.fontSize        = config.valueSize + 'px';
     valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
     valueEl.textContent           = _applyFormat(numericVal, config.format);
@@ -430,7 +461,7 @@ function _createTimeIndicator(config, left, top) {
     valueEl.className = 'indicatorValue';
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
-    valueEl.style.fontFamily      = config.valueFont;
+    valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
     valueEl.style.fontSize        = config.valueSize + 'px';
     valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
     valueEl.textContent           = '00:00:00';
@@ -459,7 +490,7 @@ function _createDateIndicator(config, left, top) {
     valueEl.className = 'indicatorValue';
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
-    valueEl.style.fontFamily      = config.valueFont;
+    valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
     valueEl.style.fontSize        = config.valueSize + 'px';
     valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
     valueEl.textContent = 'дд.мм.гг';
@@ -488,7 +519,7 @@ function addNewItem() {
             var vEl = _editingEl.querySelector('.indicatorValue');
             vEl.style.color           = config.valueColor;
             vEl.style.backgroundColor = config.valueBg;
-            vEl.style.fontFamily      = config.valueFont;
+            vEl.style.fontFamily      = _getFontFamily(config.valueFont);
             vEl.style.fontSize        = config.valueSize + 'px';
             vEl.style.textShadow      = '0 0 10px ' + config.valueColor;
         } else {
@@ -535,12 +566,12 @@ function _collectIndicators() {
             header_text:  d.headerText  || '',
             header_color: d.headerColor || '#c9d1d9',
             header_bg:    d.headerBg    || '#161b22',
-            header_font:  d.headerFont  || 'monospace',
+            header_font:  parseInt(d.headerFont) || 0,
             header_size:  parseInt(d.headerSize) || 14,
             format:       d.format || '',
             value_color:  d.valueColor  || '#38bdf8',
             value_bg:     d.valueBg     || '#0d1117',
-            value_font:   d.valueFont   || 'monospace',
+            value_font:   parseInt(d.valueFont)  || 0,
             value_size:   parseInt(d.valueSize)  || 48,
             range_min:    d.rangeMin !== '' && d.rangeMin !== undefined ? parseFloat(d.rangeMin) : null,
             range_max:    d.rangeMax !== '' && d.rangeMax !== undefined ? parseFloat(d.rangeMax) : null,
