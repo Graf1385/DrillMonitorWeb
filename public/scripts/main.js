@@ -59,6 +59,8 @@ function _restoreIndicators(indicators) {
             ? _createTimeIndicator(config, ind.pos_left, ind.pos_top)
             : ind.type === 'dateIndicator'
             ? _createDateIndicator(config, ind.pos_left, ind.pos_top)
+            : ind.type === 'gaugeIndicator'
+            ? _createGaugeIndicator(config, ind.pos_left, ind.pos_top)
             : _createDigitalIndicator(config, ind.pos_left, ind.pos_top);
         ws.appendChild(el);
     });
