@@ -2,6 +2,8 @@ const _express = require("express");
 const _app = _express();
 const _get_router = require("./routes/get_routers");
 const _post_router = require("./routes/post_routers");
+const logger = require("./logger");
+const db = require("./db");
 const _exphbs = require('express-handlebars');
 
 const _hbs = _exphbs.create({
@@ -29,6 +31,7 @@ function Start(port){
         _app.listen(port, ()=>{
             console.log("The server is already running...");
             console.log("http://localhost:" + port);
+            logger.log('Сервер запущен на порту ' + port);
         });    
         
     } catch (error) {

@@ -1,0 +1,9 @@
+<dialog class="settingsModal logModal" id="logModal">
+    <h1>Логи системы</h1>
+    <div id="logBody" class="logBody"></div>
+    <footer>
+        <button class="modalButton" onclick="exportLogs()">Выгрузить</button>
+        <button class="modalButton deleteBtn" onclick="clearLogs()">Очистить</button>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#logModal').close()">Закрыть</button>
+    </footer>
+</dialog>

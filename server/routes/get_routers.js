@@ -55,6 +55,28 @@ router.get('/api/profiles/:id/indicators', (req, res) => {
     }
 });
 
+router.get('/api/logs', (req, res) => {
+    try {
+        res.status(200).json(db.getLogs());
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/api/logs/export', (req, res) => {
+    try {
+        const logs = db.getLogs();
+        const filename = 'logs_' + new Date().toISOString().slice(0, 10) + '.json';
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+        res.send(JSON.stringify(logs, null, 2));
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/api/fonts', (req, res) => {
     try {
         res.status(200).json(db.getFonts());

@@ -296,6 +296,19 @@ if (fs.existsSync(_fontsDir)) {
     }
 }
 
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS logs (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT    NOT NULL,
+        message   TEXT    NOT NULL
+    )
+`);
+
+db.prepare('DELETE FROM logs WHERE timestamp < ?')
+    .run(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
 // ── Alarm sounds ─────────────────────────────────────────────────────────────
 
 db.exec(`
@@ -432,6 +445,26 @@ module.exports = {
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();
+    },
+
+    // ── Logs ──────────────────────────────────────────────────────────────────
+
+    createLog(message) {
+        return db.prepare('INSERT INTO logs (timestamp, message) VALUES (?, ?)')
+            .run(new Date().toISOString(), message);
+    },
+
+    getLogs() {
+        return db.prepare('SELECT * FROM logs ORDER BY id DESC').all();
+    },
+
+    clearLogs() {
+        return db.prepare('DELETE FROM logs').run();
+    },
+
+    deleteOldLogs() {
+        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        return db.prepare('DELETE FROM logs WHERE timestamp < ?').run(cutoff);
     },
 
     // ── Fonts ─────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ const helper = require('../helper');
 const db = require('../db');
 const sse = require('../sse');
 const multer = require('multer');
+const logger = require('../logger');
 
 const _upload = multer({
     storage: multer.memoryStorage(),
@@ -17,18 +18,20 @@ const _upload = multer({
 router.post('/api/auth/login', (req, res) => {
     const { name, password } = req.body;
     if (db.verifyUser(name, password)) {
+        logger.log('Вход в систему: пользователь "' + name + '"');
         res.json({ ok: true });
     } else {
+        logger.log('Неудачная попытка входа: пользователь "' + (name || '?') + '"');
         res.status(401).json({ ok: false });
     }
 });
 
 router.post('/setSettings', (req, res) => {
     try {
-        var settings = JSON.parse(req.body.settings)
+        var settings = JSON.parse(req.body.settings);
         helper.saveSettings(settings);
+        logger.log('Сохранены сетевые настройки');
         res.status(200).send();
-
     } catch (error) {
         res.status(400).send();
         console.log(error);
@@ -42,6 +45,7 @@ router.post('/api/profiles', (req, res) => {
             return res.status(400).json({ error: 'name, background и cellSize обязательны' });
         }
         const result = db.createProfile(name, background, parseInt(cellSize));
+        logger.log('Создан профиль "' + name + '" (id=' + result.lastInsertRowid + ')');
         res.status(201).json({ id: result.lastInsertRowid });
     } catch (error) {
         console.error(error);
@@ -66,6 +70,7 @@ router.put('/api/profiles/:id', (req, res) => {
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Профиль не найден' });
         }
+        logger.log('Обновлены настройки профиля id=' + req.params.id);
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
@@ -77,6 +82,7 @@ router.post('/api/profiles/:id/select', (req, res) => {
     try {
         const profile = db.selectProfile(parseInt(req.params.id));
         if (!profile) return res.status(404).json({ error: 'Профиль не найден' });
+        logger.log('Активирован профиль "' + profile.name + '" (id=' + profile.id + ')');
         sse.broadcast('profile-selected', profile);
         res.status(200).json({ ok: true });
     } catch (error) {
@@ -93,7 +99,9 @@ router.post('/api/profiles/:id/indicators', (req, res) => {
             return res.status(400).json({ error: 'indicators must be an array' });
         }
         db.saveIndicators(profileId, list);
-        sse.broadcast('workspace-saved', db.getProfile(profileId));
+        const profile = db.getProfile(profileId);
+        logger.log('Сохранены индикаторы профиля "' + (profile ? profile.name : profileId) + '" (' + list.length + ' шт.)');
+        sse.broadcast('workspace-saved', profile);
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
@@ -108,7 +116,18 @@ router.post('/api/alarm-sounds', _upload.single('file'), (req, res) => {
             return res.status(400).json({ error: 'name и file обязательны' });
         }
         const result = db.createAlarmSound(name, req.file.buffer);
+        logger.log('Загружен звук сигнализации "' + name + '"');
         res.status(201).json({ id: result.lastInsertRowid });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/api/logs', (req, res) => {
+    try {
+        db.clearLogs();
+        res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
@@ -119,6 +138,7 @@ router.delete('/api/alarm-sounds/:id', (req, res) => {
     try {
         const result = db.deleteAlarmSound(parseInt(req.params.id));
         if (result.changes === 0) return res.status(404).json({ error: 'Звук не найден' });
+        logger.log('Удалён звук сигнализации id=' + req.params.id);
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
@@ -126,13 +146,14 @@ router.delete('/api/alarm-sounds/:id', (req, res) => {
     }
 });
 
-
 router.delete('/api/profiles/:id', (req, res) => {
     try {
+        const profile = db.getProfile(parseInt(req.params.id));
         const result = db.deleteProfile(parseInt(req.params.id));
         if (result.changes === 0) {
             return res.status(403).json({ error: 'Профиль не найден или является стандартным' });
         }
+        logger.log('Удалён профиль "' + (profile ? profile.name : req.params.id) + '"');
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
