@@ -525,6 +525,7 @@ var _indicatorTypes = {
             svg.setAttribute('viewBox', '0 0 200 115');
             svg.setAttribute('class', 'gaugeSvg');
             svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
+            svg.style.backgroundColor = cfg.valueBg;
 
             function mkArc(cls, stroke, dashArray, dashOffset) {
                 var p = document.createElementNS(NS, 'path');
@@ -546,6 +547,26 @@ var _indicatorTypes = {
             svg.appendChild(mkArc('gaugeGreenProg',  '#3fb950', '0 '      + _GAUGE_L,      0));
             svg.appendChild(mkArc('gaugeYellowProg', '#d29922', '0 '      + _GAUGE_L,      -147.02));
             svg.appendChild(mkArc('gaugeRedProg',    '#f85149', '0 '      + _GAUGE_L,      -196.03));
+
+            // Segmentation mask: 9 dividers at 10%–90%, none at 0% or 100%.
+            // Pattern: 0-dash, first-half-segment gap, then 9 dividers with inner gaps,
+            // last gap = first-half-segment (symmetric, so endpoints stay clean).
+            var _segGap    = 3;
+            var _segPeriod = _GAUGE_L / 10;
+            var _segInner  = (_segPeriod - _segGap).toFixed(3);
+            var _segFirst  = (_segPeriod - _segGap / 2).toFixed(3);
+            var _dashArr   = '0 ' + _segFirst;
+            for (var si = 0; si < 8; si++) _dashArr += ' ' + _segGap + ' ' + _segInner;
+            _dashArr += ' ' + _segGap + ' ' + _segFirst;
+            var seg = document.createElementNS(NS, 'path');
+            seg.setAttribute('d', _GAUGE_ARC);
+            seg.setAttribute('fill', 'none');
+            seg.setAttribute('stroke', cfg.valueBg);
+            seg.setAttribute('stroke-width', '24');
+            seg.setAttribute('stroke-linecap', 'butt');
+            seg.setAttribute('class', 'gaugeSeg');
+            seg.setAttribute('stroke-dasharray', _dashArr);
+            svg.appendChild(seg);
 
             function mkText(cls, x, y, fontSize, fill, content) {
                 var t = document.createElementNS(NS, 'text');
@@ -579,6 +600,10 @@ var _indicatorTypes = {
             t.setAttribute('font-family', _getFontFamily(cfg.valueFont));
             t.setAttribute('font-size', String(Math.max(6, Math.round(cfg.valueSize / 2))));
             t.textContent = _applyFormat(cur, cfg.format);
+            var svg = el.querySelector('.gaugeSvg');
+            if (svg) svg.style.backgroundColor = cfg.valueBg;
+            var seg = el.querySelector('.gaugeSeg');
+            if (seg) seg.setAttribute('stroke', cfg.valueBg);
             _updateGaugeSvg(el, cur);
         }
     }
