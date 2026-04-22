@@ -196,11 +196,11 @@ function _loadParameters(selectedId) {
 }
 
 function _applyTypeToParamSelect(type) {
+    var typeDef     = _indicatorTypes[type] || _indicatorTypes.digitalIndicator;
     var select      = _addModal.querySelector('#ni_paramId');
-    var isDatetime  = type === 'timeIndicator' || type === 'dateIndicator';
     var numericRows = _addModal.querySelectorAll('.numericOnlyRow');
 
-    if (isDatetime) {
+    if (!typeDef.isNumeric) {
         var dtOpt = Array.from(select.options).find(function (o) {
             return o.dataset.type === 'time';
         });
@@ -233,10 +233,7 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#itemTypeList').style.display = 'none';
     _addModal.querySelector('#ni_settingsBody').style.display = '';
 
-    var indType = indicator.classList.contains('timeIndicator')  ? 'timeIndicator'
-                : indicator.classList.contains('dateIndicator')   ? 'dateIndicator'
-                : indicator.classList.contains('gaugeIndicator')  ? 'gaugeIndicator'
-                : 'digitalIndicator';
+    var indType = _getIndicatorType(indicator);
     var d = indicator.dataset;
     $.when(_loadParameters(d.paramId || ''), _loadFonts()).then(function () {
         _applyTypeToParamSelect(indType);
@@ -325,8 +322,8 @@ function selectItemType(type) {
     _addModal.querySelectorAll('.itemTypeCard').forEach(function (c) {
         c.classList.remove('selected');
     });
-    var idMap = { digitalIndicator: '#typeDigital', timeIndicator: '#typeTime', dateIndicator: '#typeDate', gaugeIndicator: '#typeGauge' };
-    if (idMap[type]) document.querySelector(idMap[type]).classList.add('selected');
+    var typeDef = _indicatorTypes[type];
+    if (typeDef && typeDef.cardId) document.querySelector(typeDef.cardId).classList.add('selected');
     _applyTypeToParamSelect(type);
 }
 
@@ -448,97 +445,162 @@ function _applySize(el, config) {
     el.style.height = config.height ? config.height + 'px' : '';
 }
 
-// ── Create element ────────────────────────────────────────────────────────────
+// ── Indicator type registry ───────────────────────────────────────────────────
 
-function _createDigitalIndicator(config, left, top) {
-    var el = document.createElement('div');
-    el.className = 'indicator digitalIndicator';
-    el.id        = 'item_' + Date.now();
-    el.style.left        = left + 'px';
-    el.style.top         = top  + 'px';
-    el.style.borderColor = config.valueColor;
-    el.style.setProperty('--value-color', config.valueColor);
-    _applySize(el, config);
-    _storeConfig(el, config);
+var _indicatorTypes = {
 
-    var header = document.createElement('div');
-    header.className = 'indicatorHeader';
-    _applyToHeader(header, config);
+    digitalIndicator: {
+        cardId: '#typeDigital',
+        isNumeric: true,
+        defaultSize: {},
+        create: function (el, cfg) {
+            var v = document.createElement('div');
+            v.className = 'indicatorValue';
+            _applyToValue(v, cfg, 0);
+            el.appendChild(v);
+        },
+        applyEdit: function (el, cfg) {
+            var v = el.querySelector('.indicatorValue');
+            _applyToValue(v, cfg, parseFloat(v.textContent) || 0);
+        }
+    },
 
-    var valueEl = document.createElement('div');
-    valueEl.className = 'indicatorValue';
-    _applyToValue(valueEl, config, 0);
+    timeIndicator: {
+        cardId: '#typeTime',
+        isNumeric: false,
+        defaultSize: {},
+        create: function (el, cfg) {
+            var v = document.createElement('div');
+            v.className = 'indicatorValue';
+            v.style.color           = cfg.valueColor;
+            v.style.backgroundColor = cfg.valueBg;
+            v.style.fontFamily      = _getFontFamily(cfg.valueFont);
+            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
+            v.textContent           = '00:00:00';
+            el.appendChild(v);
+        },
+        applyEdit: function (el, cfg) {
+            var v = el.querySelector('.indicatorValue');
+            v.style.color           = cfg.valueColor;
+            v.style.backgroundColor = cfg.valueBg;
+            v.style.fontFamily      = _getFontFamily(cfg.valueFont);
+            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
+        }
+    },
 
-    el.appendChild(header);
-    el.appendChild(valueEl);
-    return el;
+    dateIndicator: {
+        cardId: '#typeDate',
+        isNumeric: false,
+        defaultSize: {},
+        create: function (el, cfg) {
+            var v = document.createElement('div');
+            v.className = 'indicatorValue';
+            v.style.color           = cfg.valueColor;
+            v.style.backgroundColor = cfg.valueBg;
+            v.style.fontFamily      = _getFontFamily(cfg.valueFont);
+            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
+            v.textContent           = 'дд.мм.гг';
+            el.appendChild(v);
+        },
+        applyEdit: function (el, cfg) {
+            var v = el.querySelector('.indicatorValue');
+            v.style.color           = cfg.valueColor;
+            v.style.backgroundColor = cfg.valueBg;
+            v.style.fontFamily      = _getFontFamily(cfg.valueFont);
+            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
+        }
+    },
+
+    gaugeIndicator: {
+        cardId: '#typeGauge',
+        isNumeric: true,
+        defaultSize: { width: 200, height: 160 },
+        create: function (el, cfg) {
+            var NS  = 'http://www.w3.org/2000/svg';
+            var svg = document.createElementNS(NS, 'svg');
+            svg.setAttribute('viewBox', '0 0 200 115');
+            svg.setAttribute('class', 'gaugeSvg');
+            svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
+
+            function mkArc(cls, stroke, dashArray, dashOffset) {
+                var p = document.createElementNS(NS, 'path');
+                p.setAttribute('d', _GAUGE_ARC);
+                p.setAttribute('fill', 'none');
+                p.setAttribute('stroke', stroke);
+                p.setAttribute('stroke-width', '22');
+                p.setAttribute('stroke-linecap', 'butt');
+                p.setAttribute('class', cls);
+                p.setAttribute('stroke-dasharray', dashArray);
+                if (dashOffset !== 0) p.setAttribute('stroke-dashoffset', String(dashOffset));
+                return p;
+            }
+
+            svg.appendChild(mkArc('gaugeTrack',      '#2d333b', _GAUGE_L + ' ' + _GAUGE_L, 0));
+            svg.appendChild(mkArc('gaugeGreenDim',   '#1a3a1a', '147.02 ' + _GAUGE_L,      0));
+            svg.appendChild(mkArc('gaugeYellowDim',  '#3a3000', '49.01 '  + _GAUGE_L,      -147.02));
+            svg.appendChild(mkArc('gaugeRedDim',     '#3a0a0a', '49.01 '  + _GAUGE_L,      -196.03));
+            svg.appendChild(mkArc('gaugeGreenProg',  '#3fb950', '0 '      + _GAUGE_L,      0));
+            svg.appendChild(mkArc('gaugeYellowProg', '#d29922', '0 '      + _GAUGE_L,      -147.02));
+            svg.appendChild(mkArc('gaugeRedProg',    '#f85149', '0 '      + _GAUGE_L,      -196.03));
+
+            function mkText(cls, x, y, fontSize, fill, content) {
+                var t = document.createElementNS(NS, 'text');
+                t.setAttribute('class', cls);
+                t.setAttribute('x', String(x));
+                t.setAttribute('y', String(y));
+                t.setAttribute('text-anchor', 'middle');
+                t.setAttribute('dominant-baseline', 'middle');
+                t.setAttribute('fill', fill);
+                t.setAttribute('font-size', String(fontSize));
+                t.setAttribute('font-weight', 'bold');
+                t.textContent = content;
+                return t;
+            }
+
+            var fontSize = Math.max(6, Math.round(cfg.valueSize / 2));
+            var valText  = mkText('gaugeValueText', 100, 83, fontSize, cfg.valueColor, _applyFormat(0, cfg.format));
+            valText.setAttribute('font-family', _getFontFamily(cfg.valueFont));
+            svg.appendChild(valText);
+            svg.appendChild(mkText('gaugeMinLabel',  16,  109, 9, '#6e7681', cfg.rangeMin !== null ? cfg.rangeMin : 0));
+            svg.appendChild(mkText('gaugeMaxLabel', 184,  109, 9, '#6e7681', cfg.rangeMax !== null ? cfg.rangeMax : 100));
+
+            el.appendChild(svg);
+            _updateGaugeSvg(el, 0);
+        },
+        applyEdit: function (el, cfg) {
+            var t = el.querySelector('.gaugeValueText');
+            if (!t) return;
+            var cur = parseFloat(t.textContent) || 0;
+            t.setAttribute('fill', cfg.valueColor);
+            t.setAttribute('font-family', _getFontFamily(cfg.valueFont));
+            t.setAttribute('font-size', String(Math.max(6, Math.round(cfg.valueSize / 2))));
+            t.textContent = _applyFormat(cur, cfg.format);
+            _updateGaugeSvg(el, cur);
+        }
+    }
+
+};
+
+function _getIndicatorType(el) {
+    for (var type in _indicatorTypes) {
+        if (el.classList.contains(type)) return type;
+    }
+    return 'digitalIndicator';
 }
 
-function _createTimeIndicator(config, left, top) {
-    var el = document.createElement('div');
-    el.className = 'indicator timeIndicator';
-    el.id        = 'item_' + Date.now();
-    el.style.left        = left + 'px';
-    el.style.top         = top  + 'px';
-    el.style.borderColor = config.valueColor;
-    el.style.setProperty('--value-color', config.valueColor);
-    _applySize(el, config);
-    _storeConfig(el, config);
-
-    var header = document.createElement('div');
-    header.className = 'indicatorHeader';
-    _applyToHeader(header, config);
-
-    var valueEl = document.createElement('div');
-    valueEl.className = 'indicatorValue';
-    valueEl.style.color           = config.valueColor;
-    valueEl.style.backgroundColor = config.valueBg;
-    valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
-    valueEl.style.fontSize        = config.valueSize + 'px';
-    valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
-    valueEl.textContent           = '00:00:00';
-
-    el.appendChild(header);
-    el.appendChild(valueEl);
-    return el;
-}
-
-function _createDateIndicator(config, left, top) {
-    var el = document.createElement('div');
-    el.className = 'indicator dateIndicator';
-    el.id        = 'item_' + Date.now();
-    el.style.left        = left + 'px';
-    el.style.top         = top  + 'px';
-    el.style.borderColor = config.valueColor;
-    el.style.setProperty('--value-color', config.valueColor);
-    _applySize(el, config);
-    _storeConfig(el, config);
-
-    var header = document.createElement('div');
-    header.className = 'indicatorHeader';
-    _applyToHeader(header, config);
-
-    var valueEl = document.createElement('div');
-    valueEl.className = 'indicatorValue';
-    valueEl.style.color           = config.valueColor;
-    valueEl.style.backgroundColor = config.valueBg;
-    valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
-    valueEl.style.fontSize        = config.valueSize + 'px';
-    valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
-    valueEl.textContent = 'дд.мм.гг';
-
-    el.appendChild(header);
-    el.appendChild(valueEl);
-    return el;
-}
-
-function _createGaugeIndicator(config, left, top) {
-    var cfg = Object.assign({}, config);
-    if (!cfg.width)  cfg.width  = 200;
-    if (!cfg.height) cfg.height = 160;
+function _addIndicator(type, config, left, top) {
+    var typeDef = _indicatorTypes[type] || _indicatorTypes.digitalIndicator;
+    var cfg     = Object.assign({}, config);
+    var def     = typeDef.defaultSize || {};
+    if (!cfg.width)  cfg.width  = def.width  || null;
+    if (!cfg.height) cfg.height = def.height || null;
 
     var el = document.createElement('div');
-    el.className = 'indicator gaugeIndicator';
+    el.className = 'indicator ' + type;
     el.id        = 'item_' + Date.now();
     el.style.left        = left + 'px';
     el.style.top         = top  + 'px';
@@ -550,59 +612,9 @@ function _createGaugeIndicator(config, left, top) {
     var header = document.createElement('div');
     header.className = 'indicatorHeader';
     _applyToHeader(header, cfg);
-
-    var NS  = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', '0 0 200 115');
-    svg.setAttribute('class', 'gaugeSvg');
-    svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
-
-    function mkArc(cls, stroke, dashArray, dashOffset) {
-        var p = document.createElementNS(NS, 'path');
-        p.setAttribute('d', _GAUGE_ARC);
-        p.setAttribute('fill', 'none');
-        p.setAttribute('stroke', stroke);
-        p.setAttribute('stroke-width', '22');
-        p.setAttribute('stroke-linecap', 'butt');
-        p.setAttribute('class', cls);
-        p.setAttribute('stroke-dasharray', dashArray);
-        if (dashOffset !== 0) p.setAttribute('stroke-dashoffset', String(dashOffset));
-        return p;
-    }
-
-    svg.appendChild(mkArc('gaugeTrack',      '#2d333b', _GAUGE_L + ' ' + _GAUGE_L, 0));
-    svg.appendChild(mkArc('gaugeGreenDim',   '#1a3a1a', '147.02 ' + _GAUGE_L,      0));
-    svg.appendChild(mkArc('gaugeYellowDim',  '#3a3000', '49.01 '  + _GAUGE_L,      -147.02));
-    svg.appendChild(mkArc('gaugeRedDim',     '#3a0a0a', '49.01 '  + _GAUGE_L,      -196.03));
-    svg.appendChild(mkArc('gaugeGreenProg',  '#3fb950', '0 '      + _GAUGE_L,      0));
-    svg.appendChild(mkArc('gaugeYellowProg', '#d29922', '0 '      + _GAUGE_L,      -147.02));
-    svg.appendChild(mkArc('gaugeRedProg',    '#f85149', '0 '      + _GAUGE_L,      -196.03));
-
-    function mkText(cls, x, y, fontSize, fill, content) {
-        var t = document.createElementNS(NS, 'text');
-        t.setAttribute('class', cls);
-        t.setAttribute('x', String(x));
-        t.setAttribute('y', String(y));
-        t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('dominant-baseline', 'middle');
-        t.setAttribute('fill', fill);
-        t.setAttribute('font-size', String(fontSize));
-        t.setAttribute('font-weight', 'bold');
-        t.textContent = content;
-        return t;
-    }
-
-    var fontSize = Math.max(6, Math.round(cfg.valueSize / 2));
-    svg.appendChild(mkText('gaugeValueText', 100, 83, fontSize, cfg.valueColor, _applyFormat(0, cfg.format)));
-    svg.appendChild(mkText('gaugeMinLabel',   16, 109, 9, '#6e7681', cfg.rangeMin !== null ? cfg.rangeMin : 0));
-    svg.appendChild(mkText('gaugeMaxLabel',  184, 109, 9, '#6e7681', cfg.rangeMax !== null ? cfg.rangeMax : 100));
-
-    svg.querySelector('.gaugeValueText').setAttribute('font-family', _getFontFamily(cfg.valueFont));
-
     el.appendChild(header);
-    el.appendChild(svg);
 
-    _updateGaugeSvg(el, 0);
+    typeDef.create(el, cfg);
     return el;
 }
 
@@ -614,49 +626,20 @@ function addNewItem() {
 
 
     if (_editingEl) {
-        var isDatetime = _editingEl.classList.contains('timeIndicator') ||
-                         _editingEl.classList.contains('dateIndicator');
-        var isGauge    = _editingEl.classList.contains('gaugeIndicator');
+        var typeDef = _indicatorTypes[_getIndicatorType(_editingEl)] || _indicatorTypes.digitalIndicator;
         _editingEl.style.borderColor = config.valueColor;
         _editingEl.style.setProperty('--value-color', config.valueColor);
         _applySize(_editingEl, config);
         _storeConfig(_editingEl, config);
         _applyToHeader(_editingEl.querySelector('.indicatorHeader'), config);
-        if (isGauge) {
-            var tEl = _editingEl.querySelector('.gaugeValueText');
-            if (tEl) {
-                var curNum = parseFloat(tEl.textContent) || 0;
-                tEl.setAttribute('fill', config.valueColor);
-                tEl.setAttribute('font-family', _getFontFamily(config.valueFont));
-                tEl.setAttribute('font-size', String(Math.max(6, Math.round(config.valueSize / 2))));
-                tEl.textContent = _applyFormat(curNum, config.format);
-                _updateGaugeSvg(_editingEl, curNum);
-            }
-        } else if (isDatetime) {
-            var vEl = _editingEl.querySelector('.indicatorValue');
-            vEl.style.color           = config.valueColor;
-            vEl.style.backgroundColor = config.valueBg;
-            vEl.style.fontFamily      = _getFontFamily(config.valueFont);
-            vEl.style.fontSize        = config.valueSize + 'px';
-            vEl.style.textShadow      = '0 0 10px ' + config.valueColor;
-        } else {
-            var currentNum = parseFloat(_editingEl.querySelector('.indicatorValue').textContent) || 0;
-            _applyToValue(_editingEl.querySelector('.indicatorValue'), config, currentNum);
-        }
+        typeDef.applyEdit(_editingEl, config);
         showSaveBtn();
 
     } else {
         var ws   = document.querySelector('#workSpace');
         var left = Math.max(20, Math.round(ws.clientWidth  / 2 - 80));
         var top  = Math.max(20, Math.round(ws.clientHeight / 2 - 60));
-        var newEl = _activeType === 'timeIndicator'
-            ? _createTimeIndicator(config, left, top)
-            : _activeType === 'dateIndicator'
-            ? _createDateIndicator(config, left, top)
-            : _activeType === 'gaugeIndicator'
-            ? _createGaugeIndicator(config, left, top)
-            : _createDigitalIndicator(config, left, top);
-        ws.appendChild(newEl);
+        ws.appendChild(_addIndicator(_activeType, config, left, top));
         showSaveBtn();
     }
 
@@ -675,9 +658,7 @@ function _collectIndicators() {
     document.querySelectorAll('#workSpace .indicator').forEach(function(el) {
         var d = el.dataset;
         indicators.push({
-            type:         el.classList.contains('timeIndicator')  ? 'timeIndicator'  :
-                          el.classList.contains('dateIndicator')  ? 'dateIndicator'  :
-                          el.classList.contains('gaugeIndicator') ? 'gaugeIndicator' : 'digitalIndicator',
+            type:         _getIndicatorType(el),
             param_id:     d.paramId !== undefined && d.paramId !== '' ? parseInt(d.paramId) : null,
             pos_left:     parseInt(el.style.left) || 0,
             pos_top:      parseInt(el.style.top)  || 0,

@@ -55,14 +55,7 @@ function _restoreIndicators(indicators) {
             alarmEnabled: ind.alarm_enabled ? true : false,
             alarmColor:   ind.alarm_color  || '#ff0000'
         };
-        var el = ind.type === 'timeIndicator'
-            ? _createTimeIndicator(config, ind.pos_left, ind.pos_top)
-            : ind.type === 'dateIndicator'
-            ? _createDateIndicator(config, ind.pos_left, ind.pos_top)
-            : ind.type === 'gaugeIndicator'
-            ? _createGaugeIndicator(config, ind.pos_left, ind.pos_top)
-            : _createDigitalIndicator(config, ind.pos_left, ind.pos_top);
-        ws.appendChild(el);
+        ws.appendChild(_addIndicator(ind.type || 'digitalIndicator', config, ind.pos_left, ind.pos_top));
     });
 }
 
