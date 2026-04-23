@@ -105,6 +105,50 @@ function confirmDeleteIndicator() {
     showSaveBtn();
 }
 
+var _testTarget = null;
+
+function ctxTestIndicator() {
+    _ctxMenu.style.display = 'none';
+    if (!_ctxTarget) return;
+    _testTarget = _ctxTarget;
+    _ctxTarget  = null;
+
+    var d   = _testTarget.dataset;
+    var min = parseFloat(d.rangeMin);
+    var max = parseFloat(d.rangeMax);
+    if (isNaN(min)) min = 0;
+    if (isNaN(max) || max <= min) max = min + 100;
+    var cur = _testTarget._currentValue !== undefined ? _testTarget._currentValue : min;
+
+    var modal = document.querySelector('#testIndicatorModal');
+    var range = modal.querySelector('#testRange');
+    var num   = modal.querySelector('#testNum');
+
+    range.min = min; range.max = max; range.step = (max - min) / 100;
+    num.min   = min; num.max   = max;
+    range.value = cur;
+    num.value   = cur;
+
+    modal.showModal();
+}
+
+function onTestRangeInput(val) {
+    if (!_testTarget) return;
+    document.querySelector('#testNum').value = parseFloat(val).toFixed(2);
+    setIndicatorValue(_testTarget, parseFloat(val));
+}
+
+function onTestNumInput(val) {
+    if (!_testTarget) return;
+    document.querySelector('#testRange').value = val;
+    setIndicatorValue(_testTarget, parseFloat(val));
+}
+
+function closeTestModal() {
+    document.querySelector('#testIndicatorModal').close();
+    _testTarget = null;
+}
+
 // ── Drag ──────────────────────────────────────────────────────────────────────
 
 var _drag   = { el: null, startX: 0, startY: 0, origLeft: 0, origTop: 0 };
@@ -414,6 +458,31 @@ function _updateGaugeSvg(el, numericVal) {
     if (rEl) rEl.setAttribute('stroke-dasharray', rPrg.toFixed(2) + ' ' + _GAUGE_L);
 }
 
+function _makeTankWavePath(waterY) {
+    var amp = 1.2;
+    var W   = _TANK_W;
+    var x0  = _TANK_X - W;
+    var x1  = _TANK_X + W * 3;
+    var bot = _TANK_BOT + 2;
+    if (waterY >= _TANK_BOT - amp) {
+        return 'M ' + x0 + ',' + bot + ' L ' + x1 + ',' + bot + ' Z';
+    }
+    var d = 'M ' + x0 + ',' + bot + ' L ' + x0 + ',' + waterY.toFixed(2);
+    for (var x = x0; x < x1; x += W) {
+        d += ' Q ' + (x + W * 0.25).toFixed(2) + ',' + (waterY - amp * 2).toFixed(2)
+           + ' ' + (x + W * 0.5).toFixed(2)   + ',' + waterY.toFixed(2);
+        d += ' Q ' + (x + W * 0.75).toFixed(2) + ',' + (waterY + amp * 2).toFixed(2)
+           + ' ' + (x + W).toFixed(2)          + ',' + waterY.toFixed(2);
+    }
+    d += ' L ' + x1 + ',' + bot + ' Z';
+    return d;
+}
+
+function _tankTextShadow(bg) {
+    var c = bg || '#1a2233';
+    return '-1px -1px 0 ' + c + ',1px -1px 0 ' + c + ',-1px 1px 0 ' + c + ',1px 1px 0 ' + c + ',0 0 6px ' + c;
+}
+
 function _updateTankSvg(el, numericVal) {
     var d   = el.dataset;
     var min = parseFloat(d.rangeMin);
@@ -421,17 +490,10 @@ function _updateTankSvg(el, numericVal) {
     if (isNaN(min)) min = 0;
     if (isNaN(max) || max <= min) max = min + 100;
 
-    var maxLbl = el.querySelector('.tankMaxLabel');
-    var midLbl = el.querySelector('.tankMidLabel');
-    if (maxLbl) maxLbl.textContent = max;
-    if (midLbl) midLbl.textContent = (min + max) / 2;
-
     var pct  = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
-    var h    = (pct * _TANK_H).toFixed(2);
     var prog = el.querySelector('.tankProg');
     if (prog) {
-        prog.setAttribute('height', h);
-        prog.setAttribute('y', (_TANK_BOT - pct * _TANK_H).toFixed(2));
+        prog.setAttribute('d', _makeTankWavePath(_TANK_BOT - pct * _TANK_H));
     }
 }
 
@@ -671,9 +733,9 @@ var _indicatorTypes = {
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
-            svg.setAttribute('viewBox', '18 3 92 104');
+            svg.setAttribute('viewBox', '18 3 66 104');
             svg.setAttribute('class', 'tankSvg');
-            svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+            svg.setAttribute('preserveAspectRatio', 'none');
             svg.style.backgroundColor = cfg.valueBg;
 
             var clipId   = 'tc_' + el.id;
@@ -700,7 +762,23 @@ var _indicatorTypes = {
             var fills = document.createElementNS(NS, 'g');
             fills.setAttribute('clip-path', 'url(#' + clipId + ')');
             fills.appendChild(mkRect('tankDimBg', _TANK_X, _TANK_Y, _TANK_W, _TANK_H, '#1a2233'));
-            fills.appendChild(mkRect('tankProg',  _TANK_X, _TANK_BOT, _TANK_W, 0, cfg.valueColor));
+
+            var waveGroup = document.createElementNS(NS, 'g');
+            var anim = document.createElementNS(NS, 'animateTransform');
+            anim.setAttribute('attributeName', 'transform');
+            anim.setAttribute('type', 'translate');
+            anim.setAttribute('from', '0,0');
+            anim.setAttribute('to', (-_TANK_W) + ',0');
+            anim.setAttribute('dur', '3s');
+            anim.setAttribute('repeatCount', 'indefinite');
+            waveGroup.appendChild(anim);
+            var wavePath = document.createElementNS(NS, 'path');
+            wavePath.setAttribute('class', 'tankProg');
+            wavePath.setAttribute('fill', cfg.valueColor);
+            wavePath.setAttribute('d', _makeTankWavePath(_TANK_BOT));
+            waveGroup.appendChild(wavePath);
+            fills.appendChild(waveGroup);
+
             svg.appendChild(fills);
 
             var border = document.createElementNS(NS, 'rect');
@@ -713,60 +791,30 @@ var _indicatorTypes = {
             border.setAttribute('stroke-width', '2');
             svg.appendChild(border);
 
-            [0.25, 0.5, 0.75].forEach(function (p) {
-                var ty   = (_TANK_BOT - p * _TANK_H).toFixed(1);
-                var tick = document.createElementNS(NS, 'line');
-                tick.setAttribute('x1', String(_TANK_X + _TANK_W));
-                tick.setAttribute('y1', ty);
-                tick.setAttribute('x2', String(_TANK_X + _TANK_W + 6));
-                tick.setAttribute('y2', ty);
-                tick.setAttribute('stroke', '#6e7681');
-                tick.setAttribute('stroke-width', '1');
-                svg.appendChild(tick);
-            });
+            var wrapper = document.createElement('div');
+            wrapper.className = 'tankSvgWrapper';
+            wrapper.appendChild(svg);
 
-            function mkScaleLbl(cls, y, baseline) {
-                var t = document.createElementNS(NS, 'text');
-                t.setAttribute('class', cls);
-                t.setAttribute('x', String(_TANK_X + _TANK_W + 8));
-                t.setAttribute('y', String(y));
-                t.setAttribute('text-anchor', 'start');
-                t.setAttribute('dominant-baseline', baseline);
-                t.setAttribute('fill', '#6e7681');
-                t.setAttribute('font-size', '8');
-                return t;
-            }
-            var maxLbl = mkScaleLbl('tankMaxLabel', _TANK_Y,              'hanging');
-            var midLbl = mkScaleLbl('tankMidLabel', _TANK_Y + _TANK_H / 2, 'middle');
-            maxLbl.textContent = cfg.rangeMax !== null ? cfg.rangeMax : 100;
-            midLbl.textContent = cfg.rangeMax !== null && cfg.rangeMin !== null
-                ? ((cfg.rangeMin + cfg.rangeMax) / 2)
-                : 50;
-            svg.appendChild(maxLbl);
-            svg.appendChild(midLbl);
+            var valText = document.createElement('span');
+            valText.className          = 'tankValueText';
+            valText.style.color        = cfg.valueColor;
+            valText.style.fontSize     = cfg.valueSize + 'px';
+            valText.style.fontFamily   = _getFontFamily(cfg.valueFont);
+            valText.style.textShadow   = _tankTextShadow(cfg.valueBg);
+            valText.textContent        = _applyFormat(0, cfg.format);
+            wrapper.appendChild(valText);
 
-            var valText = document.createElementNS(NS, 'text');
-            valText.setAttribute('class', 'tankValueText');
-            valText.setAttribute('x', '50');
-            valText.setAttribute('y', String(_TANK_Y + _TANK_H / 2));
-            valText.setAttribute('text-anchor', 'middle');
-            valText.setAttribute('dominant-baseline', 'middle');
-            valText.setAttribute('fill', cfg.valueColor);
-            valText.setAttribute('font-size', String(Math.max(6, Math.round(cfg.valueSize / 4))));
-            valText.setAttribute('font-weight', 'bold');
-            valText.setAttribute('font-family', _getFontFamily(cfg.valueFont));
-            valText.textContent = _applyFormat(0, cfg.format);
-            svg.appendChild(valText);
-
-            el.appendChild(svg);
+            el.appendChild(wrapper);
             _updateTankSvg(el, 0);
         },
         applyEdit: function (el, cfg) {
             var t = el.querySelector('.tankValueText');
-            if (!t) return;
-            t.setAttribute('fill', cfg.valueColor);
-            t.setAttribute('font-family', _getFontFamily(cfg.valueFont));
-            t.setAttribute('font-size', String(Math.max(6, Math.round(cfg.valueSize / 4))));
+            if (t) {
+                t.style.color      = cfg.valueColor;
+                t.style.fontFamily = _getFontFamily(cfg.valueFont);
+                t.style.fontSize   = cfg.valueSize + 'px';
+                t.style.textShadow = _tankTextShadow(cfg.valueBg);
+            }
             var svg = el.querySelector('.tankSvg');
             if (svg) svg.style.backgroundColor = cfg.valueBg;
             var border = el.querySelector('.tankBorder');
@@ -849,16 +897,21 @@ function removeItem() {
 }
 
 function _collectIndicators() {
+    var ws  = document.querySelector('#workSpace');
+    var wsW = ws.clientWidth;
+    var wsH = ws.clientHeight;
     var indicators = [];
     document.querySelectorAll('#workSpace .indicator').forEach(function(el) {
-        var d = el.dataset;
+        var d    = el.dataset;
+        var rawW = parseInt(el.style.width)  || (d.width  ? parseInt(d.width)  : null);
+        var rawH = parseInt(el.style.height) || (d.height ? parseInt(d.height) : null);
         indicators.push({
             type:         _getIndicatorType(el),
             param_id:     d.paramId !== undefined && d.paramId !== '' ? parseInt(d.paramId) : null,
-            pos_left:     parseInt(el.style.left) || 0,
-            pos_top:      parseInt(el.style.top)  || 0,
-            width:        parseInt(el.style.width)  || (d.width  ? parseInt(d.width)  : null),
-            height:       parseInt(el.style.height) || (d.height ? parseInt(d.height) : null),
+            pos_left:     (parseInt(el.style.left) || 0) / wsW * 100,
+            pos_top:      (parseInt(el.style.top)  || 0) / wsH * 100,
+            width:        rawW != null ? rawW / wsW * 100 : null,
+            height:       rawH != null ? rawH / wsH * 100 : null,
             header_text:  d.headerText  || '',
             header_color: d.headerColor || '#c9d1d9',
             header_bg:    d.headerBg    || '#161b22',

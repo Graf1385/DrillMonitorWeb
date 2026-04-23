@@ -158,8 +158,27 @@
 
 <div id="indicatorContextMenu" class="indicatorCtxMenu">
     <button onclick="ctxOpenValueSettings()">Настройка значения</button>
+    <button onclick="ctxTestIndicator()">Тест</button>
     <button class="ctxMenuDanger" onclick="ctxDeleteIndicator()">Удалить</button>
 </div>
+
+<dialog class="settingsModal" id="testIndicatorModal">
+    <h1>Тест</h1>
+    <table class="settingsTable">
+        <tr>
+            <td>Значение</td>
+            <td class="paramCell">
+                <input type="range" id="testRange" class="alarmVolumeSlider"
+                    oninput="onTestRangeInput(this.value)">
+                <input type="number" id="testNum" class="settingsInput" style="width:80px"
+                    oninput="onTestNumInput(this.value)">
+            </td>
+        </tr>
+    </table>
+    <footer>
+        <button class="modalButton cancelBtn" onclick="closeTestModal()">Закрыть</button>
+    </footer>
+</dialog>
 
 <dialog class="settingsModal" id="deleteConfirmModal">
     <h1>Удаление индикатора</h1>

@@ -16,7 +16,7 @@ db.exec(`
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         name       TEXT    NOT NULL UNIQUE,
         background TEXT    NOT NULL,
-        cell_size  INTEGER NOT NULL,
+        cell_size  REAL    NOT NULL,
         is_default INTEGER NOT NULL DEFAULT 0,
         is_active  INTEGER NOT NULL DEFAULT 0
     )
@@ -26,6 +26,9 @@ try { db.exec('ALTER TABLE profiles ADD COLUMN is_active        INTEGER NOT NULL
 try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_sound_id  INTEGER'); } catch {}
 try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_volume    INTEGER NOT NULL DEFAULT 50'); } catch {}
 try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_delay     REAL    NOT NULL DEFAULT 2'); } catch {}
+
+// Restore cell_size back to px (values < 10 were converted to % by a previous migration)
+db.exec('UPDATE profiles SET cell_size = ROUND(cell_size * 20) WHERE cell_size < 10');
 
 db.prepare(`
     INSERT OR IGNORE INTO profiles (name, background, cell_size, is_default, is_active)

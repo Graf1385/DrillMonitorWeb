@@ -7,7 +7,7 @@ function toggleGrid() {
     _gridActive = !_gridActive;
 
     if (_gridActive) {
-        var cellSize = _workSpace.dataset.cellSize || 20;
+        var cellSize = parseInt(_workSpace.dataset.cellSize) || 20;
         netBtn.classList.add('enable');
         _workSpace.style.backgroundSize = cellSize + 'px ' + cellSize + 'px';
     } else {

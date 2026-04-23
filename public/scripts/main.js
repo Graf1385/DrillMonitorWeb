@@ -31,13 +31,15 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 getSettings();
 
 function _restoreIndicators(indicators) {
-    var ws = document.querySelector('#workSpace');
+    var ws  = document.querySelector('#workSpace');
+    var wsW = ws.clientWidth;
+    var wsH = ws.clientHeight;
     ws.querySelectorAll('.indicator').forEach(function(el) { el.remove(); });
     indicators.forEach(function(ind) {
         var config = {
             paramId:     ind.param_id,
-            width:       ind.width,
-            height:      ind.height,
+            width:       ind.width  != null ? ind.width  * wsW / 100 : null,
+            height:      ind.height != null ? ind.height * wsH / 100 : null,
             headerText:  ind.header_text,
             headerColor: ind.header_color,
             headerBg:    ind.header_bg,
@@ -55,7 +57,12 @@ function _restoreIndicators(indicators) {
             alarmEnabled: ind.alarm_enabled ? true : false,
             alarmColor:   ind.alarm_color  || '#ff0000'
         };
-        ws.appendChild(_addIndicator(ind.type || 'digitalIndicator', config, ind.pos_left, ind.pos_top));
+        ws.appendChild(_addIndicator(
+            ind.type || 'digitalIndicator',
+            config,
+            (ind.pos_left || 0) * wsW / 100,
+            (ind.pos_top  || 0) * wsH / 100
+        ));
     });
 }
 
