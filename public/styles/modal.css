@@ -565,6 +565,32 @@ input[type=number]::-webkit-inner-spin-button {
     font-size: 13px;
 }
 
+/* ── Parameters Modal ────────────────────────────────────────────────────────── */
+
+#parametersModal[open] {
+    display: flex;
+    flex-direction: column;
+    width: 600px;
+    height: 600px;
+}
+
+#parametersBody {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-accent) transparent;
+}
+
+#parametersBody::-webkit-scrollbar       { width: 5px; }
+#parametersBody::-webkit-scrollbar-thumb { background: var(--sidebar-accent); border-radius: 4px; }
+
+#parametersBody table {
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
+}
+
 /* ── Indicator List Modal ────────────────────────────────────────────────────── */
 
 #indicatorListBody table {

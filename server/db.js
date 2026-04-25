@@ -393,6 +393,19 @@ module.exports = {
         ).run(id, name, typeId);
     },
 
+    updateParameter(id, name, typeId) {
+        return db.prepare(
+            'UPDATE parameters SET name = ?, type_id = ? WHERE id = ?'
+        ).run(name, typeId != null ? typeId : null, id);
+    },
+
+    importParameters(params) {
+        const upsert = db.prepare('INSERT OR REPLACE INTO parameters (id, name, type_id) VALUES (?, ?, ?)');
+        db.transaction(() => {
+            for (const p of params) upsert.run(p.id, p.name, p.typeId != null ? p.typeId : null);
+        })();
+    },
+
     deleteParameter(id) {
         return db.prepare('DELETE FROM parameters WHERE id = ?').run(id);
     },

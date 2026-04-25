@@ -124,6 +124,58 @@ router.post('/api/alarm-sounds', _upload.single('file'), (req, res) => {
     }
 });
 
+router.post('/api/parameters/import', (req, res) => {
+    try {
+        const params = req.body.parameters;
+        if (!Array.isArray(params)) return res.status(400).json({ error: 'parameters must be an array' });
+        db.importParameters(params);
+        res.status(200).json({ ok: true, count: params.length });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/api/parameters', (req, res) => {
+    try {
+        const { id, name, typeId } = req.body;
+        if (id == null || !name) return res.status(400).json({ error: 'id и name обязательны' });
+        db.createParameter(parseInt(id), name.trim(), typeId != null ? parseInt(typeId) : null);
+        res.status(201).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/api/parameters/:id', (req, res) => {
+    try {
+        const { name, typeId } = req.body;
+        if (!name) return res.status(400).json({ error: 'name обязателен' });
+        const result = db.updateParameter(
+            parseInt(req.params.id),
+            name.trim(),
+            typeId != null ? parseInt(typeId) : null
+        );
+        if (result.changes === 0) return res.status(404).json({ error: 'Параметр не найден' });
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/api/parameters/:id', (req, res) => {
+    try {
+        const result = db.deleteParameter(parseInt(req.params.id));
+        if (result.changes === 0) return res.status(404).json({ error: 'Параметр не найден' });
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.delete('/api/logs', (req, res) => {
     try {
         db.clearLogs();

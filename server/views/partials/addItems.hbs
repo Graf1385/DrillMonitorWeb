@@ -197,6 +197,18 @@
     </footer>
 </dialog>
 
+<dialog class="settingsModal wideModal" id="parametersModal">
+    <h1>Список параметров</h1>
+    <div id="parametersBody"></div>
+    <footer>
+        <button class="modalButton okBtn" onclick="addParameterRow()">+ Добавить</button>
+        <button class="modalButton" onclick="exportParameters()">Экспорт JSON</button>
+        <button class="modalButton" onclick="document.querySelector('#paramImportFile').click()">Импорт JSON</button>
+        <input type="file" id="paramImportFile" accept=".json" style="display:none" onchange="importParametersFile(this)">
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#parametersModal').close()">Закрыть</button>
+    </footer>
+</dialog>
+
 <dialog class="settingsModal wideModal" id="alarmOverviewModal">
     <h1>Активная сигнализация</h1>
     <div id="alarmOverviewList"></div>

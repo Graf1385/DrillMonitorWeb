@@ -46,6 +46,15 @@ router.get('/api/parameters', (req, res) => {
     }
 });
 
+router.get('/api/data-types', (req, res) => {
+    try {
+        res.status(200).json(db.getDataTypes());
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/api/profiles/:id/indicators', (req, res) => {
     try {
         res.status(200).json(db.getIndicatorsByProfile(parseInt(req.params.id)));
