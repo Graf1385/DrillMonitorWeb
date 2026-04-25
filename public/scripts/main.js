@@ -81,6 +81,7 @@ $.getJSON('/api/profiles/active', function (profile) {
     _activeProfileId     = profile.id;
     _settings.background = profile.background;
     _settings.cellSize   = profile.cell_size;
+    applyProfileFromSSE(profile);
     _loadIndicatorsForProfile(profile.id);
 });
 

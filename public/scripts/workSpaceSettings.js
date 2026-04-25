@@ -119,6 +119,9 @@ function applyProfileFromSSE(profile) {
     _activeProfileId = profile.id;
     _savedBackground = profile.background;
     _savedCellSize   = profile.cell_size;
+    _alarmSoundId    = profile.alarm_sound_id || '';
+    _alarmVolume     = profile.alarm_volume  != null ? parseInt(profile.alarm_volume)  : 50;
+    _alarmDelay      = profile.alarm_delay   != null ? parseFloat(profile.alarm_delay) : 2;
 
     var select = _modal.querySelector('#wsProfile');
     if (select) {
@@ -315,3 +318,7 @@ function getSettings() {
         }
     });
 }
+
+window._getAlarmConfig = function() {
+    return { soundId: _alarmSoundId, volume: _alarmVolume, delay: _alarmDelay };
+};

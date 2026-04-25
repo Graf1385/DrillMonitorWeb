@@ -20,6 +20,113 @@ var _TANK_BOT  = 103;   // _TANK_Y + _TANK_H
 var _TANK_GY_Y = 45.4;  // _TANK_BOT - 0.6 * _TANK_H
 var _TANK_R_Y  = 26.2;  // _TANK_BOT - 0.8 * _TANK_H
 
+var _MANO_CX     = 100;
+var _MANO_CY     = 105;
+var _MANO_R      = 70;
+var _MANO_R_NDL  = 60;
+var _MANO_START  = 135;
+var _MANO_SWEEP  = 270;
+var _MANO_L      = 329.87;  // 70 * 270 * PI/180
+var _MANO_GREEN  = 197.92;  // 0.6 * L
+var _MANO_YELLOW = 263.89;  // 0.8 * L
+var _MANO_ARC    = 'M 50.5,154.5 A 70,70 0 1,1 149.5,154.5';
+
+// ── Alarm state ───────────────────────────────────────────────────────────────
+
+var _alarmLog           = [];
+var _alarmSoundTimeout  = null;
+var _alarmAudio         = null;
+
+window.getAlarmLog = function() { return _alarmLog; };
+
+function _hasUnackedAlarm() {
+    return !!document.querySelector('#workSpace .alarm-active');
+}
+
+function _stopAlarmSound() {
+    clearTimeout(_alarmSoundTimeout);
+    _alarmSoundTimeout = null;
+    if (_alarmAudio) {
+        _alarmAudio.pause();
+        _alarmAudio.currentTime = 0;
+        _alarmAudio = null;
+    }
+}
+
+function _playAlarmSound() {
+    var cfg = window._getAlarmConfig ? window._getAlarmConfig() : {};
+    if (!cfg.soundId) return;
+    if (_alarmAudio && !_alarmAudio.paused) return;
+    _alarmAudio = new Audio('/api/alarm-sounds/' + cfg.soundId + '/file');
+    _alarmAudio.volume = Math.max(0, Math.min(1, (cfg.volume || 50) / 100));
+    _alarmAudio.addEventListener('ended', function() {
+        _alarmAudio = null;
+        if (_hasUnackedAlarm()) {
+            var delay = (parseFloat((window._getAlarmConfig ? window._getAlarmConfig() : {}).delay) || 2) * 1000;
+            _alarmSoundTimeout = setTimeout(_playAlarmSound, delay);
+        }
+    });
+    _alarmAudio.play().catch(function() {});
+}
+
+function _addAlarmLogEntry(el, val, event) {
+    var name  = el.dataset.headerText || 'Индикатор';
+    var color = el.dataset.alarmColor || '#ff0000';
+    _alarmLog.unshift({ ts: new Date(), name: name, value: val, event: event, color: color });
+    if (_alarmLog.length > 200) _alarmLog.length = 200;
+}
+
+function _checkAlarm(el, numericVal) {
+    var d = el.dataset;
+    if (d.alarmEnabled !== '1') {
+        if (el._alarmActive) {
+            el._alarmActive = false;
+            el._alarmAcked  = false;
+            el.classList.remove('alarm-active', 'alarm-acked');
+            if (!_hasUnackedAlarm()) { _stopAlarmSound(); }
+        }
+        return;
+    }
+    var alarmMin = d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null;
+    var alarmMax = d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null;
+    if (alarmMin === null && alarmMax === null) return;
+
+    var inAlarm = false;
+    if (alarmMin !== null && !isNaN(alarmMin) && numericVal < alarmMin) inAlarm = true;
+    if (alarmMax !== null && !isNaN(alarmMax) && numericVal > alarmMax) inAlarm = true;
+
+    el.style.setProperty('--alarm-color', d.alarmColor || '#ff0000');
+
+    var wasActive = !!el._alarmActive;
+    if (inAlarm && !wasActive) {
+        el._alarmActive = true;
+        el._alarmAcked  = false;
+        el.classList.add('alarm-active');
+        el.classList.remove('alarm-acked');
+        _addAlarmLogEntry(el, numericVal, 'trigger');
+        _playAlarmSound();
+    } else if (!inAlarm && wasActive) {
+        el._alarmActive = false;
+        el._alarmAcked  = false;
+        el.classList.remove('alarm-active', 'alarm-acked');
+        _addAlarmLogEntry(el, numericVal, 'clear');
+        if (!_hasUnackedAlarm()) { _stopAlarmSound(); }
+    }
+}
+
+function ctxAckAlarm() {
+    _ctxMenu.style.display = 'none';
+    if (!_ctxTarget) return;
+    var el = _ctxTarget;
+    _ctxTarget = null;
+    if (!el._alarmActive || el._alarmAcked) return;
+    el._alarmAcked = true;
+    el.classList.remove('alarm-active');
+    el.classList.add('alarm-acked');
+    _addAlarmLogEntry(el, el._currentValue, 'ack');
+    if (!_hasUnackedAlarm()) { _stopAlarmSound(); }
+}
+
 function _getFontFamily(fontId) {
     var id = parseInt(fontId) || 0;
     return id && _fontMap[id] ? _fontMap[id] : 'monospace';
@@ -58,6 +165,8 @@ document.addEventListener('contextmenu', function (e) {
     if (!indicator) return;
     e.preventDefault();
     _ctxTarget = indicator;
+    var ackBtn = _ctxMenu.querySelector('#ctxAckBtn');
+    if (ackBtn) ackBtn.style.display = (indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
     _ctxMenu.style.display = 'block';
     var x = e.clientX, y = e.clientY;
     var menuW = _ctxMenu.offsetWidth  || 190;
@@ -253,11 +362,15 @@ function _applyTypeToParamSelect(type) {
     var numericRows = _addModal.querySelectorAll('.numericOnlyRow');
 
     if (!typeDef.isNumeric) {
-        var dtOpt = Array.from(select.options).find(function (o) {
-            return o.dataset.type === 'time';
-        });
-        if (dtOpt) select.value = dtOpt.value;
-        select.disabled = true;
+        if (typeDef.lockParam !== false) {
+            var prefer = typeDef.preferredParamType || 'time';
+            var dtOpt = Array.from(select.options).find(function (o) { return o.dataset.type === prefer; })
+                     || Array.from(select.options).find(function (o) { return o.dataset.type === 'time'; });
+            if (dtOpt) select.value = dtOpt.value;
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+        }
         numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else {
         select.disabled = false;
@@ -478,6 +591,60 @@ function _makeTankWavePath(waterY) {
     return d;
 }
 
+function _updateHBar(el, numericVal) {
+    var d = el.dataset;
+    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
+    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
+    var pct = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var fill = el.querySelector('.hBarFill');
+    if (fill) fill.style.width = (pct * 100).toFixed(2) + '%';
+    var mn = el.querySelector('.hBarMin'); if (mn) mn.textContent = min;
+    var mx = el.querySelector('.hBarMax'); if (mx) mx.textContent = max;
+}
+
+function _updateVBar(el, numericVal) {
+    var d = el.dataset;
+    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
+    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
+    var pct = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var fill = el.querySelector('.vBarFill');
+    if (fill) fill.style.height = (pct * 100).toFixed(2) + '%';
+    var mn = el.querySelector('.vBarMin'); if (mn) mn.textContent = min;
+    var mx = el.querySelector('.vBarMax'); if (mx) mx.textContent = max;
+}
+
+function _updateManoSvg(el, numericVal) {
+    var d = el.dataset;
+    var min = parseFloat(d.rangeMin);
+    var max = parseFloat(d.rangeMax);
+    if (isNaN(min)) min = 0;
+    if (isNaN(max) || max <= min) max = min + 100;
+
+    var minLbl = el.querySelector('.manoMinLabel');
+    var maxLbl = el.querySelector('.manoMaxLabel');
+    if (minLbl) minLbl.textContent = min;
+    if (maxLbl) maxLbl.textContent = max;
+
+    var pct  = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var gPrg = Math.min(pct, 0.6) * _MANO_L;
+    var yPrg = Math.max(0, Math.min(pct, 0.8) - 0.6) * _MANO_L;
+    var rPrg = Math.max(0, pct - 0.8) * _MANO_L;
+
+    var gEl = el.querySelector('.manoGreenProg');
+    var yEl = el.querySelector('.manoYellowProg');
+    var rEl = el.querySelector('.manoRedProg');
+    if (gEl) gEl.setAttribute('stroke-dasharray', gPrg.toFixed(2) + ' ' + _MANO_L);
+    if (yEl) yEl.setAttribute('stroke-dasharray', yPrg.toFixed(2) + ' ' + _MANO_L);
+    if (rEl) rEl.setAttribute('stroke-dasharray', rPrg.toFixed(2) + ' ' + _MANO_L);
+
+    var angleRad = (_MANO_START + pct * _MANO_SWEEP) * Math.PI / 180;
+    var needle   = el.querySelector('.manoNeedle');
+    if (needle) {
+        needle.setAttribute('x2', (_MANO_CX + _MANO_R_NDL * Math.cos(angleRad)).toFixed(2));
+        needle.setAttribute('y2', (_MANO_CY + _MANO_R_NDL * Math.sin(angleRad)).toFixed(2));
+    }
+}
+
 function _tankTextShadow(bg) {
     var c = bg || '#1a2233';
     return '-1px -1px 0 ' + c + ',1px -1px 0 ' + c + ',-1px 1px 0 ' + c + ',1px 1px 0 ' + c + ',0 0 6px ' + c;
@@ -498,6 +665,16 @@ function _updateTankSvg(el, numericVal) {
 }
 
 function setIndicatorValue(el, val) {
+    if (_getIndicatorType(el) === 'tickerIndicator') {
+        var txt = val !== undefined && val !== null ? String(val) : '';
+        el._currentValue = txt;
+        var s1 = el.querySelector('.tickerSpan1');
+        var s2 = el.querySelector('.tickerSpan2');
+        if (s1) s1.textContent = txt;
+        if (s2) s2.textContent = txt;
+        return;
+    }
+
     var d   = el.dataset;
     var min = parseFloat(d.rangeMin);
     var max = parseFloat(d.rangeMax);
@@ -517,7 +694,21 @@ function setIndicatorValue(el, val) {
         var tt = el.querySelector('.tankValueText');
         if (tt) tt.textContent = _applyFormat(el._currentValue, d.format || '');
         _updateTankSvg(el, el._currentValue);
+    } else if (type === 'manometerIndicator') {
+        var mt = el.querySelector('.manoValueText');
+        if (mt) mt.textContent = _applyFormat(el._currentValue, d.format || '');
+        _updateManoSvg(el, el._currentValue);
+    } else if (type === 'hProgressIndicator') {
+        var hv = el.querySelector('.hBarValue');
+        if (hv) hv.textContent = _applyFormat(el._currentValue, d.format || '');
+        _updateHBar(el, el._currentValue);
+    } else if (type === 'vProgressIndicator') {
+        var vv = el.querySelector('.vBarValue');
+        if (vv) vv.textContent = _applyFormat(el._currentValue, d.format || '');
+        _updateVBar(el, el._currentValue);
     }
+
+    _checkAlarm(el, el._currentValue);
 }
 
 function _applyToValue(valueEl, config, numericVal) {
@@ -821,6 +1012,287 @@ var _indicatorTypes = {
             if (border) border.setAttribute('stroke', cfg.valueColor);
             var prog = el.querySelector('.tankProg');
             if (prog) prog.setAttribute('fill', cfg.valueColor);
+            setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
+        }
+    },
+
+    hProgressIndicator: {
+        cardId: '#typeHProgress',
+        isNumeric: true,
+        defaultSize: { width: 260, height: 100 },
+        create: function (el, cfg) {
+            var wrapper = document.createElement('div');
+            wrapper.className             = 'hBarWrapper';
+            wrapper.style.backgroundColor = cfg.valueBg;
+
+            var track = document.createElement('div');
+            track.className = 'hBarTrack';
+
+            var fill = document.createElement('div');
+            fill.className            = 'hBarFill';
+            fill.style.backgroundColor = cfg.valueColor;
+            fill.style.boxShadow       = '0 0 8px ' + cfg.valueColor;
+
+            var valText = document.createElement('span');
+            valText.className        = 'hBarValue';
+            valText.style.color      = cfg.valueColor;
+            valText.style.fontFamily = _getFontFamily(cfg.valueFont);
+            valText.style.fontSize   = cfg.valueSize + 'px';
+            valText.style.textShadow = _tankTextShadow(cfg.valueBg);
+            valText.textContent      = _applyFormat(0, cfg.format);
+
+            track.appendChild(fill);
+            track.appendChild(valText);
+
+            var labels = document.createElement('div');
+            labels.className = 'hBarLabels';
+
+            var minLbl = document.createElement('span');
+            minLbl.className   = 'hBarMin';
+            minLbl.textContent = cfg.rangeMin !== null ? cfg.rangeMin : 0;
+
+            var maxLbl = document.createElement('span');
+            maxLbl.className   = 'hBarMax';
+            maxLbl.textContent = cfg.rangeMax !== null ? cfg.rangeMax : 100;
+
+            labels.appendChild(minLbl);
+            labels.appendChild(maxLbl);
+            wrapper.appendChild(track);
+            wrapper.appendChild(labels);
+            el.appendChild(wrapper);
+            _updateHBar(el, 0);
+        },
+        applyEdit: function (el, cfg) {
+            var fill = el.querySelector('.hBarFill');
+            if (fill) { fill.style.backgroundColor = cfg.valueColor; fill.style.boxShadow = '0 0 8px ' + cfg.valueColor; }
+            var val = el.querySelector('.hBarValue');
+            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = cfg.valueSize + 'px'; val.style.textShadow = _tankTextShadow(cfg.valueBg); }
+            var wrapper = el.querySelector('.hBarWrapper');
+            if (wrapper) wrapper.style.backgroundColor = cfg.valueBg;
+            setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
+        }
+    },
+
+    vProgressIndicator: {
+        cardId: '#typeVProgress',
+        isNumeric: true,
+        defaultSize: { width: 80, height: 220 },
+        create: function (el, cfg) {
+            var wrapper = document.createElement('div');
+            wrapper.className             = 'vBarWrapper';
+            wrapper.style.backgroundColor = cfg.valueBg;
+
+            var maxLbl = document.createElement('span');
+            maxLbl.className   = 'vBarMax';
+            maxLbl.textContent = cfg.rangeMax !== null ? cfg.rangeMax : 100;
+
+            var track = document.createElement('div');
+            track.className = 'vBarTrack';
+
+            var fill = document.createElement('div');
+            fill.className             = 'vBarFill';
+            fill.style.backgroundColor = cfg.valueColor;
+            fill.style.boxShadow       = '0 0 8px ' + cfg.valueColor;
+
+            var valText = document.createElement('span');
+            valText.className        = 'vBarValue';
+            valText.style.color      = cfg.valueColor;
+            valText.style.fontFamily = _getFontFamily(cfg.valueFont);
+            valText.style.fontSize   = cfg.valueSize + 'px';
+            valText.style.textShadow = _tankTextShadow(cfg.valueBg);
+            valText.textContent      = _applyFormat(0, cfg.format);
+
+            track.appendChild(fill);
+            track.appendChild(valText);
+
+            var minLbl = document.createElement('span');
+            minLbl.className   = 'vBarMin';
+            minLbl.textContent = cfg.rangeMin !== null ? cfg.rangeMin : 0;
+
+            wrapper.appendChild(maxLbl);
+            wrapper.appendChild(track);
+            wrapper.appendChild(minLbl);
+            el.appendChild(wrapper);
+            _updateVBar(el, 0);
+        },
+        applyEdit: function (el, cfg) {
+            var fill = el.querySelector('.vBarFill');
+            if (fill) { fill.style.backgroundColor = cfg.valueColor; fill.style.boxShadow = '0 0 8px ' + cfg.valueColor; }
+            var val = el.querySelector('.vBarValue');
+            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = cfg.valueSize + 'px'; val.style.textShadow = _tankTextShadow(cfg.valueBg); }
+            var wrapper = el.querySelector('.vBarWrapper');
+            if (wrapper) wrapper.style.backgroundColor = cfg.valueBg;
+            setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
+        }
+    },
+
+    tickerIndicator: {
+        cardId: '#typeTicker',
+        isNumeric: false,
+        lockParam: false,
+        defaultSize: { width: 300, height: 80 },
+        create: function (el, cfg) {
+            var outer = document.createElement('div');
+            outer.className             = 'tickerOuter';
+            outer.style.color           = cfg.valueColor;
+            outer.style.backgroundColor = cfg.valueBg;
+
+            var inner = document.createElement('div');
+            inner.className        = 'tickerInner';
+            inner.style.fontFamily = _getFontFamily(cfg.valueFont);
+            inner.style.fontSize   = cfg.valueSize + 'px';
+            inner.style.textShadow = '0 0 8px ' + cfg.valueColor;
+
+            var s1 = document.createElement('span');
+            s1.className   = 'tickerSpan1';
+            s1.textContent = '— нет данных —';
+
+            var s2 = document.createElement('span');
+            s2.className   = 'tickerSpan2';
+            s2.textContent = '— нет данных —';
+
+            inner.appendChild(s1);
+            inner.appendChild(s2);
+            outer.appendChild(inner);
+            el.appendChild(outer);
+        },
+        applyEdit: function (el, cfg) {
+            var outer = el.querySelector('.tickerOuter');
+            if (outer) {
+                outer.style.color           = cfg.valueColor;
+                outer.style.backgroundColor = cfg.valueBg;
+            }
+            var inner = el.querySelector('.tickerInner');
+            if (inner) {
+                inner.style.fontFamily = _getFontFamily(cfg.valueFont);
+                inner.style.fontSize   = cfg.valueSize + 'px';
+                inner.style.textShadow = '0 0 8px ' + cfg.valueColor;
+            }
+        }
+    },
+
+    manometerIndicator: {
+        cardId: '#typeManometer',
+        isNumeric: true,
+        defaultSize: { width: 200, height: 210 },
+        create: function (el, cfg) {
+            var NS  = 'http://www.w3.org/2000/svg';
+            var svg = document.createElementNS(NS, 'svg');
+            svg.setAttribute('viewBox', '0 0 200 185');
+            svg.setAttribute('class', 'manoSvg');
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svg.style.backgroundColor = cfg.valueBg;
+
+            function mkArc(cls, stroke, dashArray, dashOffset) {
+                var p = document.createElementNS(NS, 'path');
+                p.setAttribute('d', _MANO_ARC);
+                p.setAttribute('fill', 'none');
+                p.setAttribute('stroke', stroke);
+                p.setAttribute('stroke-width', '14');
+                p.setAttribute('stroke-linecap', 'butt');
+                p.setAttribute('class', cls);
+                p.setAttribute('stroke-dasharray', dashArray);
+                if (dashOffset) p.setAttribute('stroke-dashoffset', String(dashOffset));
+                return p;
+            }
+
+            svg.appendChild(mkArc('manoTrack',      '#2d333b', _MANO_L + ' ' + _MANO_L, 0));
+            svg.appendChild(mkArc('manoGreenDim',   '#1a3a1a', '197.92 ' + _MANO_L,     0));
+            svg.appendChild(mkArc('manoYellowDim',  '#3a3000', '65.97 '  + _MANO_L,     -_MANO_GREEN));
+            svg.appendChild(mkArc('manoRedDim',     '#3a0a0a', '65.98 '  + _MANO_L,     -_MANO_YELLOW));
+            svg.appendChild(mkArc('manoGreenProg',  '#3fb950', '0 '      + _MANO_L,     0));
+            svg.appendChild(mkArc('manoYellowProg', '#d29922', '0 '      + _MANO_L,     -_MANO_GREEN));
+            svg.appendChild(mkArc('manoRedProg',    '#f85149', '0 '      + _MANO_L,     -_MANO_YELLOW));
+
+            // Tick-mark segmentation mask
+            var segGap    = 3;
+            var segPeriod = _MANO_L / 10;
+            var segInner  = (segPeriod - segGap).toFixed(3);
+            var segFirst  = (segPeriod - segGap / 2).toFixed(3);
+            var segDash   = '0 ' + segFirst;
+            for (var si = 0; si < 8; si++) segDash += ' ' + segGap + ' ' + segInner;
+            segDash += ' ' + segGap + ' ' + segFirst;
+            var seg = document.createElementNS(NS, 'path');
+            seg.setAttribute('d', _MANO_ARC);
+            seg.setAttribute('fill', 'none');
+            seg.setAttribute('stroke', cfg.valueBg);
+            seg.setAttribute('stroke-width', '16');
+            seg.setAttribute('stroke-linecap', 'butt');
+            seg.setAttribute('class', 'manoSeg');
+            seg.setAttribute('stroke-dasharray', segDash);
+            svg.appendChild(seg);
+
+            // Needle
+            var needle = document.createElementNS(NS, 'line');
+            needle.setAttribute('class', 'manoNeedle');
+            needle.setAttribute('x1', String(_MANO_CX));
+            needle.setAttribute('y1', String(_MANO_CY));
+            needle.setAttribute('x2', String(_MANO_CX));
+            needle.setAttribute('y2', String(_MANO_CY));
+            needle.setAttribute('stroke', cfg.valueColor);
+            needle.setAttribute('stroke-width', '2.5');
+            needle.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(needle);
+
+            // Hub
+            var hub = document.createElementNS(NS, 'circle');
+            hub.setAttribute('class', 'manoHub');
+            hub.setAttribute('cx', String(_MANO_CX));
+            hub.setAttribute('cy', String(_MANO_CY));
+            hub.setAttribute('r', '6');
+            hub.setAttribute('fill', cfg.valueColor);
+            hub.setAttribute('stroke', cfg.valueBg);
+            hub.setAttribute('stroke-width', '2');
+            svg.appendChild(hub);
+
+            // Value text
+            var valText = document.createElementNS(NS, 'text');
+            valText.setAttribute('class', 'manoValueText');
+            valText.setAttribute('x', String(_MANO_CX));
+            valText.setAttribute('y', String(_MANO_CY + 30));
+            valText.setAttribute('text-anchor', 'middle');
+            valText.setAttribute('dominant-baseline', 'middle');
+            valText.setAttribute('fill', cfg.valueColor);
+            valText.setAttribute('font-size', String(Math.max(8, Math.round(cfg.valueSize * 0.4))));
+            valText.setAttribute('font-weight', 'bold');
+            valText.setAttribute('font-family', _getFontFamily(cfg.valueFont));
+            valText.textContent = _applyFormat(0, cfg.format);
+            svg.appendChild(valText);
+
+            // Min / max labels
+            function mkLbl(cls, x, y, anchor, content) {
+                var t = document.createElementNS(NS, 'text');
+                t.setAttribute('class', cls);
+                t.setAttribute('x', String(x));
+                t.setAttribute('y', String(y));
+                t.setAttribute('text-anchor', anchor);
+                t.setAttribute('dominant-baseline', 'middle');
+                t.setAttribute('fill', '#6e7681');
+                t.setAttribute('font-size', '9');
+                t.textContent = content;
+                return t;
+            }
+            svg.appendChild(mkLbl('manoMinLabel', 38,  172, 'middle', cfg.rangeMin !== null ? cfg.rangeMin : 0));
+            svg.appendChild(mkLbl('manoMaxLabel', 162, 172, 'middle', cfg.rangeMax !== null ? cfg.rangeMax : 100));
+
+            el.appendChild(svg);
+            _updateManoSvg(el, 0);
+        },
+        applyEdit: function (el, cfg) {
+            var t = el.querySelector('.manoValueText');
+            if (t) {
+                t.setAttribute('fill', cfg.valueColor);
+                t.setAttribute('font-family', _getFontFamily(cfg.valueFont));
+                t.setAttribute('font-size', String(Math.max(8, Math.round(cfg.valueSize * 0.4))));
+            }
+            var svg = el.querySelector('.manoSvg');
+            if (svg) svg.style.backgroundColor = cfg.valueBg;
+            var seg = el.querySelector('.manoSeg');
+            if (seg) seg.setAttribute('stroke', cfg.valueBg);
+            var needle = el.querySelector('.manoNeedle');
+            if (needle) needle.setAttribute('stroke', cfg.valueColor);
+            var hub = el.querySelector('.manoHub');
+            if (hub) { hub.setAttribute('fill', cfg.valueColor); hub.setAttribute('stroke', cfg.valueBg); }
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
     }
