@@ -802,7 +802,8 @@ input[type=number]::-webkit-inner-spin-button {
 
 .pmAddBtn { width: 120px !important; }
 
-#parametersModal footer {
+#parametersModal footer,
+#settings footer {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -841,6 +842,15 @@ input[type=number]::-webkit-inner-spin-button {
 .il-pname  { color: #c9d1d9; }
 .il-format { font-family: monospace; color: var(--sidebar-accent); text-align: center; }
 .il-del    { text-align: center; }
+
+tr.pm-dirty { background: rgba(56, 189, 248, 0.06); }
+tr.pm-dirty td:first-child::before {
+    content: '●';
+    color: var(--sidebar-accent);
+    font-size: 8px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
 
 .il-delBtn {
     background: transparent;
