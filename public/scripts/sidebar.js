@@ -384,6 +384,13 @@ window.saveNewUnit = function(btn) {
     });
 };
 
+function switchAlarmTab(tab) {
+    document.querySelector('#alarmTabBtnActive').classList.toggle('pmTabActive',  tab === 'active');
+    document.querySelector('#alarmTabBtnHistory').classList.toggle('pmTabActive', tab === 'history');
+    document.querySelector('#alarmPanelActive').style.display  = tab === 'active'  ? '' : 'none';
+    document.querySelector('#alarmPanelHistory').style.display = tab === 'history' ? '' : 'none';
+}
+
 function showAlarmSettings() {
     var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'))
         .filter(function(ind) { return ind.dataset.alarmEnabled === '1'; });
@@ -443,6 +450,7 @@ function showAlarmSettings() {
         }).join('');
     }
 
+    switchAlarmTab('active');
     document.querySelector('#alarmOverviewModal').showModal();
 }
 

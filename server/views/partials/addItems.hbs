@@ -309,10 +309,19 @@
 </dialog>
 
 <dialog class="settingsModal wideModal" id="alarmOverviewModal">
-    <h1>Сигнализация</h1>
-    <div id="alarmOverviewList"></div>
-    <div class="aol-section-label">История тревог</div>
-    <div id="alarmLogList" class="logBody"></div>
+    <nav class="pmTabBar">
+        <button class="pmTab pmTabActive" id="alarmTabBtnActive"  onclick="switchAlarmTab('active')">Активные тревоги</button>
+        <button class="pmTab"             id="alarmTabBtnHistory" onclick="switchAlarmTab('history')">История сигнализаций</button>
+    </nav>
+
+    <div id="alarmPanelActive" class="pmPanel">
+        <div id="alarmOverviewList" class="pmScrollable"></div>
+    </div>
+
+    <div id="alarmPanelHistory" class="pmPanel" style="display:none">
+        <div id="alarmLogList" class="pmScrollable"></div>
+    </div>
+
     <footer>
         <button class="modalButton cancelBtn" onclick="document.querySelector('#alarmOverviewModal').close()">Закрыть</button>
     </footer>

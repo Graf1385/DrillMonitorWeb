@@ -305,7 +305,8 @@
 
 .tickerInner span {
     display: inline-block;
-    padding-right: 80px;
+    padding: 0 20px;
+    box-sizing: border-box;
 }
 
 @keyframes tickerScroll {

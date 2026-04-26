@@ -771,6 +771,17 @@ function _updateTankSvg(el, numericVal) {
     }
 }
 
+function _tickerResize(el) {
+    var outer = el.querySelector('.tickerOuter');
+    if (!outer) return;
+    var w = outer.clientWidth;
+    if (w <= 0) return;
+    var s1 = el.querySelector('.tickerSpan1');
+    var s2 = el.querySelector('.tickerSpan2');
+    if (s1) s1.style.minWidth = w + 'px';
+    if (s2) s2.style.minWidth = w + 'px';
+}
+
 function setIndicatorValue(el, val) {
     if (_getIndicatorType(el) === 'tickerIndicator') {
         var txt = val !== undefined && val !== null ? String(val) : '';
@@ -779,6 +790,7 @@ function setIndicatorValue(el, val) {
         var s2 = el.querySelector('.tickerSpan2');
         if (s1) s1.textContent = txt;
         if (s2) s2.textContent = txt;
+        _tickerResize(el);
         return;
     }
 
@@ -1271,16 +1283,20 @@ var _indicatorTypes = {
 
             var s1 = document.createElement('span');
             s1.className   = 'tickerSpan1';
-            s1.textContent = '— нет данных —';
+            s1.textContent = '— здесь могла быть ваша реклама —';
 
             var s2 = document.createElement('span');
             s2.className   = 'tickerSpan2';
-            s2.textContent = '— нет данных —';
+            s2.textContent = '— здесь могла быть ваша реклама —';
 
             inner.appendChild(s1);
             inner.appendChild(s2);
             outer.appendChild(inner);
             el.appendChild(outer);
+            setTimeout(function () { _tickerResize(el); }, 0);
+            if (window.ResizeObserver) {
+                new ResizeObserver(function () { _tickerResize(el); }).observe(outer);
+            }
         },
         applyEdit: function (el, cfg) {
             var outer = el.querySelector('.tickerOuter');
@@ -1295,6 +1311,7 @@ var _indicatorTypes = {
                 inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
                 inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
             }
+            _tickerResize(el);
         }
     },
 
