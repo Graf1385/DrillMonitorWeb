@@ -6,6 +6,11 @@ var _editingEl     = null;
 var _fontMap     = {};
 var _fontsPromise = null;
 
+// Init combos for the 3 selects that are always in the DOM
+['#ni_headerFont', '#ni_paramId', '#ni_valueFont'].forEach(function (id) {
+    initCombo(_addModal.querySelector(id));
+});
+
 var _GAUGE_R   = 78;
 var _GAUGE_L   = 245.04;   // Math.PI * 78
 var _GAUGE_G   = 147.02;   // 0.6 * L  — end of green zone
@@ -164,6 +169,42 @@ function _loadFonts() {
     });
     return _fontsPromise;
 }
+
+var _availableUnits = [];
+
+function _loadUnits() {
+    return $.getJSON('/api/units').then(function (units) {
+        _availableUnits = units;
+    });
+}
+
+window.openUnitsDropdown = function(input) {
+    var dropdown = _addModal.querySelector('#ni_unitsDropdown');
+    if (!dropdown) return;
+    var q = input.value.toLowerCase();
+    var filtered = _availableUnits.filter(function (u) {
+        return q === '' || u.symbol.toLowerCase().indexOf(q) !== -1 || u.name.toLowerCase().indexOf(q) !== -1;
+    });
+    if (filtered.length === 0) { dropdown.classList.remove('open'); return; }
+    dropdown.innerHTML = filtered.map(function (u) {
+        var sym = u.symbol.replace(/'/g, '\\\'');
+        return '<div class="unitComboOption" onmousedown="selectUnit(\'' + sym + '\')">' +
+               '<b>' + u.symbol + '</b> — ' + u.name + '</div>';
+    }).join('');
+    dropdown.classList.add('open');
+};
+
+window.selectUnit = function(symbol) {
+    _addModal.querySelector('#ni_units').value = symbol;
+    _addModal.querySelector('#ni_unitsDropdown').classList.remove('open');
+};
+
+window.closeUnitsDropdown = function() {
+    setTimeout(function () {
+        var dropdown = _addModal.querySelector('#ni_unitsDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+    }, 150);
+};
 
 // ── Context menu ──────────────────────────────────────────────────────────────
 
@@ -407,7 +448,7 @@ function showNewItems() {
     _addModal.querySelector('#itemTypeList').style.display = '';
     _addModal.querySelector('#ni_settingsBody').style.display = 'none';
     _resetModalDefaults();
-    $.when(_loadParameters(), _loadFonts()).then(function () {
+    $.when(_loadParameters(), _loadFonts(), _loadUnits()).then(function () {
         _applyTypeToParamSelect(_activeType);
         _addModal.showModal();
     });
@@ -422,7 +463,7 @@ function _openEditModal(indicator) {
 
     var indType = _getIndicatorType(indicator);
     var d = indicator.dataset;
-    $.when(_loadParameters(d.paramId || ''), _loadFonts()).then(function () {
+    $.when(_loadParameters(d.paramId || ''), _loadFonts(), _loadUnits()).then(function () {
         _applyTypeToParamSelect(indType);
         _addModal.showModal();
     });

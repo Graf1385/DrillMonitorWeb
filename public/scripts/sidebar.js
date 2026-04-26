@@ -150,6 +150,7 @@ function _renderParametersTable(params) {
         '<colgroup><col style="width:50px"><col><col style="width:110px"><col style="width:140px"><col style="width:90px"></colgroup>' +
         '<thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Ед. изм.</th><th></th></tr></thead>' +
         '<tbody id="parametersTableBody">' + rows.join('') + '</tbody></table>';
+    initCombos(document.querySelector('#parametersTableBody'));
 }
 
 window.updateParam = function(id) {
@@ -196,6 +197,7 @@ window.addParameterRow = function() {
         '<td class="il-input"><select class="settingsSelect pm-newUnit">' + _unitsOptions(null) + '</select></td>' +
         '<td class="il-del"><button class="il-delBtn" onclick="saveNewParam(this)">Сохранить</button></td>';
     tbody.appendChild(tr);
+    initCombos(tr);
     tr.querySelector('.pm-newId').focus();
 };
 

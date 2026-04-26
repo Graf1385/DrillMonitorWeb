@@ -217,6 +217,8 @@ function deleteProfileConfirm() {
 // ── Main settings modal ───────────────────────────────────────────────────────
 
 function showWorkSpaceSettings() {
+    initCombo(_modal.querySelector('#wsProfile'));
+    initCombo(_modal.querySelector('#ws_alarmSound'));
     _loadProfiles().then(function () { _modal.showModal(); });
 }
 

@@ -523,6 +523,131 @@ input[type=number]::-webkit-inner-spin-button {
     background-color: var(--sidebar-accent);
 }
 
+/* ── Universal CustomCombo (cc-*) + unitCombo — единый стиль ────────────────── */
+
+.unitCombo {
+    position: relative;
+    width: 100%;
+}
+
+.unitCombo .settingsInput {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.cc-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.cc-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 10px;
+    width: 100%;
+    height: 100%;
+    min-height: 30px;
+    background-color: var(--sidebar-btn-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    color: #c9d1d9;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cc-display:hover,
+.cc-wrap.open .cc-display {
+    border-color: var(--sidebar-accent);
+    box-shadow: 0 0 0 1px var(--sidebar-accent);
+}
+
+.cc-val {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.ccArrow {
+    color: var(--sidebar-accent);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.cc-wrap.open .ccArrow {
+    transform: rotate(180deg);
+}
+
+/* Единый стиль выпадающего списка для cc-drop и unitComboDropdown */
+.cc-drop,
+.unitComboDropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background-color: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-accent);
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-accent) var(--sidebar-btn-bg);
+}
+
+.cc-drop::-webkit-scrollbar,
+.unitComboDropdown::-webkit-scrollbar { width: 6px; }
+.cc-drop::-webkit-scrollbar-track,
+.unitComboDropdown::-webkit-scrollbar-track { background: var(--sidebar-btn-bg); border-radius: 3px; }
+.cc-drop::-webkit-scrollbar-thumb,
+.unitComboDropdown::-webkit-scrollbar-thumb { background-color: var(--sidebar-border); border-radius: 3px; }
+.cc-drop::-webkit-scrollbar-thumb:hover,
+.unitComboDropdown::-webkit-scrollbar-thumb:hover { background-color: var(--sidebar-accent); }
+
+.cc-drop.open,
+.unitComboDropdown.open {
+    display: block;
+}
+
+/* Единый стиль опций */
+.cc-opt,
+.unitComboOption {
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #8b949e;
+    border-bottom: 1px solid var(--sidebar-border);
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.cc-opt:last-child,
+.unitComboOption:last-child {
+    border-bottom: none;
+}
+
+.cc-opt:hover,
+.cc-active,
+.unitComboOption:hover {
+    background-color: var(--sidebar-btn-hover);
+    color: var(--sidebar-accent);
+}
+
+.unitComboOption b {
+    color: #c9d1d9;
+    font-weight: 600;
+}
+
 .sectionLabel {
     padding: 6px 8px 2px !important;
     font-size: 11px;
