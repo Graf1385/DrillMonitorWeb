@@ -136,11 +136,59 @@ router.post('/api/parameters/import', (req, res) => {
     }
 });
 
+router.post('/api/units', (req, res) => {
+    try {
+        const { name, symbol } = req.body;
+        if (!name || !symbol) return res.status(400).json({ error: 'name и symbol обязательны' });
+        const result = db.createUnit(name.trim(), symbol.trim());
+        res.status(201).json({ id: result.lastInsertRowid });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/api/units/import', (req, res) => {
+    try {
+        const units = req.body.units;
+        if (!Array.isArray(units)) return res.status(400).json({ error: 'units must be an array' });
+        db.importUnits(units);
+        res.status(200).json({ ok: true, count: units.length });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/api/units/:id', (req, res) => {
+    try {
+        const { name, symbol } = req.body;
+        if (!name || !symbol) return res.status(400).json({ error: 'name и symbol обязательны' });
+        const result = db.updateUnit(parseInt(req.params.id), name.trim(), symbol.trim());
+        if (result.changes === 0) return res.status(404).json({ error: 'Единица не найдена' });
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/api/units/:id', (req, res) => {
+    try {
+        const result = db.deleteUnit(parseInt(req.params.id));
+        if (result.changes === 0) return res.status(404).json({ error: 'Единица не найдена' });
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.post('/api/parameters', (req, res) => {
     try {
-        const { id, name, typeId } = req.body;
+        const { id, name, typeId, unitId } = req.body;
         if (id == null || !name) return res.status(400).json({ error: 'id и name обязательны' });
-        db.createParameter(parseInt(id), name.trim(), typeId != null ? parseInt(typeId) : null);
+        db.createParameter(parseInt(id), name.trim(), typeId != null ? parseInt(typeId) : null, unitId ? parseInt(unitId) : null);
         res.status(201).json({ ok: true });
     } catch (error) {
         console.error(error);
@@ -150,12 +198,13 @@ router.post('/api/parameters', (req, res) => {
 
 router.put('/api/parameters/:id', (req, res) => {
     try {
-        const { name, typeId } = req.body;
+        const { name, typeId, unitId } = req.body;
         if (!name) return res.status(400).json({ error: 'name обязателен' });
         const result = db.updateParameter(
             parseInt(req.params.id),
             name.trim(),
-            typeId != null ? parseInt(typeId) : null
+            typeId != null ? parseInt(typeId) : null,
+            unitId ? parseInt(unitId) : null
         );
         if (result.changes === 0) return res.status(404).json({ error: 'Параметр не найден' });
         res.status(200).json({ ok: true });
@@ -169,6 +218,18 @@ router.delete('/api/parameters/:id', (req, res) => {
     try {
         const result = db.deleteParameter(parseInt(req.params.id));
         if (result.changes === 0) return res.status(404).json({ error: 'Параметр не найден' });
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/api/logs', (req, res) => {
+    try {
+        const { message } = req.body;
+        if (!message) return res.status(400).json({ error: 'message обязателен' });
+        logger.log(String(message));
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);

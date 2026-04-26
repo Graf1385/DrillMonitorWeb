@@ -61,6 +61,30 @@ const _seedDataTypes = [
 const _insertDataType = db.prepare('INSERT INTO data_types (id, name, default_format) VALUES (?, ?, ?)');
 for (const [id, name, fmt] of _seedDataTypes) _insertDataType.run(id, name, fmt);
 
+// ── Units ─────────────────────────────────────────────────────────────────────
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS units (
+        id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        name   TEXT NOT NULL,
+        symbol TEXT NOT NULL UNIQUE
+    )
+`);
+
+const _seedUnits = [
+    ['Тонна',                 'т'],
+    ['Мегапаскаль',           'МПа'],
+    ['Литр в секунду',        'л/с'],
+    ['Оборотов в минуту',     'об/мин'],
+    ['Метр в час',            'м/ч'],
+    ['Метр',                  'м'],
+    ['Градус Цельсия',        '°C'],
+    ['Килограмм на кубометр', 'кг/м³'],
+    ['Килоньютон-метр',       'кН·м'],
+];
+const _insertUnit = db.prepare('INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)');
+for (const [name, symbol] of _seedUnits) _insertUnit.run(name, symbol);
+
 // ── Parameters ────────────────────────────────────────────────────────────────
 
 db.exec(`
@@ -117,6 +141,8 @@ for (const [id, name, typeName] of _seedParams) {
     if (dt) _updateParam.run(dt.id, id);
 }
 
+try { db.exec('ALTER TABLE parameters ADD COLUMN unit_id INTEGER REFERENCES units(id) ON DELETE SET NULL'); } catch {}
+
 // ── Indicators ────────────────────────────────────────────────────────────────
 
 db.exec(`
@@ -168,6 +194,17 @@ db.exec(`
 ].forEach(col => {
     try { db.exec('ALTER TABLE indicators ADD COLUMN ' + col); } catch {}
 });
+
+[
+    "units            TEXT    NOT NULL DEFAULT ''",
+    'zone_colors      INTEGER NOT NULL DEFAULT 0',
+    'ticker_speed     REAL    NOT NULL DEFAULT 12',
+    'value_bg_opacity REAL    NOT NULL DEFAULT 0'
+].forEach(col => {
+    try { db.exec('ALTER TABLE indicators ADD COLUMN ' + col); } catch {}
+});
+
+try { db.exec("ALTER TABLE parameters ADD COLUMN units TEXT NOT NULL DEFAULT ''"); } catch {}
 
 // Migration: replace decimals column with format (recreate table if needed)
 const _indCols = db.prepare('PRAGMA table_info(indicators)').all().map(c => c.name);
@@ -367,42 +404,74 @@ module.exports = {
         ).run(id);
     },
 
+    // ── Units ────────────────────────────────────────────────────────────────
+
+    getUnits() {
+        return db.prepare('SELECT id, name, symbol FROM units ORDER BY name ASC').all();
+    },
+
+    createUnit(name, symbol) {
+        return db.prepare('INSERT INTO units (name, symbol) VALUES (?, ?)').run(name, symbol);
+    },
+
+    updateUnit(id, name, symbol) {
+        return db.prepare('UPDATE units SET name = ?, symbol = ? WHERE id = ?').run(name, symbol, id);
+    },
+
+    importUnits(units) {
+        const upsert = db.prepare(`
+            INSERT INTO units (name, symbol) VALUES (?, ?)
+            ON CONFLICT(symbol) DO UPDATE SET name = excluded.name
+        `);
+        const run = db.transaction(function(list) {
+            list.forEach(function(u) { upsert.run(String(u.name), String(u.symbol)); });
+        });
+        run(units);
+    },
+
+    deleteUnit(id) {
+        return db.prepare('DELETE FROM units WHERE id = ?').run(id);
+    },
+
     // ── Parameters ───────────────────────────────────────────────────────────
 
     getParameters() {
         return db.prepare(`
-            SELECT p.id, p.name, p.type_id, dt.name AS type_name, dt.default_format
+            SELECT p.id, p.name, p.unit_id, u.symbol AS units, u.name AS unit_name,
+                   p.type_id, dt.name AS type_name, dt.default_format
             FROM parameters p
             LEFT JOIN data_types dt ON p.type_id = dt.id
+            LEFT JOIN units u ON p.unit_id = u.id
             ORDER BY p.id ASC
         `).all();
     },
 
     getParameter(id) {
         return db.prepare(`
-            SELECT p.id, p.name, p.type_id, dt.name AS type_name
+            SELECT p.id, p.name, p.unit_id, u.symbol AS units, p.type_id, dt.name AS type_name
             FROM parameters p
             LEFT JOIN data_types dt ON p.type_id = dt.id
+            LEFT JOIN units u ON p.unit_id = u.id
             WHERE p.id = ?
         `).get(id);
     },
 
-    createParameter(id, name, typeId) {
+    createParameter(id, name, typeId, unitId) {
         return db.prepare(
-            'INSERT INTO parameters (id, name, type_id) VALUES (?, ?, ?)'
-        ).run(id, name, typeId);
+            'INSERT INTO parameters (id, name, type_id, unit_id) VALUES (?, ?, ?, ?)'
+        ).run(id, name, typeId, unitId || null);
     },
 
-    updateParameter(id, name, typeId) {
+    updateParameter(id, name, typeId, unitId) {
         return db.prepare(
-            'UPDATE parameters SET name = ?, type_id = ? WHERE id = ?'
-        ).run(name, typeId != null ? typeId : null, id);
+            'UPDATE parameters SET name = ?, type_id = ?, unit_id = ? WHERE id = ?'
+        ).run(name, typeId != null ? typeId : null, unitId || null, id);
     },
 
     importParameters(params) {
-        const upsert = db.prepare('INSERT OR REPLACE INTO parameters (id, name, type_id) VALUES (?, ?, ?)');
+        const upsert = db.prepare('INSERT OR REPLACE INTO parameters (id, name, type_id, unit_id) VALUES (?, ?, ?, ?)');
         db.transaction(() => {
-            for (const p of params) upsert.run(p.id, p.name, p.typeId != null ? p.typeId : null);
+            for (const p of params) upsert.run(p.id, p.name, p.typeId != null ? p.typeId : null, p.unitId || null);
         })();
     },
 
@@ -452,12 +521,14 @@ module.exports = {
                     (param_id, profile_id, type, pos_left, pos_top, height, width,
                      header_text, header_color, header_bg, header_font, header_size,
                      format, value_color, value_bg, value_font, value_size,
-                     range_min, range_max, alarm_enabled, alarm_min, alarm_max, alarm_color)
+                     range_min, range_max, alarm_enabled, alarm_min, alarm_max, alarm_color,
+                     units, zone_colors, ticker_speed, value_bg_opacity)
                 VALUES
                     (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
                      @header_text, @header_color, @header_bg, @header_font, @header_size,
                      @format, @value_color, @value_bg, @value_font, @value_size,
-                     @range_min, @range_max, @alarm_enabled, @alarm_min, @alarm_max, @alarm_color)
+                     @range_min, @range_max, @alarm_enabled, @alarm_min, @alarm_max, @alarm_color,
+                     @units, @zone_colors, @ticker_speed, @value_bg_opacity)
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();

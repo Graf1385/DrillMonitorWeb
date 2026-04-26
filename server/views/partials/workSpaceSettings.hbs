@@ -43,6 +43,9 @@
         </tr>
     </table>
     <footer>
+        <button class="modalButton" onclick="exportProfile()">Экспорт JSON</button>
+        <button class="modalButton" onclick="document.querySelector('#profileImportFile').click()">Импорт JSON</button>
+        <input type="file" id="profileImportFile" accept=".json" style="display:none" onchange="importProfile(this)">
         <button class="modalButton okBtn"     onclick="applyWorkSpaceSettings()">OK</button>
         <button class="modalButton cancelBtn" onclick="closeWorkSpaceSettings()">Отмена</button>
     </footer>

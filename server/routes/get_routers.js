@@ -37,6 +37,15 @@ router.get('/api/profiles/active', (req, res) => {
     }
 });
 
+router.get('/api/units', (req, res) => {
+    try {
+        res.status(200).json(db.getUnits());
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/api/parameters', (req, res) => {
     try {
         res.status(200).json(db.getParameters());

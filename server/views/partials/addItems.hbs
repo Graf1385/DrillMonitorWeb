@@ -181,6 +181,28 @@
             </td>
         </tr>
 
+        <tr><td colspan="2" class="sectionLabel">Дополнительно</td></tr>
+        <tr class="numericOnlyRow">
+            <td>Единицы измерения</td>
+            <td><input type="text" class="settingsInput" id="ni_units" placeholder="МПа, °C, об/мин…"></td>
+        </tr>
+        <tr class="zoneColorRow">
+            <td>Цвет значения по зонам</td>
+            <td><input type="checkbox" id="ni_zoneColors" class="settingsCheckbox"></td>
+        </tr>
+        <tr class="tickerOnlyRow">
+            <td>Скорость прокрутки (сек)</td>
+            <td><input type="number" class="settingsInput sizeInput" id="ni_tickerSpeed" value="12" min="2" max="120" step="1"></td>
+        </tr>
+        <tr>
+            <td>Прозрачность фона</td>
+            <td class="paramCell">
+                <input type="range" id="ni_valueBgOpacity" min="0" max="1" step="0.05" value="0"
+                    class="alarmVolumeSlider" oninput="document.querySelector('#ni_opacityVal').textContent=Math.round(this.value*100)+'%'">
+                <span id="ni_opacityVal" class="alarmVolumeNum">0%</span>
+            </td>
+        </tr>
+
         <tr class="numericOnlyRow"><td colspan="2" class="sectionLabel">Сигнализация</td></tr>
         <tr class="numericOnlyRow">
             <td>Включить сигнализацию</td>
@@ -249,14 +271,31 @@
 </dialog>
 
 <dialog class="settingsModal wideModal" id="parametersModal">
-    <h1>Список параметров</h1>
-    <div id="parametersBody"></div>
+    <nav class="pmTabBar">
+        <button class="pmTab pmTabActive" id="pmTabBtnParams" onclick="switchParamTab('params')">Параметры</button>
+        <button class="pmTab"             id="pmTabBtnUnits"  onclick="switchParamTab('units')">Единицы измерения</button>
+    </nav>
+
+    <div id="pmPanelParams" class="pmPanel">
+        <div id="parametersBody" class="pmScrollable"></div>
+    </div>
+
+    <div id="pmPanelUnits" class="pmPanel" style="display:none">
+        <div id="unitsBody" class="pmScrollable"></div>
+    </div>
+
     <footer>
-        <button class="modalButton okBtn" onclick="addParameterRow()">+ Добавить</button>
-        <button class="modalButton" onclick="exportParameters()">Экспорт JSON</button>
-        <button class="modalButton" onclick="document.querySelector('#paramImportFile').click()">Импорт JSON</button>
         <input type="file" id="paramImportFile" accept=".json" style="display:none" onchange="importParametersFile(this)">
-        <button class="modalButton cancelBtn" onclick="document.querySelector('#parametersModal').close()">Закрыть</button>
+        <input type="file" id="unitsImportFile" accept=".json" style="display:none" onchange="importUnitsFile(this)">
+        <div class="pmFooterRow">
+            <button class="modalButton okBtn" onclick="pmAddRow()">+ Добавить</button>
+            <button class="modalButton" onclick="pmExport()">Экспорт JSON</button>
+            <button class="modalButton" onclick="pmImport()">Импорт JSON</button>
+        </div>
+        <div class="pmFooterRow">
+            <button class="modalButton okBtn" onclick="document.querySelector('#parametersModal').close()">Сохранить</button>
+            <button class="modalButton cancelBtn" onclick="document.querySelector('#parametersModal').close()">Отмена</button>
+        </div>
     </footer>
 </dialog>
 

@@ -244,6 +244,7 @@ function applyWorkSpaceSettings() {
 
 function saveSettings() {
     if (!_activeProfileId) return;
+    if (window.stopAlarmSound) window.stopAlarmSound();
 
     var data = {
         background:   _settings.background,
@@ -274,6 +275,92 @@ function saveSettings() {
         }
     });
 }
+
+// ── Profile export / import ───────────────────────────────────────────────────
+
+window.exportProfile = function() {
+    if (!_activeProfileId) { showError('Нет активного профиля'); return; }
+    $.when(
+        $.getJSON('/api/profiles'),
+        $.getJSON('/api/profiles/' + _activeProfileId + '/indicators')
+    ).then(function(profilesResp, indicatorsResp) {
+        var profile = profilesResp[0].find(function(p) { return p.id === _activeProfileId; });
+        if (!profile) { showError('Профиль не найден'); return; }
+        var json = {
+            profile: {
+                name:        profile.name,
+                background:  profile.background,
+                cellSize:    profile.cell_size,
+                alarmVolume: profile.alarm_volume,
+                alarmDelay:  profile.alarm_delay
+            },
+            indicators: indicatorsResp[0]
+        };
+        var blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href     = url;
+        a.download = profile.name.replace(/[^\wа-яА-ЯёЁ\- ]/g, '_') + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+};
+
+window.importProfile = function(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = JSON.parse(e.target.result);
+            if (!data.profile || !Array.isArray(data.indicators)) throw new Error('Ожидаются поля profile и indicators');
+            var p = data.profile;
+            $.ajax({
+                url:         '/api/profiles',
+                type:        'POST',
+                contentType: 'application/x-www-form-urlencoded',
+                data:        { name: p.name, background: p.background || '#0d1117', cellSize: p.cellSize || 20 },
+                success: function(res) {
+                    var newId = res.id;
+                    $.ajax({
+                        url:         '/api/profiles/' + newId,
+                        type:        'PUT',
+                        contentType: 'application/x-www-form-urlencoded',
+                        data:        {
+                            background:  p.background  || '#0d1117',
+                            cellSize:    p.cellSize    || 20,
+                            alarmVolume: p.alarmVolume || 50,
+                            alarmDelay:  p.alarmDelay  || 2
+                        },
+                        success: function() {
+                            $.ajax({
+                                url:         '/api/profiles/' + newId + '/indicators',
+                                type:        'POST',
+                                contentType: 'application/json',
+                                data:        JSON.stringify({ indicators: data.indicators }),
+                                success: function() {
+                                    _activeProfileId = newId;
+                                    _loadProfiles().then(function() {
+                                        var select = _modal.querySelector('#wsProfile');
+                                        select.value = newId;
+                                        applyProfile(select);
+                                    });
+                                },
+                                error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка импорта индикаторов'); }
+                            });
+                        },
+                        error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка обновления профиля'); }
+                    });
+                },
+                error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка создания профиля'); }
+            });
+        } catch(err) {
+            showError('Неверный формат JSON: ' + err.message);
+        }
+        input.value = '';
+    };
+    reader.readAsText(file);
+};
 
 // ── Alarm sound test ─────────────────────────────────────────────────────────
 

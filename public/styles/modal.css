@@ -490,6 +490,39 @@ input[type=number]::-webkit-inner-spin-button {
     width: 460px;
 }
 
+#newItemModal[open] {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+#ni_settingsBody {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-accent) var(--sidebar-btn-bg);
+}
+
+#ni_settingsBody::-webkit-scrollbar {
+    width: 6px;
+}
+
+#ni_settingsBody::-webkit-scrollbar-track {
+    background: var(--sidebar-btn-bg);
+    border-radius: 3px;
+}
+
+#ni_settingsBody::-webkit-scrollbar-thumb {
+    background-color: var(--sidebar-border);
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+#ni_settingsBody::-webkit-scrollbar-thumb:hover {
+    background-color: var(--sidebar-accent);
+}
+
 .sectionLabel {
     padding: 6px 8px 2px !important;
     font-size: 11px;
@@ -597,7 +630,48 @@ input[type=number]::-webkit-inner-spin-button {
     height: 600px;
 }
 
-#parametersBody {
+/* ── Parameter modal tabs ────────────────────────────────────────────────────── */
+
+.pmTabBar {
+    display: flex;
+    gap: 0;
+    padding: 0 8px;
+    background: var(--sidebar-btn-bg);
+    border-bottom: 1px solid var(--sidebar-border);
+    flex-shrink: 0;
+}
+
+.pmTab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+}
+
+.pmTab:hover { color: #c9d1d9; }
+
+.pmTab.pmTabActive {
+    color: var(--sidebar-accent);
+    border-bottom-color: var(--sidebar-accent);
+}
+
+.pmPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.pmScrollable {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
@@ -605,13 +679,41 @@ input[type=number]::-webkit-inner-spin-button {
     scrollbar-color: var(--sidebar-accent) transparent;
 }
 
-#parametersBody::-webkit-scrollbar       { width: 5px; }
-#parametersBody::-webkit-scrollbar-thumb { background: var(--sidebar-accent); border-radius: 4px; }
+.pmScrollable::-webkit-scrollbar       { width: 5px; }
+.pmScrollable::-webkit-scrollbar-thumb { background: var(--sidebar-accent); border-radius: 4px; }
 
-#parametersBody table {
+.pmScrollable table {
     table-layout: fixed;
     width: 100%;
     margin: 0;
+}
+
+.pmUnitsAdd {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--sidebar-border);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pmAddBtn { width: 120px !important; }
+
+#parametersModal footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 8px;
+}
+
+.pmFooterRow {
+    display: flex;
+    justify-content: center;
+}
+
+#parametersModal footer .okBtn,
+#parametersModal footer .cancelBtn {
+    grid-column: auto;
 }
 
 /* ── Indicator List Modal ────────────────────────────────────────────────────── */

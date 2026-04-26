@@ -81,61 +81,89 @@ window.deleteIndicatorFromList = function(index) {
 };
 
 var _paramTypes = [];
+var _paramUnits = [];
 
 function showParameters() {
+    switchParamTab('params');
     $.when(
         $.getJSON('/api/parameters'),
-        $.getJSON('/api/data-types')
-    ).then(function(paramsResp, typesResp) {
+        $.getJSON('/api/data-types'),
+        $.getJSON('/api/units')
+    ).then(function(paramsResp, typesResp, unitsResp) {
         _paramTypes = typesResp[0];
+        _paramUnits = unitsResp[0];
         _renderParametersTable(paramsResp[0]);
+        _renderUnitsTable(unitsResp[0]);
         document.querySelector('#parametersModal').showModal();
     });
 }
 
+window.switchParamTab = function(tab) {
+    var isParams = tab === 'params';
+    document.querySelector('#pmTabBtnParams').classList.toggle('pmTabActive', isParams);
+    document.querySelector('#pmTabBtnUnits').classList.toggle('pmTabActive', !isParams);
+    document.querySelector('#pmPanelParams').style.display = isParams ? '' : 'none';
+    document.querySelector('#pmPanelUnits').style.display  = isParams ? 'none' : '';
+};
+
+function _isUnitsTabActive() {
+    return document.querySelector('#pmTabBtnUnits').classList.contains('pmTabActive');
+}
+
+window.pmAddRow = function() {
+    if (_isUnitsTabActive()) addUnitRow(); else addParameterRow();
+};
+
+window.pmExport = function() {
+    if (_isUnitsTabActive()) exportUnits(); else exportParameters();
+};
+
+window.pmImport = function() {
+    if (_isUnitsTabActive()) document.querySelector('#unitsImportFile').click();
+    else document.querySelector('#paramImportFile').click();
+};
+
+function _unitsOptions(selectedId) {
+    return '<option value="">— нет —</option>' +
+        _paramUnits.map(function(u) {
+            return '<option value="' + u.id + '"' + (selectedId === u.id ? ' selected' : '') + '>' +
+                u.symbol + ' — ' + u.name + '</option>';
+        }).join('');
+}
+
 function _renderParametersTable(params) {
     var rows = params.map(function(p) {
-        var selOpts = _paramTypes.map(function(t) {
+        var typeOpts = _paramTypes.map(function(t) {
             return '<option value="' + t.id + '"' + (p.type_id === t.id ? ' selected' : '') + '>' + t.name + '</option>';
         }).join('');
         return '<tr data-param-id="' + p.id + '">' +
             '<td class="il-id">' + p.id + '</td>' +
-            '<td class="il-input"><input class="settingsInput pm-nameInput" value="' + p.name.replace(/"/g, '&quot;') + '" onchange="updateParamName(' + p.id + ', this)"></td>' +
-            '<td class="il-input"><select class="settingsSelect pm-typeSelect" onchange="updateParamType(' + p.id + ', this)">' + selOpts + '</select></td>' +
+            '<td class="il-input"><input class="settingsInput pm-nameInput" value="' + p.name.replace(/"/g, '&quot;') + '" onchange="updateParam(' + p.id + ')"></td>' +
+            '<td class="il-input"><select class="settingsSelect pm-typeSelect" onchange="updateParam(' + p.id + ')">' + typeOpts + '</select></td>' +
+            '<td class="il-input"><select class="settingsSelect pm-unitSelect" onchange="updateParam(' + p.id + ')">' + _unitsOptions(p.unit_id) + '</select></td>' +
             '<td class="il-del"><button class="il-delBtn" onclick="deleteParam(' + p.id + ')">Удалить</button></td>' +
         '</tr>';
     });
 
     document.querySelector('#parametersBody').innerHTML =
         '<table class="settingsTable il-table">' +
-        '<colgroup><col style="width:50px"><col><col style="width:110px"><col style="width:90px"></colgroup>' +
-        '<thead><tr><th>ID</th><th>Название</th><th>Тип</th><th></th></tr></thead>' +
+        '<colgroup><col style="width:50px"><col><col style="width:110px"><col style="width:140px"><col style="width:90px"></colgroup>' +
+        '<thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Ед. изм.</th><th></th></tr></thead>' +
         '<tbody id="parametersTableBody">' + rows.join('') + '</tbody></table>';
 }
 
-window.updateParamName = function(id, input) {
-    var name = input.value.trim();
+window.updateParam = function(id) {
+    var row = document.querySelector('[data-param-id="' + id + '"]');
+    if (!row) return;
+    var name   = row.querySelector('.pm-nameInput').value.trim();
     if (!name) { showError('Название не может быть пустым'); return; }
-    var row = document.querySelector('[data-param-id="' + id + '"]');
-    var typeId = row ? parseInt(row.querySelector('.pm-typeSelect').value) : null;
+    var typeId = parseInt(row.querySelector('.pm-typeSelect').value);
+    var unitId = row.querySelector('.pm-unitSelect').value || null;
     $.ajax({
         url: '/api/parameters/' + id,
         method: 'PUT',
         contentType: 'application/json',
-        data: JSON.stringify({ name: name, typeId: typeId }),
-        error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка сохранения'); }
-    });
-};
-
-window.updateParamType = function(id, select) {
-    var row = document.querySelector('[data-param-id="' + id + '"]');
-    var name = row ? row.querySelector('.pm-nameInput').value.trim() : '';
-    if (!name) return;
-    $.ajax({
-        url: '/api/parameters/' + id,
-        method: 'PUT',
-        contentType: 'application/json',
-        data: JSON.stringify({ name: name, typeId: parseInt(select.value) }),
+        data: JSON.stringify({ name: name, typeId: typeId, unitId: unitId }),
         error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка сохранения'); }
     });
 };
@@ -165,6 +193,7 @@ window.addParameterRow = function() {
         '<td class="il-input"><input type="number" class="settingsInput pm-newId" placeholder="ID" min="0" style="width:54px"></td>' +
         '<td class="il-input"><input class="settingsInput pm-newName" placeholder="Название"></td>' +
         '<td class="il-input"><select class="settingsSelect pm-newType">' + typeOptions + '</select></td>' +
+        '<td class="il-input"><select class="settingsSelect pm-newUnit">' + _unitsOptions(null) + '</select></td>' +
         '<td class="il-del"><button class="il-delBtn" onclick="saveNewParam(this)">Сохранить</button></td>';
     tbody.appendChild(tr);
     tr.querySelector('.pm-newId').focus();
@@ -173,7 +202,7 @@ window.addParameterRow = function() {
 window.exportParameters = function() {
     $.getJSON('/api/parameters', function(params) {
         var data = params.map(function(p) {
-            return { id: p.id, name: p.name, typeId: p.type_id };
+            return { id: p.id, name: p.name, typeId: p.type_id, unitId: p.unit_id || null, units: p.units || '' };
         });
         var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         var url = URL.createObjectURL(blob);
@@ -211,21 +240,144 @@ window.importParametersFile = function(input) {
     reader.readAsText(file);
 };
 
+window.exportUnits = function() {
+    $.getJSON('/api/units', function(units) {
+        var blob = new Blob([JSON.stringify(units, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'units.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+};
+
+window.importUnitsFile = function(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = JSON.parse(e.target.result);
+            if (!Array.isArray(data)) throw new Error('Ожидается массив');
+            $.ajax({
+                url: '/api/units/import',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ units: data }),
+                success: function() { _reloadUnits(); },
+                error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка импорта'); }
+            });
+        } catch (err) {
+            showError('Неверный формат JSON: ' + err.message);
+        }
+        input.value = '';
+    };
+    reader.readAsText(file);
+};
+
 window.saveNewParam = function(btn) {
-    var row = btn.closest('tr');
-    var idVal = row.querySelector('.pm-newId').value;
-    var name  = row.querySelector('.pm-newName').value.trim();
+    var row    = btn.closest('tr');
+    var idVal  = row.querySelector('.pm-newId').value;
+    var name   = row.querySelector('.pm-newName').value.trim();
     var typeId = parseInt(row.querySelector('.pm-newType').value);
+    var unitId = row.querySelector('.pm-newUnit').value || null;
     if (idVal === '' || isNaN(parseInt(idVal))) { showError('Введите ID параметра'); return; }
     if (!name) { showError('Введите название параметра'); return; }
     $.ajax({
         url: '/api/parameters',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ id: parseInt(idVal), name: name, typeId: typeId }),
+        data: JSON.stringify({ id: parseInt(idVal), name: name, typeId: typeId, unitId: unitId }),
         success: function() {
             $.getJSON('/api/parameters', function(params) { _renderParametersTable(params); });
         },
+        error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка добавления'); }
+    });
+};
+
+// ── Units management ──────────────────────────────────────────────────────────
+
+window.showUnitsModal = function() {
+    switchParamTab('units');
+};
+
+function _renderUnitsTable(units) {
+    var rows = units.map(function(u) {
+        return '<tr data-unit-id="' + u.id + '">' +
+            '<td class="il-id">' + u.id + '</td>' +
+            '<td class="il-input"><input class="settingsInput um-nameInput" value="' + u.name.replace(/"/g, '&quot;') + '" onchange="updateUnit(' + u.id + ')"></td>' +
+            '<td class="il-input"><input class="settingsInput um-symbolInput" value="' + u.symbol.replace(/"/g, '&quot;') + '" onchange="updateUnit(' + u.id + ')" style="width:90px"></td>' +
+            '<td class="il-del"><button class="il-delBtn" onclick="deleteUnit(' + u.id + ')">Удалить</button></td>' +
+        '</tr>';
+    }).join('');
+    document.querySelector('#unitsBody').innerHTML =
+        '<table class="settingsTable il-table">' +
+        '<colgroup><col style="width:40px"><col><col style="width:110px"><col style="width:90px"></colgroup>' +
+        '<thead><tr><th>ID</th><th>Название</th><th>Символ</th><th></th></tr></thead>' +
+        '<tbody id="unitsTableBody">' + rows + '</tbody></table>';
+}
+
+window.updateUnit = function(id) {
+    var row = document.querySelector('[data-unit-id="' + id + '"]');
+    if (!row) return;
+    var name   = row.querySelector('.um-nameInput').value.trim();
+    var symbol = row.querySelector('.um-symbolInput').value.trim();
+    if (!name)   { showError('Название не может быть пустым'); return; }
+    if (!symbol) { showError('Символ не может быть пустым'); return; }
+    $.ajax({
+        url: '/api/units/' + id,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify({ name: name, symbol: symbol }),
+        error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка сохранения'); }
+    });
+};
+
+function addUnitRow() {
+    var tbody = document.querySelector('#unitsTableBody');
+    if (!tbody) return;
+    var tr = document.createElement('tr');
+    tr.className = 'pm-newRow';
+    tr.innerHTML =
+        '<td class="il-id">—</td>' +
+        '<td class="il-input"><input class="settingsInput um-newName" placeholder="Название"></td>' +
+        '<td class="il-input"><input class="settingsInput um-newSymbol" placeholder="Символ" style="width:90px"></td>' +
+        '<td class="il-del"><button class="il-delBtn" onclick="saveNewUnit(this)">Сохранить</button></td>';
+    tbody.appendChild(tr);
+    tr.querySelector('.um-newName').focus();
+}
+
+function _reloadUnits(cb) {
+    $.getJSON('/api/units', function(units) {
+        _paramUnits = units;
+        _renderUnitsTable(units);
+        if (cb) cb();
+    });
+}
+
+window.deleteUnit = function(id) {
+    if (!confirm('Удалить единицу #' + id + '?')) return;
+    $.ajax({
+        url: '/api/units/' + id,
+        method: 'DELETE',
+        success: function() { _reloadUnits(); },
+        error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка удаления'); }
+    });
+};
+
+window.saveNewUnit = function(btn) {
+    var row    = btn.closest('tr');
+    var name   = row.querySelector('.um-newName').value.trim();
+    var symbol = row.querySelector('.um-newSymbol').value.trim();
+    if (!name)   { showError('Введите название'); return; }
+    if (!symbol) { showError('Введите символ'); return; }
+    $.ajax({
+        url: '/api/units',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ name: name, symbol: symbol }),
+        success: function() { _reloadUnits(); },
         error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка добавления'); }
     });
 };

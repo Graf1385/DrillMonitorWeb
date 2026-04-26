@@ -37,7 +37,8 @@ var _alarmLog           = [];
 var _alarmSoundTimeout  = null;
 var _alarmAudio         = null;
 
-window.getAlarmLog = function() { return _alarmLog; };
+window.getAlarmLog      = function() { return _alarmLog; };
+window.stopAlarmSound   = function() { _stopAlarmSound(); };
 
 function _hasUnackedAlarm() {
     return !!document.querySelector('#workSpace .alarm-active');
@@ -74,6 +75,15 @@ function _addAlarmLogEntry(el, val, event) {
     var color = el.dataset.alarmColor || '#ff0000';
     _alarmLog.unshift({ ts: new Date(), name: name, value: val, event: event, color: color });
     if (_alarmLog.length > 200) _alarmLog.length = 200;
+
+    var eventLabel = event === 'trigger' ? 'ТРЕВОГА' : (event === 'clear' ? 'СБРОС' : 'КВИТИРОВАНИЕ');
+    var valStr     = typeof val === 'number' ? val.toFixed(2) : String(val);
+    $.ajax({
+        url:         '/api/logs',
+        method:      'POST',
+        contentType: 'application/json',
+        data:        JSON.stringify({ message: '[Сигнализация] ' + eventLabel + ': ' + name + ' = ' + valStr })
+    });
 }
 
 function _checkAlarm(el, numericVal) {
@@ -348,6 +358,7 @@ function _loadParameters(selectedId) {
             opt.textContent  = p.name;
             opt.dataset.type          = p.type_name;
             opt.dataset.defaultFormat = p.default_format || '';
+            opt.dataset.units         = p.units || '';
             select.appendChild(opt);
         });
         if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
@@ -360,6 +371,10 @@ function _applyTypeToParamSelect(type) {
     var typeDef     = _indicatorTypes[type] || _indicatorTypes.digitalIndicator;
     var select      = _addModal.querySelector('#ni_paramId');
     var numericRows = _addModal.querySelectorAll('.numericOnlyRow');
+    var zoneRows    = _addModal.querySelectorAll('.zoneColorRow');
+    var tickerRows  = _addModal.querySelectorAll('.tickerOnlyRow');
+
+    var zoneTypes   = { digitalIndicator: true, hProgressIndicator: true, vProgressIndicator: true };
 
     if (!typeDef.isNumeric) {
         if (typeDef.lockParam !== false) {
@@ -376,6 +391,13 @@ function _applyTypeToParamSelect(type) {
         select.disabled = false;
         numericRows.forEach(function (r) { r.style.display = ''; });
     }
+
+    zoneRows.forEach(function (r) {
+        r.style.display = zoneTypes[type] ? '' : 'none';
+    });
+    tickerRows.forEach(function (r) {
+        r.style.display = type === 'tickerIndicator' ? '' : 'none';
+    });
 }
 
 function showNewItems() {
@@ -423,6 +445,13 @@ function _openEditModal(indicator) {
     _addModal.querySelector('#ni_alarmMin').value       = d.alarmMin   || '';
     _addModal.querySelector('#ni_alarmMax').value       = d.alarmMax   || '';
     _addModal.querySelector('#ni_alarmColor').value     = d.alarmColor || '#ff0000';
+    _addModal.querySelector('#ni_units').value          = d.units || '';
+    _addModal.querySelector('#ni_zoneColors').checked   = d.zoneColors === '1';
+    _addModal.querySelector('#ni_tickerSpeed').value    = d.tickerSpeed || 12;
+    var opVal = parseFloat(d.valueBgOpacity);
+    if (isNaN(opVal)) opVal = 0;
+    _addModal.querySelector('#ni_valueBgOpacity').value = opVal;
+    _addModal.querySelector('#ni_opacityVal').textContent = Math.round(opVal * 100) + '%';
     _toggleValueFields(!!(d.paramId));
 }
 
@@ -433,6 +462,7 @@ function onParamChange(selectEl) {
     var opt = selectEl.options[selectEl.selectedIndex];
     _addModal.querySelector('#ni_headerText').value = opt.textContent;
     _addModal.querySelector('#ni_format').value     = opt.dataset.defaultFormat || '';
+    _addModal.querySelector('#ni_units').value      = opt.dataset.units || '';
 }
 
 function _toggleValueFields(enabled) {
@@ -479,6 +509,11 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_alarmMin').value       = '';
     _addModal.querySelector('#ni_alarmMax').value       = '';
     _addModal.querySelector('#ni_alarmColor').value     = '#ff0000';
+    _addModal.querySelector('#ni_units').value          = '';
+    _addModal.querySelector('#ni_zoneColors').checked   = false;
+    _addModal.querySelector('#ni_tickerSpeed').value    = 12;
+    _addModal.querySelector('#ni_valueBgOpacity').value = 0;
+    _addModal.querySelector('#ni_opacityVal').textContent = '0%';
     _toggleValueFields(false);
 }
 
@@ -519,7 +554,11 @@ function _readConfig() {
         alarmEnabled: _addModal.querySelector('#ni_alarmEnabled').checked,
         alarmMin:     nullable(_addModal.querySelector('#ni_alarmMin').value),
         alarmMax:     nullable(_addModal.querySelector('#ni_alarmMax').value),
-        alarmColor:   _addModal.querySelector('#ni_alarmColor').value
+        alarmColor:   _addModal.querySelector('#ni_alarmColor').value,
+        units:          _addModal.querySelector('#ni_units').value.trim(),
+        zoneColors:     _addModal.querySelector('#ni_zoneColors').checked,
+        tickerSpeed:    parseFloat(_addModal.querySelector('#ni_tickerSpeed').value) || 12,
+        valueBgOpacity: parseFloat(_addModal.querySelector('#ni_valueBgOpacity').value)
     };
 }
 
@@ -645,6 +684,33 @@ function _updateManoSvg(el, numericVal) {
     }
 }
 
+function _hexToRgba(hex, alpha) {
+    var h = (hex || '#000000').replace('#', '');
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var r = parseInt(h.slice(0,2), 16);
+    var g = parseInt(h.slice(2,4), 16);
+    var b = parseInt(h.slice(4,6), 16);
+    var raw = parseFloat(alpha);
+    var a = isNaN(raw) ? 1 : Math.max(0, Math.min(1, 1 - raw));
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+function _formatValue(el, numericVal) {
+    var str   = _applyFormat(numericVal, el.dataset.format || '');
+    var units = el.dataset.units || '';
+    return units ? str + ' ' + units : str;
+}
+
+function _getZoneColor(el, numericVal) {
+    if (el.dataset.zoneColors !== '1') return null;
+    var min = parseFloat(el.dataset.rangeMin); if (isNaN(min)) min = 0;
+    var max = parseFloat(el.dataset.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
+    var pct = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    if (pct < 0.6) return '#3fb950';
+    if (pct < 0.8) return '#d29922';
+    return '#f85149';
+}
+
 function _tankTextShadow(bg) {
     var c = bg || '#1a2233';
     return '-1px -1px 0 ' + c + ',1px -1px 0 ' + c + ',-1px 1px 0 ' + c + ',1px 1px 0 ' + c + ',0 0 6px ' + c;
@@ -683,28 +749,41 @@ function setIndicatorValue(el, val) {
     el._currentValue = Math.max(min, Math.min(max, isNaN(+val) ? min : +val));
 
     var type = _getIndicatorType(el);
+    var zc   = _getZoneColor(el, el._currentValue);
     if (type === 'digitalIndicator') {
         var v = el.querySelector('.indicatorValue');
-        if (v) v.textContent = _applyFormat(el._currentValue, d.format || '');
+        if (v) {
+            v.textContent = _formatValue(el, el._currentValue);
+            if (zc) { v.style.color = zc; v.style.textShadow = '0 0 10px ' + zc; }
+            else    { v.style.color = d.valueColor; v.style.textShadow = '0 0 10px ' + d.valueColor; }
+        }
     } else if (type === 'gaugeIndicator') {
         var gt = el.querySelector('.gaugeValueText');
-        if (gt) gt.textContent = _applyFormat(el._currentValue, d.format || '');
+        if (gt) gt.textContent = _formatValue(el, el._currentValue);
         _updateGaugeSvg(el, el._currentValue);
     } else if (type === 'tankIndicator') {
         var tt = el.querySelector('.tankValueText');
-        if (tt) tt.textContent = _applyFormat(el._currentValue, d.format || '');
+        if (tt) tt.textContent = _formatValue(el, el._currentValue);
         _updateTankSvg(el, el._currentValue);
     } else if (type === 'manometerIndicator') {
         var mt = el.querySelector('.manoValueText');
-        if (mt) mt.textContent = _applyFormat(el._currentValue, d.format || '');
+        if (mt) mt.textContent = _formatValue(el, el._currentValue);
         _updateManoSvg(el, el._currentValue);
     } else if (type === 'hProgressIndicator') {
         var hv = el.querySelector('.hBarValue');
-        if (hv) hv.textContent = _applyFormat(el._currentValue, d.format || '');
+        if (hv) {
+            hv.textContent = _formatValue(el, el._currentValue);
+            if (zc) { hv.style.color = zc; hv.style.textShadow = _tankTextShadow(d.valueBg); }
+            else    { hv.style.color = d.valueColor; }
+        }
         _updateHBar(el, el._currentValue);
     } else if (type === 'vProgressIndicator') {
         var vv = el.querySelector('.vBarValue');
-        if (vv) vv.textContent = _applyFormat(el._currentValue, d.format || '');
+        if (vv) {
+            vv.textContent = _formatValue(el, el._currentValue);
+            if (zc) { vv.style.color = zc; vv.style.textShadow = _tankTextShadow(d.valueBg); }
+            else    { vv.style.color = d.valueColor; }
+        }
         _updateVBar(el, el._currentValue);
     }
 
@@ -741,7 +820,11 @@ function _storeConfig(el, config) {
         alarmEnabled: config.alarmEnabled ? '1' : '0',
         alarmMin:     n(config.alarmMin),
         alarmMax:     n(config.alarmMax),
-        alarmColor:   config.alarmColor || '#ff0000'
+        alarmColor:   config.alarmColor || '#ff0000',
+        units:          config.units || '',
+        zoneColors:     config.zoneColors ? '1' : '0',
+        tickerSpeed:    config.tickerSpeed || 12,
+        valueBgOpacity: config.valueBgOpacity !== undefined ? config.valueBgOpacity : 0
     });
 }
 
@@ -762,13 +845,14 @@ var _indicatorTypes = {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
             _applyToValue(v, cfg, 0);
+            v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             el.appendChild(v);
         },
         applyEdit: function (el, cfg) {
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
             v.style.color           = cfg.valueColor;
-            v.style.backgroundColor = cfg.valueBg;
+            v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = cfg.valueSize + 'px';
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
@@ -784,7 +868,7 @@ var _indicatorTypes = {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
             v.style.color           = cfg.valueColor;
-            v.style.backgroundColor = cfg.valueBg;
+            v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = cfg.valueSize + 'px';
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
@@ -794,7 +878,7 @@ var _indicatorTypes = {
         applyEdit: function (el, cfg) {
             var v = el.querySelector('.indicatorValue');
             v.style.color           = cfg.valueColor;
-            v.style.backgroundColor = cfg.valueBg;
+            v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = cfg.valueSize + 'px';
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
@@ -809,7 +893,7 @@ var _indicatorTypes = {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
             v.style.color           = cfg.valueColor;
-            v.style.backgroundColor = cfg.valueBg;
+            v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = cfg.valueSize + 'px';
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
@@ -819,7 +903,7 @@ var _indicatorTypes = {
         applyEdit: function (el, cfg) {
             var v = el.querySelector('.indicatorValue');
             v.style.color           = cfg.valueColor;
-            v.style.backgroundColor = cfg.valueBg;
+            v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = cfg.valueSize + 'px';
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
@@ -836,7 +920,7 @@ var _indicatorTypes = {
             svg.setAttribute('viewBox', '0 0 200 115');
             svg.setAttribute('class', 'gaugeSvg');
             svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
-            svg.style.backgroundColor = cfg.valueBg;
+            svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
 
             function mkArc(cls, stroke, dashArray, dashOffset) {
                 var p = document.createElementNS(NS, 'path');
@@ -910,7 +994,7 @@ var _indicatorTypes = {
             t.setAttribute('font-family', _getFontFamily(cfg.valueFont));
             t.setAttribute('font-size', String(Math.max(6, Math.round(cfg.valueSize / 2))));
             var svg = el.querySelector('.gaugeSvg');
-            if (svg) svg.style.backgroundColor = cfg.valueBg;
+            if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             var seg = el.querySelector('.gaugeSeg');
             if (seg) seg.setAttribute('stroke', cfg.valueBg);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
@@ -927,7 +1011,7 @@ var _indicatorTypes = {
             svg.setAttribute('viewBox', '18 3 66 104');
             svg.setAttribute('class', 'tankSvg');
             svg.setAttribute('preserveAspectRatio', 'none');
-            svg.style.backgroundColor = cfg.valueBg;
+            svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
 
             var clipId   = 'tc_' + el.id;
             var defs     = document.createElementNS(NS, 'defs');
@@ -1007,7 +1091,7 @@ var _indicatorTypes = {
                 t.style.textShadow = _tankTextShadow(cfg.valueBg);
             }
             var svg = el.querySelector('.tankSvg');
-            if (svg) svg.style.backgroundColor = cfg.valueBg;
+            if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             var border = el.querySelector('.tankBorder');
             if (border) border.setAttribute('stroke', cfg.valueColor);
             var prog = el.querySelector('.tankProg');
@@ -1023,7 +1107,7 @@ var _indicatorTypes = {
         create: function (el, cfg) {
             var wrapper = document.createElement('div');
             wrapper.className             = 'hBarWrapper';
-            wrapper.style.backgroundColor = cfg.valueBg;
+            wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
 
             var track = document.createElement('div');
             track.className = 'hBarTrack';
@@ -1068,7 +1152,7 @@ var _indicatorTypes = {
             var val = el.querySelector('.hBarValue');
             if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = cfg.valueSize + 'px'; val.style.textShadow = _tankTextShadow(cfg.valueBg); }
             var wrapper = el.querySelector('.hBarWrapper');
-            if (wrapper) wrapper.style.backgroundColor = cfg.valueBg;
+            if (wrapper) wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
     },
@@ -1080,7 +1164,7 @@ var _indicatorTypes = {
         create: function (el, cfg) {
             var wrapper = document.createElement('div');
             wrapper.className             = 'vBarWrapper';
-            wrapper.style.backgroundColor = cfg.valueBg;
+            wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
 
             var maxLbl = document.createElement('span');
             maxLbl.className   = 'vBarMax';
@@ -1121,7 +1205,7 @@ var _indicatorTypes = {
             var val = el.querySelector('.vBarValue');
             if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = cfg.valueSize + 'px'; val.style.textShadow = _tankTextShadow(cfg.valueBg); }
             var wrapper = el.querySelector('.vBarWrapper');
-            if (wrapper) wrapper.style.backgroundColor = cfg.valueBg;
+            if (wrapper) wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
     },
@@ -1135,13 +1219,14 @@ var _indicatorTypes = {
             var outer = document.createElement('div');
             outer.className             = 'tickerOuter';
             outer.style.color           = cfg.valueColor;
-            outer.style.backgroundColor = cfg.valueBg;
+            outer.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
 
             var inner = document.createElement('div');
-            inner.className        = 'tickerInner';
-            inner.style.fontFamily = _getFontFamily(cfg.valueFont);
-            inner.style.fontSize   = cfg.valueSize + 'px';
-            inner.style.textShadow = '0 0 8px ' + cfg.valueColor;
+            inner.className               = 'tickerInner';
+            inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
+            inner.style.fontSize          = cfg.valueSize + 'px';
+            inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
+            inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
 
             var s1 = document.createElement('span');
             s1.className   = 'tickerSpan1';
@@ -1160,13 +1245,14 @@ var _indicatorTypes = {
             var outer = el.querySelector('.tickerOuter');
             if (outer) {
                 outer.style.color           = cfg.valueColor;
-                outer.style.backgroundColor = cfg.valueBg;
+                outer.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             }
             var inner = el.querySelector('.tickerInner');
             if (inner) {
-                inner.style.fontFamily = _getFontFamily(cfg.valueFont);
-                inner.style.fontSize   = cfg.valueSize + 'px';
-                inner.style.textShadow = '0 0 8px ' + cfg.valueColor;
+                inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
+                inner.style.fontSize          = cfg.valueSize + 'px';
+                inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
+                inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
             }
         }
     },
@@ -1181,7 +1267,7 @@ var _indicatorTypes = {
             svg.setAttribute('viewBox', '0 0 200 185');
             svg.setAttribute('class', 'manoSvg');
             svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-            svg.style.backgroundColor = cfg.valueBg;
+            svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
 
             function mkArc(cls, stroke, dashArray, dashOffset) {
                 var p = document.createElementNS(NS, 'path');
@@ -1286,7 +1372,7 @@ var _indicatorTypes = {
                 t.setAttribute('font-size', String(Math.max(8, Math.round(cfg.valueSize * 0.4))));
             }
             var svg = el.querySelector('.manoSvg');
-            if (svg) svg.style.backgroundColor = cfg.valueBg;
+            if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             var seg = el.querySelector('.manoSeg');
             if (seg) seg.setAttribute('stroke', cfg.valueBg);
             var needle = el.querySelector('.manoNeedle');
@@ -1330,6 +1416,7 @@ function _addIndicator(type, config, left, top) {
     el.appendChild(header);
 
     typeDef.create(el, cfg);
+    if (typeDef.isNumeric) setIndicatorValue(el, 0);
     return el;
 }
 
@@ -1399,7 +1486,11 @@ function _collectIndicators() {
             alarm_enabled: d.alarmEnabled === '1' ? 1 : 0,
             alarm_min:     d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null,
             alarm_max:     d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null,
-            alarm_color:   d.alarmColor || '#ff0000'
+            alarm_color:   d.alarmColor || '#ff0000',
+            units:            d.units || '',
+            zone_colors:      d.zoneColors === '1' ? 1 : 0,
+            ticker_speed:     parseFloat(d.tickerSpeed) || 12,
+            value_bg_opacity: d.valueBgOpacity !== undefined && d.valueBgOpacity !== '' ? parseFloat(d.valueBgOpacity) : 0
         });
     });
     return indicators;

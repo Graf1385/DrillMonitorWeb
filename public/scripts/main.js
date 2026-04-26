@@ -55,7 +55,11 @@ function _restoreIndicators(indicators) {
             alarmMin:    ind.alarm_min,
             alarmMax:    ind.alarm_max,
             alarmEnabled: ind.alarm_enabled ? true : false,
-            alarmColor:   ind.alarm_color  || '#ff0000'
+            alarmColor:   ind.alarm_color  || '#ff0000',
+            units:          ind.units          || '',
+            zoneColors:     ind.zone_colors    ? true : false,
+            tickerSpeed:    ind.ticker_speed   != null ? ind.ticker_speed   : 12,
+            valueBgOpacity: ind.value_bg_opacity != null ? ind.value_bg_opacity : 0
         };
         ws.appendChild(_addIndicator(
             ind.type || 'digitalIndicator',
