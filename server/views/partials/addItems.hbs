@@ -104,6 +104,19 @@
             </div>
             <span>Полукруговой</span>
         </button>
+        <button class="itemTypeCard" id="typeVideo" onclick="selectItemType('videoIndicator')">
+            <div class="itemTypeCardPreview">
+                <div class="previewHeader">Камера</div>
+                <div style="display:flex;align-items:center;justify-content:center;height:56px;background:#0d1117;margin:2px 4px;border-radius:3px;border:1px solid #30363d;">
+                    <svg viewBox="0 0 40 28" style="width:40px;height:28px">
+                        <rect x="1" y="3" width="26" height="22" rx="2" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+                        <polygon points="27,9 39,4 39,24 27,19" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+                        <circle cx="10" cy="14" r="4" fill="#38bdf820" stroke="#38bdf8" stroke-width="1"/>
+                    </svg>
+                </div>
+            </div>
+            <span>Видеопоток</span>
+        </button>
     </div>
 
     <div id="ni_settingsBody">
@@ -238,8 +251,8 @@
 </dialog>
 
 <div id="indicatorContextMenu" class="indicatorCtxMenu">
-    <button onclick="ctxOpenValueSettings()">Настройка значения</button>
-    <button onclick="ctxTestIndicator()">Тест</button>
+    <button onclick="ctxOpenValueSettings()">Настройки</button>
+    <button id="ctxTestBtn" onclick="ctxTestIndicator()">Тест</button>
     <button id="ctxAckBtn" onclick="ctxAckAlarm()" style="display:none">Квитировать тревогу</button>
     <button class="ctxMenuDanger" onclick="ctxDeleteIndicator()">Удалить</button>
 </div>
@@ -350,5 +363,52 @@
     <p class="modalMessage">Необходимо выбрать параметр индикатора.</p>
     <footer>
         <button class="modalButton okBtn" onclick="document.querySelector('#addItemErrorModal').close()">OK</button>
+    </footer>
+</dialog>
+
+<dialog class="settingsModal" id="videoSettingsModal">
+    <h1>Настройки видеопотока</h1>
+    <table class="settingsTable addItemTable">
+        <tr><td colspan="2" class="sectionLabel">Камера (ONVIF / RTSP)</td></tr>
+        <tr>
+            <td>Заголовок</td>
+            <td><input type="text" class="settingsInput" id="vs_title" value="Камера"></td>
+        </tr>
+        <tr>
+            <td>Адрес (IP / хост)</td>
+            <td><input type="text" class="settingsInput" id="vs_host" placeholder="192.168.1.100"></td>
+        </tr>
+        <tr>
+            <td>Порт RTSP</td>
+            <td><input type="number" class="settingsInput sizeInput" id="vs_port" value="554" min="1" max="65535"></td>
+        </tr>
+        <tr>
+            <td>Пользователь</td>
+            <td><input type="text" class="settingsInput" id="vs_username" placeholder="admin" autocomplete="off"></td>
+        </tr>
+        <tr>
+            <td>Пароль</td>
+            <td><input type="password" class="settingsInput" id="vs_password" autocomplete="off"></td>
+        </tr>
+        <tr>
+            <td>Канал</td>
+            <td><input type="number" class="settingsInput sizeInput" id="vs_channel" value="1" min="1" max="64"></td>
+        </tr>
+        <tr>
+            <td>Субпоток</td>
+            <td><input type="checkbox" class="settingsCheckbox" id="vs_substream"></td>
+        </tr>
+        <tr><td colspan="2" class="sectionLabel">Размер виджета</td></tr>
+        <tr>
+            <td>Ширина / Высота (px)</td>
+            <td class="paramCell">
+                <input type="number" class="settingsInput sizeInput" id="vs_width"  value="320" min="160" max="2000">
+                <input type="number" class="settingsInput sizeInput" id="vs_height" value="240" min="120" max="2000">
+            </td>
+        </tr>
+    </table>
+    <footer>
+        <button class="modalButton okBtn"     onclick="submitVideoSettings()">Применить</button>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#videoSettingsModal').close()">Отмена</button>
     </footer>
 </dialog>

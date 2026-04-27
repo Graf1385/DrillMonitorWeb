@@ -189,8 +189,11 @@ document.addEventListener('contextmenu', function (e) {
     if (!indicator) return;
     e.preventDefault();
     _ctxTarget = indicator;
-    var ackBtn = _ctxMenu.querySelector('#ctxAckBtn');
-    if (ackBtn) ackBtn.style.display = (indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
+    var isVideo = indicator.classList.contains('videoIndicator');
+    var ackBtn  = _ctxMenu.querySelector('#ctxAckBtn');
+    var testBtn = _ctxMenu.querySelector('#ctxTestBtn');
+    if (ackBtn)  ackBtn.style.display  = (!isVideo && indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
+    if (testBtn) testBtn.style.display = isVideo ? 'none' : '';
     _ctxMenu.style.display = 'block';
     var x = e.clientX, y = e.clientY;
     var menuW = _ctxMenu.offsetWidth  || 190;
@@ -232,6 +235,7 @@ function ctxDeleteIndicator() {
 function confirmDeleteIndicator() {
     document.querySelector('#deleteConfirmModal').close();
     if (!_deleteTarget) return;
+    if (_deleteTarget.classList.contains('videoIndicator')) _stopVideoStream(_deleteTarget);
     _deleteTarget.remove();
     _deleteTarget = null;
     showSaveBtn();
@@ -425,6 +429,10 @@ function showNewItems() {
 }
 
 function _openEditModal(indicator) {
+    if (indicator.classList.contains('videoIndicator')) {
+        openVideoSettings(indicator);
+        return;
+    }
     _editingEl = indicator;
     _addModal.querySelector('h1').textContent = 'Настройки индикатора';
     _addModal.querySelector('.okBtn').textContent = 'Применить';
@@ -676,6 +684,12 @@ function _addIndicator(type, config, left, top) {
 // ── Add / apply ───────────────────────────────────────────────────────────────
 
 function addNewItem() {
+    if (!_editingEl && _activeType === 'videoIndicator') {
+        _addModal.close();
+        showNewVideoItem();
+        return;
+    }
+
     var config;
     try { config = _readConfig(); } catch(err) { console.error('_readConfig error:', err); return; }
 
@@ -704,7 +718,11 @@ function addNewItem() {
 function removeItem() {
     var ws   = document.querySelector('#workSpace');
     var last = ws.querySelector('.indicator:last-child');
-    if (last) { last.remove(); showSaveBtn(); }
+    if (last) {
+        if (last.classList.contains('videoIndicator')) _stopVideoStream(last);
+        last.remove();
+        showSaveBtn();
+    }
 }
 
 function _collectIndicators() {
@@ -714,11 +732,23 @@ function _collectIndicators() {
     var indicators = [];
     document.querySelectorAll('#workSpace .indicator').forEach(function(el) {
         var d    = el.dataset;
+        var type = _getIndicatorType(el);
         var rawW = parseInt(el.style.width)  || (d.width  ? parseInt(d.width)  : null);
         var rawH = parseInt(el.style.height) || (d.height ? parseInt(d.height) : null);
+        var extraData = null;
+        if (type === 'videoIndicator') {
+            extraData = JSON.stringify({
+                streamHost:    d.streamHost    || '',
+                streamPort:    d.streamPort    || '554',
+                streamUser:    d.streamUser    || '',
+                streamPass:    d.streamPass    || '',
+                streamChannel: d.streamChannel || '1',
+                streamSub:     d.streamSub     || '0'
+            });
+        }
         indicators.push({
-            type:         _getIndicatorType(el),
-            param_id:     d.paramId !== undefined && d.paramId !== '' ? parseInt(d.paramId) : null,
+            type:         type,
+            param_id:     type === 'videoIndicator' ? null : (d.paramId !== undefined && d.paramId !== '' ? parseInt(d.paramId) : null),
             pos_left:     (parseInt(el.style.left) || 0) / wsW * 100,
             pos_top:      (parseInt(el.style.top)  || 0) / wsH * 100,
             width:        rawW != null ? rawW / wsW * 100 : null,
@@ -742,7 +772,8 @@ function _collectIndicators() {
             units:            d.units || '',
             zone_colors:      d.zoneColors === '1' ? 1 : 0,
             ticker_speed:     parseFloat(d.tickerSpeed) || 12,
-            value_bg_opacity: d.valueBgOpacity !== undefined && d.valueBgOpacity !== '' ? parseFloat(d.valueBgOpacity) : 0
+            value_bg_opacity: d.valueBgOpacity !== undefined && d.valueBgOpacity !== '' ? parseFloat(d.valueBgOpacity) : 0,
+            extra_data: extraData
         });
     });
     return indicators;

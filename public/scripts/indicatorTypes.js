@@ -546,6 +546,17 @@ var _indicatorTypes = {
             if (hub) { hub.setAttribute('fill', cfg.valueColor); hub.setAttribute('stroke', cfg.valueBg); }
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
+    },
+
+    // ── Video indicator ───────────────────────────────────────────────────────
+    // DOM is built by videoWidget.js (_buildVideoElement / _applyVideoConfig).
+    // This stub exists so _getIndicatorType() recognises the class name.
+    videoIndicator: {
+        cardId:      '#typeVideo',
+        isNumeric:   false,
+        defaultSize: { width: 320, height: 240 },
+        create:      function () {},
+        applyEdit:   function () {}
     }
 
 };

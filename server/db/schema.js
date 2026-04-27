@@ -340,6 +340,8 @@ function initSchema(db) {
         )
     `);
 
+    try { db.exec('ALTER TABLE indicators ADD COLUMN extra_data TEXT'); } catch {}
+
     db.prepare('DELETE FROM logs WHERE timestamp < ?')
         .run(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 

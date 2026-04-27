@@ -1,0 +1,249 @@
+================================================================================
+  DrillMonitorWeb — Инструкция по развёртыванию на Ubuntu Server
+================================================================================
+
+Версия: 1.0
+Автор: Andrey Podlesnyy
+Дата: 2026-04-26
+
+
+1. ТРЕБОВАНИЯ К СЕРВЕРУ
+────────────────────────────────────────────────────────────────────────────────
+  ОС        : Ubuntu 20.04 LTS / 22.04 LTS / 24.04 LTS (64-bit)
+  RAM       : минимум 512 МБ (рекомендуется 1 ГБ+)
+  Диск      : минимум 500 МБ свободного места
+  Сеть      : доступ к интернету (для установки пакетов)
+              доступ к видеорегистратору по RTSP (порт 554)
+
+  Необходимое ПО:
+    • Node.js  v18 или v20 (LTS)
+    • npm      v9+
+    • FFmpeg   (для трансляции видео с регистраторов)
+    • git      (для клонирования репозитория)
+
+
+2. БЫСТРОЕ РАЗВЁРТЫВАНИЕ (через скрипт)
+────────────────────────────────────────────────────────────────────────────────
+  Запустите установочный скрипт от имени root или через sudo:
+
+    sudo bash install.sh
+
+  Скрипт выполнит все шаги автоматически: установит зависимости,
+  настроит systemd-сервис и запустит приложение.
+
+
+3. РУЧНОЕ РАЗВЁРТЫВАНИЕ (шаг за шагом)
+────────────────────────────────────────────────────────────────────────────────
+
+  3.1. Обновление системы
+  ─────────────────────────
+    sudo apt update && sudo apt upgrade -y
+
+
+  3.2. Установка Node.js v20 (через NodeSource)
+  ─────────────────────────────────────────────
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt install -y nodejs
+
+
+  3.3. Установка FFmpeg
+  ──────────────────────
+    sudo apt install -y ffmpeg
+
+    Проверка:
+      ffmpeg -version
+
+
+  3.4. Установка git
+  ───────────────────
+    sudo apt install -y git
+
+
+  3.5. Клонирование репозитория
+  ──────────────────────────────
+    sudo mkdir -p /opt/drillmonitor
+    sudo chown $USER:$USER /opt/drillmonitor
+    git clone <URL_РЕПОЗИТОРИЯ> /opt/drillmonitor
+    cd /opt/drillmonitor
+
+
+  3.6. Установка зависимостей Node.js
+  ─────────────────────────────────────
+    npm install --omit=dev
+
+
+  3.7. Создание системного пользователя (рекомендуется)
+  ──────────────────────────────────────────────────────
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin drillmonitor
+    sudo chown -R drillmonitor:drillmonitor /opt/drillmonitor
+
+
+  3.8. Настройка переменных окружения (опционально)
+  ──────────────────────────────────────────────────
+    По умолчанию сервер запускается на порту 3000.
+    Чтобы изменить порт, передайте переменную окружения PORT:
+
+      PORT=8080 npm start
+
+    Или укажите в systemd-юните (см. ниже).
+
+
+  3.9. Создание systemd-сервиса
+  ──────────────────────────────
+    Создайте файл /etc/systemd/system/drillmonitor.service:
+
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ [Unit]                                                                   │
+    │ Description=DrillMonitorWeb                                              │
+    │ After=network.target                                                     │
+    │                                                                          │
+    │ [Service]                                                                │
+    │ Type=simple                                                              │
+    │ User=drillmonitor                                                        │
+    │ WorkingDirectory=/opt/drillmonitor                                       │
+    │ ExecStart=/usr/bin/node app.js                                           │
+    │ Restart=on-failure                                                       │
+    │ RestartSec=5                                                             │
+    │ Environment=PORT=3000                                                    │
+    │ Environment=NODE_ENV=production                                          │
+    │                                                                          │
+    │ [Install]                                                                │
+    │ WantedBy=multi-user.target                                               │
+    └──────────────────────────────────────────────────────────────────────────┘
+
+    Активация сервиса:
+      sudo systemctl daemon-reload
+      sudo systemctl enable drillmonitor
+      sudo systemctl start drillmonitor
+
+    Проверка статуса:
+      sudo systemctl status drillmonitor
+
+
+4. ОТКРЫТИЕ ПОРТА В БРАНДМАУЭРЕ
+────────────────────────────────────────────────────────────────────────────────
+  Если используется UFW:
+
+    sudo ufw allow 3000/tcp
+    sudo ufw reload
+
+  Если используется firewalld:
+
+    sudo firewall-cmd --permanent --add-port=3000/tcp
+    sudo firewall-cmd --reload
+
+
+5. ДОСТУП К ПРИЛОЖЕНИЮ
+────────────────────────────────────────────────────────────────────────────────
+  После запуска откройте в браузере:
+
+    http://<IP-АДРЕС-СЕРВЕРА>:3000
+
+  Пример: http://192.168.1.100:3000
+
+
+6. НАСТРОЙКА ВИДЕО С РЕГИСТРАТОРА DAHUA NVR4104
+────────────────────────────────────────────────────────────────────────────────
+  Сервер транслирует видео по схеме:
+    Регистратор (RTSP) → FFmpeg (HLS-конвертация) → Браузер (HLS.js)
+
+  RTSP-адрес формируется автоматически из параметров виджета:
+    rtsp://USER:PASS@HOST:PORT/cam/realmonitor?channel=N&subtype=0
+
+  Требования к сети:
+    • Сервер DrillMonitorWeb должен иметь сетевой доступ к регистратору
+      на порту 554 (RTSP)
+    • Браузеры клиентов обращаются только к серверу DrillMonitorWeb
+
+  HLS-сегменты хранятся во временной директории:
+    /tmp/drillmonitor_hls/
+
+  Сегменты автоматически удаляются при остановке потока или сервиса.
+
+
+7. РАЗМЕЩЕНИЕ ЗА NGINX (обратный прокси, опционально)
+────────────────────────────────────────────────────────────────────────────────
+  Установка Nginx:
+    sudo apt install -y nginx
+
+  Конфигурация /etc/nginx/sites-available/drillmonitor:
+
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ server {                                                                 │
+    │     listen 80;                                                           │
+    │     server_name example.com;                                             │
+    │                                                                          │
+    │     location / {                                                         │
+    │         proxy_pass         http://127.0.0.1:3000;                        │
+    │         proxy_http_version 1.1;                                          │
+    │         proxy_set_header   Upgrade $http_upgrade;                        │
+    │         proxy_set_header   Connection keep-alive;                        │
+    │         proxy_set_header   Host $host;                                   │
+    │         proxy_cache_bypass $http_upgrade;                                │
+    │     }                                                                    │
+    │ }                                                                        │
+    └──────────────────────────────────────────────────────────────────────────┘
+
+  Активация:
+    sudo ln -s /etc/nginx/sites-available/drillmonitor /etc/nginx/sites-enabled/
+    sudo nginx -t
+    sudo systemctl reload nginx
+
+
+8. УПРАВЛЕНИЕ СЕРВИСОМ
+────────────────────────────────────────────────────────────────────────────────
+  Запуск           : sudo systemctl start drillmonitor
+  Остановка        : sudo systemctl stop drillmonitor
+  Перезапуск       : sudo systemctl restart drillmonitor
+  Статус           : sudo systemctl status drillmonitor
+  Логи             : sudo journalctl -u drillmonitor -f
+  Логи приложения  : cat /opt/drillmonitor/server/data/logs.db (SQLite)
+
+
+9. ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ
+────────────────────────────────────────────────────────────────────────────────
+  cd /opt/drillmonitor
+  sudo systemctl stop drillmonitor
+  git pull
+  npm install --omit=dev
+  sudo systemctl start drillmonitor
+
+
+10. БАЗА ДАННЫХ
+────────────────────────────────────────────────────────────────────────────────
+  Используется SQLite. Файл базы данных:
+
+    /opt/drillmonitor/server/data/profiles.db
+
+  Резервная копия:
+    cp /opt/drillmonitor/server/data/profiles.db \
+       /opt/drillmonitor/server/data/profiles_backup_$(date +%Y%m%d).db
+
+  Восстановление:
+    sudo systemctl stop drillmonitor
+    cp /opt/drillmonitor/server/data/profiles_backup_YYYYMMDD.db \
+       /opt/drillmonitor/server/data/profiles.db
+    sudo systemctl start drillmonitor
+
+
+11. УСТРАНЕНИЕ НЕПОЛАДОК
+────────────────────────────────────────────────────────────────────────────────
+  Проблема: Сервис не запускается
+    → Проверить логи: sudo journalctl -u drillmonitor -n 50
+    → Убедиться, что порт не занят: ss -tlnp | grep 3000
+
+  Проблема: Видео с камеры не отображается
+    → Убедиться, что ffmpeg установлен: ffmpeg -version
+    → Проверить доступность регистратора: ping <IP-регистратора>
+    → Проверить RTSP вручную: ffplay rtsp://user:pass@host:554/cam/realmonitor?channel=1&subtype=0
+    → Убедиться, что /tmp доступен для записи
+
+  Проблема: Страница недоступна из сети
+    → Проверить брандмауэр: sudo ufw status
+    → Проверить, что сервер слушает все интерфейсы, а не только localhost
+
+  Проблема: Ошибка "EACCES permission denied" на порту 80/443
+    → Используйте порт выше 1024 (по умолчанию 3000) или настройте Nginx как
+      обратный прокси
+
+================================================================================

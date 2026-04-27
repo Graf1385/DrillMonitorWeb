@@ -34,8 +34,35 @@ function _restoreIndicators(indicators) {
     var ws  = document.querySelector('#workSpace');
     var wsW = ws.clientWidth;
     var wsH = ws.clientHeight;
+    ws.querySelectorAll('.videoIndicator').forEach(function(el) { _stopVideoStream(el); });
     ws.querySelectorAll('.indicator').forEach(function(el) { el.remove(); });
     indicators.forEach(function(ind) {
+        var left = (ind.pos_left || 0) * wsW / 100;
+        var top  = (ind.pos_top  || 0) * wsH / 100;
+
+        if (ind.type === 'videoIndicator') {
+            var extra = {};
+            try { extra = JSON.parse(ind.extra_data || '{}'); } catch {}
+            var el = _buildVideoElement({
+                headerText:    ind.header_text  || 'Камера',
+                headerColor:   ind.header_color || '#c9d1d9',
+                headerBg:      ind.header_bg    || '#161b22',
+                streamHost:    extra.streamHost    || '',
+                streamPort:    extra.streamPort    || '554',
+                streamUser:    extra.streamUser    || '',
+                streamPass:    extra.streamPass    || '',
+                streamChannel: extra.streamChannel || '1',
+                streamSub:     extra.streamSub     || '0',
+                width:  ind.width  != null ? ind.width  * wsW / 100 : 320,
+                height: ind.height != null ? ind.height * wsH / 100 : 240
+            });
+            el.style.left = left + 'px';
+            el.style.top  = top  + 'px';
+            ws.appendChild(el);
+            if (extra.streamHost) _startVideoStream(el);
+            return;
+        }
+
         var config = {
             paramId:     ind.param_id,
             width:       ind.width  != null ? ind.width  * wsW / 100 : null,
@@ -61,12 +88,7 @@ function _restoreIndicators(indicators) {
             tickerSpeed:    ind.ticker_speed   != null ? ind.ticker_speed   : 12,
             valueBgOpacity: ind.value_bg_opacity != null ? ind.value_bg_opacity : 0
         };
-        ws.appendChild(_addIndicator(
-            ind.type || 'digitalIndicator',
-            config,
-            (ind.pos_left || 0) * wsW / 100,
-            (ind.pos_top  || 0) * wsH / 100
-        ));
+        ws.appendChild(_addIndicator(ind.type || 'digitalIndicator', config, left, top));
     });
 }
 

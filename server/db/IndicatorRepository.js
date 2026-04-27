@@ -18,13 +18,13 @@ class IndicatorRepository {
                      header_text, header_color, header_bg, header_font, header_size,
                      format, value_color, value_bg, value_font, value_size,
                      range_min, range_max, alarm_enabled, alarm_min, alarm_max, alarm_color,
-                     units, zone_colors, ticker_speed, value_bg_opacity)
+                     units, zone_colors, ticker_speed, value_bg_opacity, extra_data)
                 VALUES
                     (@param_id, @profile_id, @type, @pos_left, @pos_top, @height, @width,
                      @header_text, @header_color, @header_bg, @header_font, @header_size,
                      @format, @value_color, @value_bg, @value_font, @value_size,
                      @range_min, @range_max, @alarm_enabled, @alarm_min, @alarm_max, @alarm_color,
-                     @units, @zone_colors, @ticker_speed, @value_bg_opacity)
+                     @units, @zone_colors, @ticker_speed, @value_bg_opacity, @extra_data)
             `);
             for (const item of list) insert.run({ ...item, profile_id: profileId });
         })();

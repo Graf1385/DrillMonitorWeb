@@ -1,10 +1,12 @@
-const _express = require("express");
-const _app = _express();
-const _get_router = require("./routes/get_routers");
-const _post_router = require("./routes/post_routers");
-const logger = require("./logger");
-const db = require("./db");
-const _exphbs = require('express-handlebars');
+const _express       = require("express");
+const _app           = _express();
+const _get_router    = require("./routes/get_routers");
+const _post_router   = require("./routes/post_routers");
+const _stream_router = require("./routes/streams_router");
+const streamManager  = require("./streams/StreamManager");
+const logger         = require("./logger");
+const db             = require("./db");
+const _exphbs        = require('express-handlebars');
 
 const _hbs = _exphbs.create({
     defaultLayout: 'main',
@@ -24,6 +26,7 @@ _app.use(_express.static('./public/image'));
 
 _app.use(_get_router);
 _app.use(_post_router);
+_app.use(_stream_router);
 
 function Start(port){
 
@@ -40,6 +43,9 @@ function Start(port){
   
         
 }
+
+process.on('SIGTERM', () => { streamManager.stopAll(); process.exit(0); });
+process.on('SIGINT',  () => { streamManager.stopAll(); process.exit(0); });
 
 module.exports = {
     Start : Start
