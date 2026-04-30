@@ -4,9 +4,13 @@ class IndicatorRepository {
     }
 
     getIndicatorsByProfile(profileId) {
-        return this.db.prepare(
-            'SELECT * FROM indicators WHERE profile_id = ? ORDER BY id ASC'
-        ).all(profileId);
+        return this.db.prepare(`
+            SELECT i.*, p.name AS param_name
+            FROM indicators i
+            LEFT JOIN parameters p ON p.id = i.param_id
+            WHERE i.profile_id = ?
+            ORDER BY i.id ASC
+        `).all(profileId);
     }
 
     saveIndicators(profileId, list) {

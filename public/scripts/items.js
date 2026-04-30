@@ -236,6 +236,8 @@ function confirmDeleteIndicator() {
     document.querySelector('#deleteConfirmModal').close();
     if (!_deleteTarget) return;
     if (_deleteTarget.classList.contains('videoIndicator')) _stopVideoStream(_deleteTarget);
+    if (_deleteTarget._alarmObserver) _deleteTarget._alarmObserver.disconnect();
+    if (_deleteTarget._alarmOverlay)  _deleteTarget._alarmOverlay.remove();
     _deleteTarget.remove();
     _deleteTarget = null;
     showSaveBtn();
@@ -428,6 +430,8 @@ function showNewItems() {
     });
 }
 
+window.openEditModal = function(indicator) { _openEditModal(indicator); };
+
 function _openEditModal(indicator) {
     if (indicator.classList.contains('videoIndicator')) {
         openVideoSettings(indicator);
@@ -509,6 +513,11 @@ function closeAddItemModal() {
     _editingEl = null;
 }
 
+function _refreshIndicatorListIfOpen() {
+    var ilModal = document.querySelector('#indicatorListModal');
+    if (ilModal && ilModal.open && typeof showIndicatorList === 'function') showIndicatorList();
+}
+
 function _resetModalDefaults() {
     _addModal.querySelector('#ni_width').value       = '';
     _addModal.querySelector('#ni_height').value      = '';
@@ -553,9 +562,12 @@ function _readConfig() {
     function nullable(val) { var n = parseFloat(val); return isNaN(n) ? null : n; }
     var wRaw = parseInt(_addModal.querySelector('#ni_width').value);
     var hRaw = parseInt(_addModal.querySelector('#ni_height').value);
-    var paramRaw = _addModal.querySelector('#ni_paramId').value;
+    var paramSelect = _addModal.querySelector('#ni_paramId');
+    var paramRaw    = paramSelect.value;
+    var paramOpt    = paramSelect.options[paramSelect.selectedIndex];
     return {
         paramId:     paramRaw !== '' ? parseInt(paramRaw) : null,
+        paramName:   paramRaw !== '' && paramOpt ? paramOpt.textContent.trim() : '',
         width:       isNaN(wRaw) ? null : Math.min(2000, Math.max(40, wRaw)),
         height:      isNaN(hRaw) ? null : Math.min(2000, Math.max(40, hRaw)),
         headerText:  _addModal.querySelector('#ni_headerText').value || 'Заголовок',
@@ -639,6 +651,12 @@ function setIndicatorValue(el, val) {
             else    { vv.style.color = d.valueColor; }
         }
         _updateVBar(el, el._currentValue);
+    } else if (type === 'alarmPanelIndicator') {
+        var overlay = el._alarmOverlay;
+        if (overlay) {
+            var apv = overlay.querySelector('.apValue');
+            if (apv) apv.textContent = _applyFormat(el._currentValue, el.dataset.format || '');
+        }
     }
 
     _checkAlarm(el, el._currentValue);
@@ -702,6 +720,7 @@ function addNewItem() {
         _applyToHeader(_editingEl.querySelector('.indicatorHeader'), config);
         typeDef.applyEdit(_editingEl, config);
         showSaveBtn();
+        _refreshIndicatorListIfOpen();
 
     } else {
         var ws   = document.querySelector('#workSpace');

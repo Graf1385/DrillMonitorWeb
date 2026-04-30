@@ -393,6 +393,217 @@
     white-space: nowrap;
 }
 
+/* ── Alarm Panel Indicator (workspace badge) ─────────────────────────────── */
+
+.alarmPanelIndicator {
+    resize: none !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 400px !important;
+    height: 300px !important;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 99998;
+    box-shadow: none !important;
+    background: linear-gradient(160deg, #160000 0%, #0c0000 55%, #080000 100%) !important;
+}
+
+.alarmPanelIndicator.alarm-active,
+.alarmPanelIndicator.alarm-acked {
+    visibility: visible;
+    pointer-events: all;
+}
+
+.alarmPanelIndicator.alarm-active {
+    animation: apOverlayGlow 1.5s ease-in-out infinite,
+               apBorderPulse 1.5s ease-in-out infinite !important;
+}
+
+.alarmPanelIndicator > .indicatorHeader {
+    text-align: center;
+    padding: 10px 16px;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: default;
+    user-select: none;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+
+.alarmPanelBody {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 28px 20px;
+    gap: 4px;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.22) 2px,
+        rgba(0, 0, 0, 0.22) 4px
+    );
+}
+
+/* ── Alarm Panel Overlay ─────────────────────────────────────────────────── */
+
+@keyframes apOverlayGlow {
+    0%, 100% { box-shadow: 0 0 28px #cc000070, 0 0 80px #88000038; }
+    50%       { box-shadow: 0 0 60px #ff000099, 0 0 160px #aa000055; }
+}
+
+@keyframes apBorderPulse {
+    0%, 100% { border-color: #771111; }
+    50%       { border-color: #ff3333; }
+}
+
+@keyframes apLabelBlink {
+    0%, 48%  { opacity: 1; }
+    50%, 100%{ opacity: 0.18; }
+}
+
+@keyframes apValueGlow {
+    0%, 100% { text-shadow: 0 0 18px rgba(255,40,40,0.65), 0 0 50px rgba(255,0,0,0.25); }
+    50%       { text-shadow: 0 0 32px rgba(255,60,60,0.9),  0 0 90px rgba(255,20,20,0.45); }
+}
+
+.alarmPanelOverlay {
+    display: none;
+    position: fixed;
+    z-index: 99998;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: clamp(400px, 52vw, 680px);
+    min-height: 270px;
+
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0,0,0,0.22) 2px,
+            rgba(0,0,0,0.22) 4px
+        ),
+        linear-gradient(160deg, #180000 0%, #0d0000 50%, #080000 100%);
+
+    border: 2px solid #771111;
+    flex-direction: column;
+    overflow: hidden;
+
+    animation:
+        apOverlayGlow   1.5s ease-in-out infinite,
+        apBorderPulse   1.5s ease-in-out infinite;
+
+    pointer-events: all;
+    user-select: none;
+}
+
+.apTopBar {
+    background: linear-gradient(180deg, #230000 0%, #190000 100%);
+    border-bottom: 1px solid #4a0f0f;
+    padding: 11px 28px 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+
+.apTopLabel {
+    font-size: 10px;
+    letter-spacing: 0.55em;
+    color: #ff4444;
+    font-weight: bold;
+    font-family: monospace;
+    text-transform: uppercase;
+    animation: apLabelBlink 0.95s step-end infinite;
+}
+
+.apTopDivider {
+    width: 1px;
+    height: 14px;
+    background: #551111;
+    flex-shrink: 0;
+}
+
+.apMain {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 22px 32px 26px;
+    gap: 0;
+}
+
+.apTitle {
+    font-weight: bold;
+    color: #ffbcbc;
+    letter-spacing: 0.07em;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.25;
+    text-shadow: 0 0 22px rgba(255,80,80,0.4);
+}
+
+.apValueLabel {
+    font-size: 9px;
+    letter-spacing: 0.4em;
+    color: #6b2222;
+    font-family: monospace;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.apValue {
+    font-weight: bold;
+    color: #ff3030;
+    font-family: monospace;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    animation: apValueGlow 1.5s ease-in-out infinite;
+}
+
+.apUnits {
+    font-size: 18px;
+    color: #882828;
+    font-family: monospace;
+    letter-spacing: 0.18em;
+    margin-top: 8px;
+}
+
+.apBottomBar {
+    border-top: 1px solid #3d0e0e;
+    background: #130000;
+    padding: 8px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.apStatusDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ff3333;
+    box-shadow: 0 0 7px #ff3333aa;
+    animation: apLabelBlink 0.95s step-end infinite;
+    flex-shrink: 0;
+}
+
+.apStatusText {
+    font-size: 9px;
+    letter-spacing: 0.4em;
+    color: #772222;
+    font-family: monospace;
+    text-transform: uppercase;
+}
+
 /* ── Video indicator ─────────────────────────────────────────────────────── */
 
 .videoIndicator {

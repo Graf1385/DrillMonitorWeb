@@ -104,6 +104,21 @@
             </div>
             <span>Полукруговой</span>
         </button>
+        <button class="itemTypeCard" id="typeAlarmPanel" onclick="selectItemType('alarmPanelIndicator')">
+            <div class="itemTypeCardPreview">
+                <div class="previewHeader" style="background:#1e0000;color:#ff6060;border-bottom:1px solid #441111;">ТРЕВОГА</div>
+                <div style="display:flex;align-items:center;justify-content:center;height:56px;background:linear-gradient(160deg,#180000,#0d0000);margin:2px 4px;border-radius:3px;border:1px solid #771111;position:relative;overflow:hidden;">
+                    <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.25) 2px,rgba(0,0,0,0.25) 4px);pointer-events:none;"></div>
+                    <svg viewBox="0 0 48 42" style="width:48px;height:42px;position:relative;z-index:1">
+                        <polygon points="24,4 44,38 4,38" fill="#2a0000" stroke="#ff4444" stroke-width="2.5" stroke-linejoin="round"/>
+                        <line x1="24" y1="16" x2="24" y2="27" stroke="#ff4444" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="24" cy="32" r="1.5" fill="#ff4444"/>
+                        <text x="24" y="54" text-anchor="middle" fill="#ff4444" font-size="7" font-family="monospace" letter-spacing="1">6 3 0</text>
+                    </svg>
+                </div>
+            </div>
+            <span>Аварийный экран</span>
+        </button>
         <button class="itemTypeCard" id="typeVideo" onclick="selectItemType('videoIndicator')">
             <div class="itemTypeCardPreview">
                 <div class="previewHeader">Камера</div>

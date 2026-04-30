@@ -57,6 +57,7 @@ function _storeConfig(el, config) {
     function n(v) { return v !== null && v !== undefined ? v : ''; }
     Object.assign(el.dataset, {
         paramId:     n(config.paramId),
+        paramName:   config.paramName || '',
         width:       n(config.width),
         height:      n(config.height),
         headerText:  config.headerText,

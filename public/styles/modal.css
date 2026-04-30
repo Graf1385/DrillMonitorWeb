@@ -843,6 +843,14 @@ input[type=number]::-webkit-inner-spin-button {
 .il-format { font-family: monospace; color: var(--sidebar-accent); text-align: center; }
 .il-del    { text-align: center; }
 
+.il-table tbody tr { cursor: pointer; }
+.il-table tbody tr:hover td { background-color: #1c2128; }
+.il-table tbody tr.il-selected td {
+    background-color: #192130;
+    border-color: rgba(56, 189, 248, 0.35);
+}
+.il-table tbody tr.il-selected .il-id { color: var(--sidebar-accent); }
+
 tr.pm-dirty { background: rgba(56, 189, 248, 0.06); }
 tr.pm-dirty td:first-child::before {
     content: '●';

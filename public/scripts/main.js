@@ -35,6 +35,10 @@ function _restoreIndicators(indicators) {
     var wsW = ws.clientWidth;
     var wsH = ws.clientHeight;
     ws.querySelectorAll('.videoIndicator').forEach(function(el) { _stopVideoStream(el); });
+    ws.querySelectorAll('.alarmPanelIndicator').forEach(function(el) {
+        if (el._alarmObserver) el._alarmObserver.disconnect();
+        if (el._alarmOverlay)  el._alarmOverlay.remove();
+    });
     ws.querySelectorAll('.indicator').forEach(function(el) { el.remove(); });
     indicators.forEach(function(ind) {
         var left = (ind.pos_left || 0) * wsW / 100;
@@ -65,6 +69,7 @@ function _restoreIndicators(indicators) {
 
         var config = {
             paramId:     ind.param_id,
+            paramName:   ind.param_name || '',
             width:       ind.width  != null ? ind.width  * wsW / 100 : null,
             height:      ind.height != null ? ind.height * wsH / 100 : null,
             headerText:  ind.header_text,

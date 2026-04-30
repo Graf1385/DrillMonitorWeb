@@ -35,19 +35,17 @@ function showIndicatorList() {
         document.querySelector('#indicatorListModal').showModal();
         return;
     }
-    $.getJSON('/api/parameters', function(params) {
-        var paramMap = {};
-        params.forEach(function(p) { paramMap[p.id] = p.name; });
+    (function() {
         var rows = indicators.map(function(ind, i) {
             var d = ind.dataset;
-            var paramName = d.paramId ? (paramMap[d.paramId] || '—') : '—';
-            var header = (d.headerText || '').replace(/"/g, '&quot;');
-            var format = (d.format     || '').replace(/"/g, '&quot;');
+            var paramName = d.paramName || (d.paramId ? '#' + d.paramId : '—');
+            var header = d.headerText || '';
+            var format = d.format     || '';
             return '<tr>' +
                 '<td class="il-id">'    + (d.paramId || '—') + '</td>' +
                 '<td class="il-pname">' + paramName           + '</td>' +
-                '<td class="il-input"><input class="settingsInput il-headerInput" value="' + header + '" oninput="updateIndicatorField(' + i + ',\'headerText\',this.value)"></td>' +
-                '<td class="il-input"><input class="settingsInput il-formatInput" value="' + format + '" oninput="updateIndicatorField(' + i + ',\'format\',this.value)"></td>' +
+                '<td>'                  + header              + '</td>' +
+                '<td>'                  + format              + '</td>' +
                 '<td class="il-del"><button class="il-delBtn" onclick="deleteIndicatorFromList(' + i + ')">Удалить</button></td>' +
             '</tr>';
         });
@@ -55,21 +53,25 @@ function showIndicatorList() {
             '<colgroup><col style="width:50px"><col><col><col style="width:110px"><col style="width:90px"></colgroup>' +
             '<thead><tr><th>ID</th><th>Параметр</th><th>Заголовок</th><th>Формат</th><th></th></tr></thead>' +
             '<tbody>' + rows.join('') + '</tbody></table>';
+        var tbody = body.querySelector('tbody');
+        tbody.addEventListener('click', function(e) {
+            var row = e.target.closest('tr');
+            if (!row) return;
+            var wasSelected = row.classList.contains('il-selected');
+            body.querySelectorAll('tr.il-selected').forEach(function(r) { r.classList.remove('il-selected'); });
+            if (!wasSelected) row.classList.add('il-selected');
+        });
+        tbody.addEventListener('dblclick', function(e) {
+            var row = e.target.closest('tr');
+            if (!row) return;
+            var idx = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
+            var indicator = indicators[idx];
+            if (!indicator || !window.openEditModal) return;
+            window.openEditModal(indicator);
+        });
         document.querySelector('#indicatorListModal').showModal();
-    });
+    })();
 }
-
-window.updateIndicatorField = function(index, field, value) {
-    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
-    var ind = indicators[index];
-    if (!ind) return;
-    ind.dataset[field] = value;
-    if (field === 'headerText') {
-        var headerEl = ind.querySelector('.indicatorHeader');
-        if (headerEl) headerEl.textContent = value;
-    }
-    showSaveBtn();
-};
 
 window.deleteIndicatorFromList = function(index) {
     var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
