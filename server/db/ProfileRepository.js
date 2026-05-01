@@ -29,14 +29,16 @@ class ProfileRepository {
         })();
     }
 
-    updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay) {
+    updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight) {
         return this.db.transaction(() => {
             this.db.prepare('UPDATE profiles SET is_active = 0').run();
             return this.db.prepare(`
                 UPDATE profiles
-                SET background = ?, cell_size = ?, alarm_sound_id = ?, alarm_volume = ?, alarm_delay = ?, is_active = 1
+                SET background = ?, cell_size = ?, alarm_sound_id = ?, alarm_volume = ?, alarm_delay = ?,
+                    ws_width = ?, ws_height = ?, is_active = 1
                 WHERE id = ?
-            `).run(background, cellSize, alarmSoundId || null, alarmVolume, alarmDelay, id);
+            `).run(background, cellSize, alarmSoundId || null, alarmVolume, alarmDelay,
+                   wsWidth || 0, wsHeight || 0, id);
         })();
     }
 

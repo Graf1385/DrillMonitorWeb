@@ -11,20 +11,27 @@
     height: fit-content;
     display: flex;
     flex-direction: column;
+    border-radius: 4px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.indicator > .indicatorHeader {
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .indicator:hover {
-    box-shadow: 0 0 20px var(--value-color);
+    box-shadow: 0 0 20px var(--value-color), 0 6px 28px rgba(0,0,0,0.65);
 }
 
 .indicator.selected {
-    box-shadow: 0 0 20px currentColor;
+    box-shadow: 0 0 20px currentColor, 0 6px 28px rgba(0,0,0,0.65);
 }
 
 /* Alarm states */
 @keyframes alarmBlink {
-    0%, 100% { box-shadow: 0 0 4px var(--alarm-color, #ff0000); }
-    50%       { box-shadow: 0 0 28px var(--alarm-color, #ff0000), 0 0 8px var(--alarm-color, #ff0000); }
+    0%, 100% { box-shadow: 0 0 4px var(--alarm-color, #ff0000), 0 4px 24px rgba(0,0,0,0.55); }
+    50%       { box-shadow: 0 0 28px var(--alarm-color, #ff0000), 0 0 8px var(--alarm-color, #ff0000), 0 6px 28px rgba(0,0,0,0.65); }
 }
 
 .indicator.alarm-active {
@@ -33,7 +40,7 @@
 }
 
 .indicator.alarm-acked {
-    box-shadow: 0 0 14px var(--alarm-color, #ff0000) !important;
+    box-shadow: 0 0 14px var(--alarm-color, #ff0000) !important, 0 4px 24px rgba(0,0,0,0.55) !important;
     border-color: var(--alarm-color, #ff0000) !important;
 }
 
@@ -69,7 +76,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Date Indicator */
@@ -93,7 +101,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Alarm volume slider */
@@ -160,6 +169,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Horizontal Progress Bar */
@@ -186,8 +197,13 @@
     position: relative;
     flex: 1;
     min-height: 28px;
-    background: #2d333b;
-    border-radius: 4px;
+    background:
+        repeating-linear-gradient(90deg,
+            transparent 0, transparent calc(10% - 1px),
+            rgba(0,0,0,0.28) calc(10% - 1px), rgba(0,0,0,0.28) 10%
+        ),
+        #161d28;
+    border-radius: 2px;
     overflow: hidden;
 }
 
@@ -195,8 +211,16 @@
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 0%;
-    border-radius: 4px;
+    border-radius: 2px;
     transition: width 0.3s ease;
+}
+
+.hBarFill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 55%);
+    pointer-events: none;
 }
 
 .hBarValue {
@@ -208,14 +232,17 @@
     font-weight: bold;
     pointer-events: none;
     white-space: nowrap;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
 }
 
 .hBarLabels {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
-    color: #6e7681;
+    font-size: 10px;
+    color: #4a5568;
     font-family: monospace;
+    letter-spacing: 0.05em;
 }
 
 /* Vertical Progress Bar */
@@ -244,18 +271,24 @@
 }
 
 .vBarMax, .vBarMin {
-    font-size: 11px;
-    color: #6e7681;
+    font-size: 10px;
+    color: #4a5568;
     text-align: center;
     font-family: monospace;
+    letter-spacing: 0.05em;
 }
 
 .vBarTrack {
     position: relative;
     flex: 1;
     min-height: 40px;
-    background: #2d333b;
-    border-radius: 4px;
+    background:
+        repeating-linear-gradient(0deg,
+            transparent 0, transparent calc(10% - 1px),
+            rgba(0,0,0,0.28) calc(10% - 1px), rgba(0,0,0,0.28) 10%
+        ),
+        #161d28;
+    border-radius: 2px;
     overflow: hidden;
 }
 
@@ -263,8 +296,16 @@
     position: absolute;
     left: 0; right: 0; bottom: 0;
     height: 0%;
-    border-radius: 4px;
+    border-radius: 2px;
     transition: height 0.3s ease;
+}
+
+.vBarFill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0.13) 0%, transparent 45%);
+    pointer-events: none;
 }
 
 .vBarValue {
@@ -276,6 +317,8 @@
     font-weight: bold;
     pointer-events: none;
     white-space: nowrap;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Ticker Indicator */
@@ -294,6 +337,13 @@
     overflow: hidden;
     display: flex;
     align-items: center;
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.09) 2px,
+        rgba(0,0,0,0.09) 4px
+    );
 }
 
 .tickerInner {
@@ -301,6 +351,7 @@
     white-space: nowrap;
     will-change: transform;
     animation: tickerScroll 12s linear infinite;
+    letter-spacing: 0.05em;
 }
 
 .tickerInner span {

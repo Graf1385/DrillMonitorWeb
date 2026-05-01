@@ -12,7 +12,15 @@
     margin: auto;
 	background-color: var(--workSpace-color);
 	background-size: 0px 0px; /* Размер ячеек сетки */
-    background-image: 
+    background-image:
         linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
         linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+}
+
+#workSpace.ws-fixed {
+    right: auto;
+    bottom: auto;
+    margin: 0;
+    transform-origin: top left;
+    overflow: hidden;
 }

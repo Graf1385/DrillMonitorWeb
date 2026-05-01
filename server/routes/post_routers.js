@@ -55,7 +55,7 @@ router.post('/api/profiles', (req, res) => {
 
 router.put('/api/profiles/:id', (req, res) => {
     try {
-        const { background, cellSize, alarmSoundId, alarmVolume, alarmDelay } = req.body;
+        const { background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight } = req.body;
         if (!background || !cellSize) {
             return res.status(400).json({ error: 'background и cellSize обязательны' });
         }
@@ -65,7 +65,9 @@ router.put('/api/profiles/:id', (req, res) => {
             parseInt(cellSize),
             alarmSoundId ? parseInt(alarmSoundId) : null,
             parseInt(alarmVolume) || 50,
-            parseFloat(alarmDelay) || 2
+            parseFloat(alarmDelay) || 2,
+            parseInt(wsWidth) || 0,
+            parseInt(wsHeight) || 0
         );
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Профиль не найден' });

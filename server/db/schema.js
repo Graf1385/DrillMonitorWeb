@@ -25,6 +25,8 @@ function initSchema(db) {
     try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_sound_id  INTEGER'); } catch {}
     try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_volume    INTEGER NOT NULL DEFAULT 50'); } catch {}
     try { db.exec('ALTER TABLE profiles ADD COLUMN alarm_delay     REAL    NOT NULL DEFAULT 2'); } catch {}
+    try { db.exec('ALTER TABLE profiles ADD COLUMN ws_width       INTEGER NOT NULL DEFAULT 0'); } catch {}
+    try { db.exec('ALTER TABLE profiles ADD COLUMN ws_height      INTEGER NOT NULL DEFAULT 0'); } catch {}
 
     db.exec('UPDATE profiles SET cell_size = ROUND(cell_size * 20) WHERE cell_size < 10');
 

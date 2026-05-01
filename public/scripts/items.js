@@ -1,6 +1,11 @@
 // Constants and helpers live in indicatorHelpers.js (loaded before this file).
 // Indicator type registry lives in indicatorTypes.js (loaded before this file).
 
+function _isSidebarOpen() {
+    var sb = document.querySelector('#sideBar');
+    return sb && sb.classList.contains('open');
+}
+
 var _addModal      = document.querySelector('#newItemModal');
 var _errorModal    = document.querySelector('#addItemErrorModal');
 var _activeType    = 'digitalIndicator';
@@ -184,10 +189,7 @@ window.closeUnitsDropdown = function() {
 var _ctxMenu   = document.querySelector('#indicatorContextMenu');
 var _ctxTarget = null;
 
-document.addEventListener('contextmenu', function (e) {
-    var indicator = e.target.closest('.indicator');
-    if (!indicator) return;
-    e.preventDefault();
+function _showCtxMenu(indicator, x, y) {
     _ctxTarget = indicator;
     var isVideo = indicator.classList.contains('videoIndicator');
     var ackBtn  = _ctxMenu.querySelector('#ctxAckBtn');
@@ -195,13 +197,22 @@ document.addEventListener('contextmenu', function (e) {
     if (ackBtn)  ackBtn.style.display  = (!isVideo && indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
     if (testBtn) testBtn.style.display = isVideo ? 'none' : '';
     _ctxMenu.style.display = 'block';
-    var x = e.clientX, y = e.clientY;
     var menuW = _ctxMenu.offsetWidth  || 190;
     var menuH = _ctxMenu.offsetHeight || 80;
     if (x + menuW > window.innerWidth)  x = window.innerWidth  - menuW - 4;
     if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 4;
     _ctxMenu.style.left = x + 'px';
     _ctxMenu.style.top  = y + 'px';
+}
+
+window.showIndicatorCtxMenu = function(indicator, x, y) { _showCtxMenu(indicator, x, y); };
+
+document.addEventListener('contextmenu', function (e) {
+    var indicator = e.target.closest('.indicator');
+    if (!indicator) return;
+    if (!_isSidebarOpen()) return;
+    e.preventDefault();
+    _showCtxMenu(indicator, e.clientX, e.clientY);
 });
 
 document.addEventListener('mousedown', function (e) {
@@ -294,6 +305,7 @@ var _resize = { el: null, initW: 0, initH: 0 };
 
 document.addEventListener('mousedown', function (e) {
     if (e.button !== 0) return;
+    if (!_isSidebarOpen()) return;
 
     var header = e.target.closest('.indicatorHeader');
     if (header) {
@@ -319,8 +331,14 @@ document.addEventListener('mousedown', function (e) {
 
 document.addEventListener('mousemove', function (e) {
     if (!_drag.el) return;
-    _drag.el.style.left = (_drag.origLeft + e.clientX - _drag.startX) + 'px';
-    _drag.el.style.top  = (_drag.origTop  + e.clientY - _drag.startY) + 'px';
+    var scale  = window._wsScale || 1;
+    var ws     = _workSpace;
+    var maxX   = ws.clientWidth  - _drag.el.offsetWidth;
+    var maxY   = ws.clientHeight - _drag.el.offsetHeight;
+    var newX   = Math.min(Math.max(0, _drag.origLeft + (e.clientX - _drag.startX) / scale), maxX);
+    var newY   = Math.min(Math.max(0, _drag.origTop  + (e.clientY - _drag.startY) / scale), maxY);
+    _drag.el.style.left = newX + 'px';
+    _drag.el.style.top  = newY + 'px';
 });
 
 document.addEventListener('mouseup', function () {
@@ -360,6 +378,7 @@ document.addEventListener('mouseup', function () {
 document.addEventListener('dblclick', function (e) {
     var indicator = e.target.closest('.indicator');
     if (!indicator) return;
+    if (!_isSidebarOpen()) return;
     _openEditModal(indicator);
 });
 

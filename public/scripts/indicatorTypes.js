@@ -103,10 +103,10 @@ var _indicatorTypes = {
                 return p;
             }
 
-            svg.appendChild(mkArc('gaugeTrack',      '#2d333b', _GAUGE_L + ' ' + _GAUGE_L, 0));
-            svg.appendChild(mkArc('gaugeGreenDim',   '#1a3a1a', '147.02 ' + _GAUGE_L,      0));
-            svg.appendChild(mkArc('gaugeYellowDim',  '#3a3000', '49.01 '  + _GAUGE_L,      -147.02));
-            svg.appendChild(mkArc('gaugeRedDim',     '#3a0a0a', '49.01 '  + _GAUGE_L,      -196.03));
+            svg.appendChild(mkArc('gaugeTrack',      '#14202e', _GAUGE_L + ' ' + _GAUGE_L, 0));
+            svg.appendChild(mkArc('gaugeGreenDim',   '#0a2212', '147.02 ' + _GAUGE_L,      0));
+            svg.appendChild(mkArc('gaugeYellowDim',  '#221900', '49.01 '  + _GAUGE_L,      -147.02));
+            svg.appendChild(mkArc('gaugeRedDim',     '#220606', '49.01 '  + _GAUGE_L,      -196.03));
             svg.appendChild(mkArc('gaugeGreenProg',  '#3fb950', '0 '      + _GAUGE_L,      0));
             svg.appendChild(mkArc('gaugeYellowProg', '#d29922', '0 '      + _GAUGE_L,      -147.02));
             svg.appendChild(mkArc('gaugeRedProg',    '#f85149', '0 '      + _GAUGE_L,      -196.03));
@@ -201,7 +201,7 @@ var _indicatorTypes = {
 
             var fills = document.createElementNS(NS, 'g');
             fills.setAttribute('clip-path', 'url(#' + clipId + ')');
-            fills.appendChild(mkRect('tankDimBg', _TANK_X, _TANK_Y, _TANK_W, _TANK_H, '#1a2233'));
+            fills.appendChild(mkRect('tankDimBg', _TANK_X, _TANK_Y, _TANK_W, _TANK_H, '#0b1220'));
 
             var waveGroup = document.createElementNS(NS, 'g');
             var anim = document.createElementNS(NS, 'animateTransform');
@@ -452,10 +452,10 @@ var _indicatorTypes = {
                 return p;
             }
 
-            svg.appendChild(mkArc('manoTrack',      '#2d333b', _MANO_L + ' ' + _MANO_L, 0));
-            svg.appendChild(mkArc('manoGreenDim',   '#1a3a1a', '197.92 ' + _MANO_L,     0));
-            svg.appendChild(mkArc('manoYellowDim',  '#3a3000', '65.97 '  + _MANO_L,     -_MANO_GREEN));
-            svg.appendChild(mkArc('manoRedDim',     '#3a0a0a', '65.98 '  + _MANO_L,     -_MANO_YELLOW));
+            svg.appendChild(mkArc('manoTrack',      '#14202e', _MANO_L + ' ' + _MANO_L, 0));
+            svg.appendChild(mkArc('manoGreenDim',   '#0a2212', '197.92 ' + _MANO_L,     0));
+            svg.appendChild(mkArc('manoYellowDim',  '#221900', '65.97 '  + _MANO_L,     -_MANO_GREEN));
+            svg.appendChild(mkArc('manoRedDim',     '#220606', '65.98 '  + _MANO_L,     -_MANO_YELLOW));
             svg.appendChild(mkArc('manoGreenProg',  '#3fb950', '0 '      + _MANO_L,     0));
             svg.appendChild(mkArc('manoYellowProg', '#d29922', '0 '      + _MANO_L,     -_MANO_GREEN));
             svg.appendChild(mkArc('manoRedProg',    '#f85149', '0 '      + _MANO_L,     -_MANO_YELLOW));

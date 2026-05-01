@@ -10,6 +10,8 @@ let _savedCellSize      = null;
 let _alarmSoundId       = '';
 let _alarmVolume        = 50;
 let _alarmDelay         = 2;
+let _wsWidth            = 0;
+let _wsHeight           = 0;
 
 let _settings = {
     ip:      '',
@@ -31,6 +33,45 @@ let _settings = {
         }
     }
 };
+
+// ── Resolution ───────────────────────────────────────────────────────────────
+
+function _applyResolution(w, h) {
+    _wsWidth  = w || 0;
+    _wsHeight = h || 0;
+    if (_wsWidth > 0 && _wsHeight > 0) {
+        _workSpace.style.width  = _wsWidth  + 'px';
+        _workSpace.style.height = _wsHeight + 'px';
+        _workSpace.classList.add('ws-fixed');
+    } else {
+        _workSpace.style.width  = '';
+        _workSpace.style.height = '';
+        _workSpace.classList.remove('ws-fixed');
+        _workSpace.style.transform = '';
+        window._wsScale = 1;
+    }
+    _updateWsScale();
+}
+
+function _updateWsScale() {
+    if (!_workSpace.classList.contains('ws-fixed')) {
+        window._wsScale = 1;
+        return;
+    }
+    var vw    = window.innerWidth;
+    var vh    = window.innerHeight;
+    var scale = Math.min(vw / _wsWidth, vh / _wsHeight);
+    if (scale >= 1) {
+        _workSpace.style.transform = '';
+        window._wsScale = 1;
+    } else {
+        scale = Math.round(scale * 10000) / 10000;
+        _workSpace.style.transform = 'scale(' + scale + ')';
+        window._wsScale = scale;
+    }
+}
+
+window.addEventListener('resize', _updateWsScale);
 
 // ── Profiles ──────────────────────────────────────────────────────────────────
 
@@ -74,6 +115,8 @@ function _loadProfiles() {
                 opt.dataset.alarmSoundId = p.alarm_sound_id || '';
                 opt.dataset.alarmVolume  = p.alarm_volume  !== null ? p.alarm_volume  : 50;
                 opt.dataset.alarmDelay   = p.alarm_delay   !== null ? p.alarm_delay   : 2;
+                opt.dataset.wsWidth      = p.ws_width  || 0;
+                opt.dataset.wsHeight     = p.ws_height || 0;
                 select.appendChild(opt);
             });
             if (prevId) select.value = prevId;
@@ -110,6 +153,12 @@ function applyProfile(selectEl, silent) {
     _modal.querySelector('#ws_alarmVolumeVal').textContent = _alarmVolume;
     _modal.querySelector('#ws_alarmDelay').value           = _alarmDelay;
 
+    _wsWidth  = parseInt(opt.dataset.wsWidth)  || 0;
+    _wsHeight = parseInt(opt.dataset.wsHeight) || 0;
+    var resSel = _modal.querySelector('#wsResolution');
+    if (resSel) resSel.value = (_wsWidth && _wsHeight) ? (_wsWidth + 'x' + _wsHeight) : '0x0';
+    _applyResolution(_wsWidth, _wsHeight);
+
     if (!silent) {
         $.ajax({ url: '/api/profiles/' + _activeProfileId + '/select', type: 'POST' });
     }
@@ -122,6 +171,7 @@ function applyProfileFromSSE(profile) {
     _alarmSoundId    = profile.alarm_sound_id || '';
     _alarmVolume     = profile.alarm_volume  != null ? parseInt(profile.alarm_volume)  : 50;
     _alarmDelay      = profile.alarm_delay   != null ? parseFloat(profile.alarm_delay) : 2;
+    _applyResolution(profile.ws_width || 0, profile.ws_height || 0);
 
     var select = _modal.querySelector('#wsProfile');
     if (select) {
@@ -238,6 +288,9 @@ function applyWorkSpaceSettings() {
     _alarmVolume  = parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50;
     _alarmDelay   = parseFloat(_modal.querySelector('#ws_alarmDelay').value) || 2;
 
+    var resParts = (_modal.querySelector('#wsResolution').value || '0x0').split('x');
+    _applyResolution(parseInt(resParts[0]) || 0, parseInt(resParts[1]) || 0);
+
     _modal.close();
     showSaveBtn();
 }
@@ -253,7 +306,9 @@ function saveSettings() {
         cellSize:     _settings.cellSize,
         alarmSoundId: _alarmSoundId,
         alarmVolume:  _alarmVolume,
-        alarmDelay:   _alarmDelay
+        alarmDelay:   _alarmDelay,
+        wsWidth:      _wsWidth,
+        wsHeight:     _wsHeight
     };
 
     $.ajax({

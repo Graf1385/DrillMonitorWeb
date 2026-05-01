@@ -61,6 +61,19 @@ function showIndicatorList() {
             body.querySelectorAll('tr.il-selected').forEach(function(r) { r.classList.remove('il-selected'); });
             if (!wasSelected) row.classList.add('il-selected');
         });
+        tbody.addEventListener('contextmenu', function(e) {
+            var row = e.target.closest('tr');
+            if (!row) return;
+            e.preventDefault();
+            var idx = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
+            var indicator = indicators[idx];
+            if (!indicator || !window.showIndicatorCtxMenu) return;
+            row.classList.add('il-selected');
+            body.querySelectorAll('tr.il-selected').forEach(function(r) {
+                if (r !== row) r.classList.remove('il-selected');
+            });
+            window.showIndicatorCtxMenu(indicator, e.clientX, e.clientY);
+        });
         tbody.addEventListener('dblclick', function(e) {
             var row = e.target.closest('tr');
             if (!row) return;
