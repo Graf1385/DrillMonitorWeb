@@ -267,9 +267,16 @@ function deleteProfileConfirm() {
 // ── Main settings modal ───────────────────────────────────────────────────────
 
 function showWorkSpaceSettings() {
+    var appliedW = _wsWidth;
+    var appliedH = _wsHeight;
     initCombo(_modal.querySelector('#wsProfile'));
     initCombo(_modal.querySelector('#ws_alarmSound'));
-    _loadProfiles().then(function () { _modal.showModal(); });
+    _loadProfiles().then(function () {
+        _applyResolution(appliedW, appliedH);
+        var resSel = _modal.querySelector('#wsResolution');
+        if (resSel) resSel.value = (appliedW && appliedH) ? (appliedW + 'x' + appliedH) : '0x0';
+        _modal.showModal();
+    });
 }
 
 function closeWorkSpaceSettings() {
