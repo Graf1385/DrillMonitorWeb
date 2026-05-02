@@ -332,7 +332,7 @@ document.addEventListener('mousedown', function (e) {
 document.addEventListener('mousemove', function (e) {
     if (!_drag.el) return;
     var scale  = window._wsScale || 1;
-    var ws     = _workSpace;
+    var ws     = _wsCanvas;
     var maxX   = ws.clientWidth  - _drag.el.offsetWidth;
     var maxY   = ws.clientHeight - _drag.el.offsetHeight;
     var newX   = Math.min(Math.max(0, _drag.origLeft + (e.clientX - _drag.startX) / scale), maxX);
@@ -342,7 +342,7 @@ document.addEventListener('mousemove', function (e) {
 });
 
 document.addEventListener('mouseup', function () {
-    var cellSize = _gridActive ? (parseInt(_workSpace.dataset.cellSize) || 20) : 0;
+    var cellSize = _gridActive ? (parseInt(_wsCanvas.dataset.cellSize) || 20) : 0;
 
     if (_drag.el) {
         if (cellSize) {
@@ -742,7 +742,7 @@ function addNewItem() {
         _refreshIndicatorListIfOpen();
 
     } else {
-        var ws   = document.querySelector('#workSpace');
+        var ws   = document.querySelector('#wsCanvas');
         var left = Math.max(20, Math.round(ws.clientWidth  / 2 - 80));
         var top  = Math.max(20, Math.round(ws.clientHeight / 2 - 60));
         ws.appendChild(_addIndicator(_activeType, config, left, top));
@@ -764,11 +764,11 @@ function removeItem() {
 }
 
 function _collectIndicators() {
-    var ws  = document.querySelector('#workSpace');
-    var wsW = ws.clientWidth;
-    var wsH = ws.clientHeight;
+    var ws  = document.querySelector('#wsCanvas');
+    var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;
+    var wsH = (_wsHeight > 0) ? _wsHeight : ws.clientHeight;
     var indicators = [];
-    document.querySelectorAll('#workSpace .indicator').forEach(function(el) {
+    document.querySelectorAll('#wsCanvas .indicator').forEach(function(el) {
         var d    = el.dataset;
         var type = _getIndicatorType(el);
         var rawW = parseInt(el.style.width)  || (d.width  ? parseInt(d.width)  : null);

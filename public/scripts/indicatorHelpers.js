@@ -38,13 +38,17 @@ function _getFontFamily(fontId) {
     return id && _fontMap[id] ? _fontMap[id] : 'monospace';
 }
 
+function _scaledFontPx(size) {
+    return (size / (window._wsScale || 1)) + 'px';
+}
+
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
 function _applyToHeader(headerEl, config) {
     headerEl.style.color           = config.headerColor;
     headerEl.style.backgroundColor = config.headerBg;
     headerEl.style.fontFamily      = _getFontFamily(config.headerFont);
-    headerEl.style.fontSize        = config.headerSize + 'px';
+    headerEl.style.fontSize        = _scaledFontPx(config.headerSize);
     headerEl.textContent           = config.headerText;
 }
 
@@ -134,7 +138,7 @@ function _applyToValue(valueEl, config, numericVal) {
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
     valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
-    valueEl.style.fontSize        = config.valueSize + 'px';
+    valueEl.style.fontSize        = _scaledFontPx(config.valueSize);
     valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
     valueEl.textContent           = _applyFormat(numericVal, config.format);
 }

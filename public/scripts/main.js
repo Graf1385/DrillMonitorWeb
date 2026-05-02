@@ -31,9 +31,9 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 getSettings();
 
 function _restoreIndicators(indicators) {
-    var ws  = document.querySelector('#workSpace');
-    var wsW = ws.clientWidth;
-    var wsH = ws.clientHeight;
+    var ws  = document.querySelector('#wsCanvas');
+    var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;
+    var wsH = (_wsHeight > 0) ? _wsHeight : ws.clientHeight;
     ws.querySelectorAll('.videoIndicator').forEach(function(el) { _stopVideoStream(el); });
     ws.querySelectorAll('.alarmPanelIndicator').forEach(function(el) {
         if (el._alarmObserver) el._alarmObserver.disconnect();
@@ -122,8 +122,7 @@ $.getJSON('/api/profiles/active', function (profile) {
 
     evtSource.addEventListener('workspace-saved', function (e) {
         var profile = JSON.parse(e.data);
-        _settings.background = profile.background;
-        _settings.cellSize   = profile.cell_size;
+        applyProfileFromSSE(profile);
         _loadIndicatorsForProfile(profile.id);
     });
 

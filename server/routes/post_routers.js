@@ -56,7 +56,7 @@ router.post('/api/profiles', (req, res) => {
 router.put('/api/profiles/:id', (req, res) => {
     try {
         const { background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight } = req.body;
-        if (!background || !cellSize) {
+if (!background || !cellSize) {
             return res.status(400).json({ error: 'background и cellSize обязательны' });
         }
         const result = db.updateProfile(

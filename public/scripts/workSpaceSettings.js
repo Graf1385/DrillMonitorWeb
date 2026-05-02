@@ -2,6 +2,7 @@ var _modal              = document.querySelector('#settings');
 var _createProfileModal = document.querySelector('#createProfileModal');
 var _deleteProfileModal = document.querySelector('#deleteProfileModal');
 var _workSpace          = document.querySelector('#workSpace');
+var _wsCanvas           = document.querySelector('#wsCanvas');
 
 let _pendingDeleteId    = null;
 let _activeProfileId    = null;
@@ -22,14 +23,14 @@ let _settings = {
     get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color').trim(); },
     set background(value) { _workSpace.style.setProperty('--workSpace-color', value); },
 
-    get gridColor() { return getComputedStyle(_workSpace).getPropertyValue('--grid-color').trim(); },
-    set gridColor(value) { _workSpace.style.setProperty('--grid-color', value); },
+    get gridColor() { return getComputedStyle(_wsCanvas).getPropertyValue('--grid-color').trim(); },
+    set gridColor(value) { _wsCanvas.style.setProperty('--grid-color', value); },
 
-    get cellSize() { return parseInt(_workSpace.dataset['cellSize']) || 20; },
+    get cellSize() { return parseInt(_wsCanvas.dataset['cellSize']) || 20; },
     set cellSize(value) {
-        _workSpace.dataset['cellSize'] = value;
+        _wsCanvas.dataset['cellSize'] = value;
         if (_gridActive) {
-            _workSpace.style.backgroundSize = value + 'px ' + value + 'px';
+            _wsCanvas.style.backgroundSize = value + 'px ' + value + 'px';
         }
     }
 };
@@ -40,35 +41,63 @@ function _applyResolution(w, h) {
     _wsWidth  = w || 0;
     _wsHeight = h || 0;
     if (_wsWidth > 0 && _wsHeight > 0) {
-        _workSpace.style.width  = _wsWidth  + 'px';
-        _workSpace.style.height = _wsHeight + 'px';
-        _workSpace.classList.add('ws-fixed');
+        _wsCanvas.style.width  = _wsWidth  + 'px';
+        _wsCanvas.style.height = _wsHeight + 'px';
     } else {
-        _workSpace.style.width  = '';
-        _workSpace.style.height = '';
-        _workSpace.classList.remove('ws-fixed');
-        _workSpace.style.transform = '';
-        window._wsScale = 1;
+        _wsCanvas.style.width  = '';
+        _wsCanvas.style.height = '';
+        _wsCanvas.style.transform = '';
+        window._wsScale   = 1;
+        window._wsOffsetX = 0;
+        window._wsOffsetY = 0;
     }
     _updateWsScale();
 }
 
 function _updateWsScale() {
-    if (!_workSpace.classList.contains('ws-fixed')) {
-        window._wsScale = 1;
+    if (!(_wsWidth > 0 && _wsHeight > 0)) {
+        window._wsScale   = 1;
+        window._wsOffsetX = 0;
+        window._wsOffsetY = 0;
         return;
     }
     var vw    = window.innerWidth;
     var vh    = window.innerHeight;
     var scale = Math.min(vw / _wsWidth, vh / _wsHeight);
-    if (scale >= 1) {
-        _workSpace.style.transform = '';
-        window._wsScale = 1;
-    } else {
-        scale = Math.round(scale * 10000) / 10000;
-        _workSpace.style.transform = 'scale(' + scale + ')';
-        window._wsScale = scale;
-    }
+    scale = Math.round(scale * 10000) / 10000;
+    var ox = Math.round((vw - _wsWidth  * scale) / 2);
+    var oy = Math.round((vh - _wsHeight * scale) / 2);
+    var prevScale = window._wsScale || 1;
+    _wsCanvas.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
+    window._wsScale   = scale;
+    window._wsOffsetX = ox;
+    window._wsOffsetY = oy;
+    if (Math.abs(scale - prevScale) > 0.0001) _refreshAllIndicatorFonts();
+}
+
+function _refreshAllIndicatorFonts() {
+    var scale = window._wsScale || 1;
+    _wsCanvas.querySelectorAll('.indicator').forEach(function(el) {
+        var headerSize = parseFloat(el.dataset.headerSize);
+        var valueSize  = parseFloat(el.dataset.valueSize);
+        if (!isNaN(headerSize)) {
+            var h = el.querySelector('.indicatorHeader');
+            if (h) h.style.fontSize = (headerSize / scale) + 'px';
+        }
+        if (!isNaN(valueSize)) {
+            var fontPx = (valueSize / scale) + 'px';
+            var v = el.querySelector('.indicatorValue');
+            if (v) v.style.fontSize = fontPx;
+            var tv = el.querySelector('.tankValueText');
+            if (tv) tv.style.fontSize = fontPx;
+            var hv = el.querySelector('.hBarValue');
+            if (hv) hv.style.fontSize = fontPx;
+            var vv = el.querySelector('.vBarValue');
+            if (vv) vv.style.fontSize = fontPx;
+            var ti = el.querySelector('.tickerInner');
+            if (ti) ti.style.fontSize = fontPx;
+        }
+    });
 }
 
 window.addEventListener('resize', _updateWsScale);
@@ -153,13 +182,15 @@ function applyProfile(selectEl, silent) {
     _modal.querySelector('#ws_alarmVolumeVal').textContent = _alarmVolume;
     _modal.querySelector('#ws_alarmDelay').value           = _alarmDelay;
 
-    _wsWidth  = parseInt(opt.dataset.wsWidth)  || 0;
-    _wsHeight = parseInt(opt.dataset.wsHeight) || 0;
+    var dbW = parseInt(opt.dataset.wsWidth)  || 0;
+    var dbH = parseInt(opt.dataset.wsHeight) || 0;
     var resSel = _modal.querySelector('#wsResolution');
-    if (resSel) resSel.value = (_wsWidth && _wsHeight) ? (_wsWidth + 'x' + _wsHeight) : '0x0';
-    _applyResolution(_wsWidth, _wsHeight);
+    if (resSel) resSel.value = (dbW && dbH) ? (dbW + 'x' + dbH) : '0x0';
 
     if (!silent) {
+        _wsWidth  = dbW;
+        _wsHeight = dbH;
+        _applyResolution(_wsWidth, _wsHeight);
         $.ajax({ url: '/api/profiles/' + _activeProfileId + '/select', type: 'POST' });
     }
 }
@@ -272,9 +303,10 @@ function showWorkSpaceSettings() {
     initCombo(_modal.querySelector('#wsProfile'));
     initCombo(_modal.querySelector('#ws_alarmSound'));
     _loadProfiles().then(function () {
-        _applyResolution(appliedW, appliedH);
-        var resSel = _modal.querySelector('#wsResolution');
-        if (resSel) resSel.value = (appliedW && appliedH) ? (appliedW + 'x' + appliedH) : '0x0';
+        if (appliedW || appliedH) {
+            var resSel = _modal.querySelector('#wsResolution');
+            if (resSel) resSel.value = (appliedW && appliedH) ? (appliedW + 'x' + appliedH) : '0x0';
+        }
         _modal.showModal();
     });
 }

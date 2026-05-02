@@ -22,7 +22,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.fontSize        = _scaledFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
@@ -38,7 +38,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.fontSize        = _scaledFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
             v.textContent           = '00:00:00';
             el.appendChild(v);
@@ -48,7 +48,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.fontSize        = _scaledFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
         }
     },
@@ -63,7 +63,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.fontSize        = _scaledFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
             v.textContent           = 'дд.мм.гг';
             el.appendChild(v);
@@ -73,7 +73,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = cfg.valueSize + 'px';
+            v.style.fontSize        = _scaledFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
         }
     },
@@ -238,7 +238,7 @@ var _indicatorTypes = {
             var valText = document.createElement('span');
             valText.className          = 'tankValueText';
             valText.style.color        = cfg.valueColor;
-            valText.style.fontSize     = cfg.valueSize + 'px';
+            valText.style.fontSize     = _scaledFontPx(cfg.valueSize);
             valText.style.fontFamily   = _getFontFamily(cfg.valueFont);
             valText.style.textShadow   = _tankTextShadow(cfg.valueBg);
             valText.textContent        = _applyFormat(0, cfg.format);
@@ -252,7 +252,7 @@ var _indicatorTypes = {
             if (t) {
                 t.style.color      = cfg.valueColor;
                 t.style.fontFamily = _getFontFamily(cfg.valueFont);
-                t.style.fontSize   = cfg.valueSize + 'px';
+                t.style.fontSize   = _scaledFontPx(cfg.valueSize);
                 t.style.textShadow = _tankTextShadow(cfg.valueBg);
             }
             var svg = el.querySelector('.tankSvg');
@@ -286,7 +286,7 @@ var _indicatorTypes = {
             valText.className        = 'hBarValue';
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
-            valText.style.fontSize   = cfg.valueSize + 'px';
+            valText.style.fontSize   = _scaledFontPx(cfg.valueSize);
             valText.style.textShadow = _tankTextShadow(cfg.valueBg);
             valText.textContent      = _applyFormat(0, cfg.format);
 
@@ -315,7 +315,7 @@ var _indicatorTypes = {
             var fill = el.querySelector('.hBarFill');
             if (fill) { fill.style.backgroundColor = cfg.valueColor; fill.style.boxShadow = '0 0 8px ' + cfg.valueColor; }
             var val = el.querySelector('.hBarValue');
-            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = cfg.valueSize + 'px'; val.style.textShadow = _tankTextShadow(cfg.valueBg); }
+            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = _scaledFontPx(cfg.valueSize); val.style.textShadow = _tankTextShadow(cfg.valueBg); }
             var wrapper = el.querySelector('.hBarWrapper');
             if (wrapper) wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
@@ -347,7 +347,7 @@ var _indicatorTypes = {
             valText.className        = 'vBarValue';
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
-            valText.style.fontSize   = cfg.valueSize + 'px';
+            valText.style.fontSize   = _scaledFontPx(cfg.valueSize);
             valText.style.textShadow = _tankTextShadow(cfg.valueBg);
             valText.textContent      = _applyFormat(0, cfg.format);
 
@@ -368,7 +368,7 @@ var _indicatorTypes = {
             var fill = el.querySelector('.vBarFill');
             if (fill) { fill.style.backgroundColor = cfg.valueColor; fill.style.boxShadow = '0 0 8px ' + cfg.valueColor; }
             var val = el.querySelector('.vBarValue');
-            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = cfg.valueSize + 'px'; val.style.textShadow = _tankTextShadow(cfg.valueBg); }
+            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = _scaledFontPx(cfg.valueSize); val.style.textShadow = _tankTextShadow(cfg.valueBg); }
             var wrapper = el.querySelector('.vBarWrapper');
             if (wrapper) wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
@@ -389,7 +389,7 @@ var _indicatorTypes = {
             var inner = document.createElement('div');
             inner.className               = 'tickerInner';
             inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
-            inner.style.fontSize          = cfg.valueSize + 'px';
+            inner.style.fontSize          = _scaledFontPx(cfg.valueSize);
             inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
             inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
 
@@ -419,7 +419,7 @@ var _indicatorTypes = {
             var inner = el.querySelector('.tickerInner');
             if (inner) {
                 inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
-                inner.style.fontSize          = cfg.valueSize + 'px';
+                inner.style.fontSize          = _scaledFontPx(cfg.valueSize);
                 inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
                 inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
             }

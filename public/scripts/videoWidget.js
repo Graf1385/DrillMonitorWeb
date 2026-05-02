@@ -57,7 +57,7 @@ function submitVideoSettings() {
         _applyVideoConfig(_videoSettingsEl, cfg);
         showSaveBtn();
     } else {
-        var ws   = document.querySelector('#workSpace');
+        var ws   = document.querySelector('#wsCanvas');
         var left = Math.max(20, Math.round(ws.clientWidth  / 2 - cfg.width  / 2));
         var top  = Math.max(20, Math.round(ws.clientHeight / 2 - cfg.height / 2));
         var el   = _buildVideoElement(cfg);
