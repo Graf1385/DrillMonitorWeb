@@ -104,6 +104,29 @@
             </div>
             <span>Полукруговой</span>
         </button>
+        <button class="itemTypeCard" id="typeAlarmHistory" onclick="selectItemType('alarmHistoryIndicator')">
+            <div class="itemTypeCardPreview">
+                <div class="previewHeader" style="background:#0d1117;color:#8b949e;border-bottom:1px solid #21262d;">ИСТОРИЯ ТРЕВОГ</div>
+                <div style="background:#0d1117;margin:2px 4px;border-radius:3px;border:1px solid #21262d;overflow:hidden;">
+                    <div style="display:grid;grid-template-columns:2.2em 3.6em 1fr;gap:0 3px;padding:2px 5px;background:rgba(248,81,73,0.09);border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <span style="font-size:5px;color:#555e68;font-variant-numeric:tabular-nums;">14:23</span>
+                        <span style="font-size:5px;color:#f85149;font-weight:700;">▲ ТРЕВОГА</span>
+                        <span style="font-size:5px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Давление</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2.2em 3.6em 1fr;gap:0 3px;padding:2px 5px;background:rgba(63,185,80,0.07);border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <span style="font-size:5px;color:#555e68;font-variant-numeric:tabular-nums;">14:21</span>
+                        <span style="font-size:5px;color:#3fb950;font-weight:700;">▼ СБРОС</span>
+                        <span style="font-size:5px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Вес на крюке</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2.2em 3.6em 1fr;gap:0 3px;padding:2px 5px;background:rgba(210,153,34,0.06);">
+                        <span style="font-size:5px;color:#555e68;font-variant-numeric:tabular-nums;">14:18</span>
+                        <span style="font-size:5px;color:#d29922;font-weight:700;">✓ КВИТ</span>
+                        <span style="font-size:5px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Расход р-ра</span>
+                    </div>
+                </div>
+            </div>
+            <span>История тревог</span>
+        </button>
         <button class="itemTypeCard" id="typeAlarmPanel" onclick="selectItemType('alarmPanelIndicator')">
             <div class="itemTypeCardPreview">
                 <div class="previewHeader" style="background:#1e0000;color:#ff6060;border-bottom:1px solid #441111;">ТРЕВОГА</div>
@@ -168,7 +191,7 @@
                 <select class="settingsSelect" id="ni_headerFont">
                     <option value="0">Monospace</option>
                 </select>
-                <input type="number" class="settingsInput sizeInput" id="ni_headerSize" value="17" min="1" max="100">
+                <input type="number" class="settingsInput sizeInput" id="ni_headerSize" value="17" min="1" max="200">
             </td>
         </tr>
 
@@ -193,12 +216,12 @@
             </td>
         </tr>
         <tr>
-            <td>Шрифт / размер (%)</td>
+            <td>Шрифт / размер (px)</td>
             <td class="paramCell">
                 <select class="settingsSelect" id="ni_valueFont">
                     <option value="0">Monospace</option>
                 </select>
-                <input type="number" class="settingsInput sizeInput" id="ni_valueSize" value="50" min="1" max="100">
+                <input type="number" class="settingsInput sizeInput" id="ni_valueSize" value="30" min="1" max="400">
             </td>
         </tr>
         <tr>

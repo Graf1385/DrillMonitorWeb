@@ -41,8 +41,8 @@ function _restoreIndicators(indicators) {
     });
     ws.querySelectorAll('.indicator').forEach(function(el) { el.remove(); });
     indicators.forEach(function(ind) {
-        var left = (ind.pos_left || 0) * wsW / 100;
-        var top  = (ind.pos_top  || 0) * wsH / 100;
+        var left = Math.round((ind.pos_left || 0) * wsW / 100);
+        var top  = Math.round((ind.pos_top  || 0) * wsH / 100);
 
         if (ind.type === 'videoIndicator') {
             var extra = {};
@@ -57,8 +57,8 @@ function _restoreIndicators(indicators) {
                 streamPass:    extra.streamPass    || '',
                 streamChannel: extra.streamChannel || '1',
                 streamSub:     extra.streamSub     || '0',
-                width:  ind.width  != null ? ind.width  * wsW / 100 : 320,
-                height: ind.height != null ? ind.height * wsH / 100 : 240
+                width:  ind.width  != null ? Math.round(ind.width  * wsW / 100) : 320,
+                height: ind.height != null ? Math.round(ind.height * wsH / 100) : 240
             });
             el.style.left = left + 'px';
             el.style.top  = top  + 'px';
@@ -70,8 +70,8 @@ function _restoreIndicators(indicators) {
         var config = {
             paramId:     ind.param_id,
             paramName:   ind.param_name || '',
-            width:       ind.width  != null ? ind.width  * wsW / 100 : null,
-            height:      ind.height != null ? ind.height * wsH / 100 : null,
+            width:       ind.width  != null ? Math.round(ind.width  * wsW / 100) : null,
+            height:      ind.height != null ? Math.round(ind.height * wsH / 100) : null,
             headerText:  ind.header_text,
             headerColor: ind.header_color,
             headerBg:    ind.header_bg,

@@ -480,6 +480,69 @@ body:has(#sideBar.open) .indicator {
     white-space: nowrap;
 }
 
+/* ── Alarm History Indicator ─────────────────────────────────────────────── */
+
+.alarmHistoryIndicator > .indicatorHeader {
+    text-align: center;
+    margin: 0;
+    padding: 4px 10px;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+    letter-spacing: 0.08em;
+}
+
+.ahWrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+.ahWrap::-webkit-scrollbar       { width: 4px; }
+.ahWrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.ahLog {
+    padding: 4px 8px;
+}
+
+.ahEntry {
+    padding: 3px 0;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ahEntry:last-child { border-bottom: none; }
+
+.ahTs {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.55;
+}
+
+.ahDot {
+    font-variant-numeric: tabular-nums;
+}
+
+.ahEvt {
+    font-weight: 700;
+}
+
+.ahMsg {
+    opacity: 0.85;
+}
+
+.ahEmpty {
+    padding: 16px;
+    text-align: center;
+    opacity: 0.3;
+    font-style: italic;
+}
+
 /* ── Alarm Panel Indicator (workspace badge) ─────────────────────────────── */
 
 .alarmPanelIndicator {

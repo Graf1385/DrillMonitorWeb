@@ -9,6 +9,7 @@ var _indicatorTypes = {
         cardId: '#typeDigital',
         isNumeric: true,
         defaultSize: {},
+        defaultValueSize: 30,
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
@@ -22,7 +23,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+            v.style.fontSize        = _valueFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
@@ -32,13 +33,14 @@ var _indicatorTypes = {
         cardId: '#typeTime',
         isNumeric: false,
         defaultSize: {},
+        defaultValueSize: 40,
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            v.style.fontSize        = _valueFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
             v.textContent           = '00:00:00';
             el.appendChild(v);
@@ -48,7 +50,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+            v.style.fontSize        = _valueFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
         }
     },
@@ -57,13 +59,14 @@ var _indicatorTypes = {
         cardId: '#typeDate',
         isNumeric: false,
         defaultSize: {},
+        defaultValueSize: 28,
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            v.style.fontSize        = _valueFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
             v.textContent           = 'дд.мм.гг';
             el.appendChild(v);
@@ -73,7 +76,7 @@ var _indicatorTypes = {
             v.style.color           = cfg.valueColor;
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            v.style.fontSize        = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+            v.style.fontSize        = _valueFontPx(cfg.valueSize);
             v.style.textShadow      = '0 0 10px ' + cfg.valueColor;
         }
     },
@@ -82,6 +85,7 @@ var _indicatorTypes = {
         cardId: '#typeGauge',
         isNumeric: true,
         defaultSize: { width: 200, height: 160 },
+        defaultValueSize: 30,
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
@@ -153,7 +157,7 @@ var _indicatorTypes = {
             valText.className       = 'gaugeValueText';
             valText.style.color     = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
-            valText.style.fontSize  = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            valText.style.fontSize  = _valueFontPx(cfg.valueSize);
             valText.style.fontWeight = 'bold';
             valText.textContent     = _applyFormat(0, cfg.format);
             gaugeWrapper.appendChild(valText);
@@ -166,7 +170,7 @@ var _indicatorTypes = {
             if (!t) return;
             t.style.color      = cfg.valueColor;
             t.style.fontFamily = _getFontFamily(cfg.valueFont);
-            t.style.fontSize   = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+            t.style.fontSize   = _valueFontPx(cfg.valueSize);
             var svg = el.querySelector('.gaugeSvg');
             if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             var seg = el.querySelector('.gaugeSeg');
@@ -179,6 +183,7 @@ var _indicatorTypes = {
         cardId: '#typeTank',
         isNumeric: true,
         defaultSize: { width: 120, height: 200 },
+        defaultValueSize: 28,
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
@@ -247,7 +252,7 @@ var _indicatorTypes = {
             var valText = document.createElement('span');
             valText.className          = 'tankValueText';
             valText.style.color        = cfg.valueColor;
-            valText.style.fontSize     = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            valText.style.fontSize     = _valueFontPx(cfg.valueSize);
             valText.style.fontFamily   = _getFontFamily(cfg.valueFont);
             valText.style.textShadow   = _tankTextShadow(cfg.valueBg);
             valText.textContent        = _applyFormat(0, cfg.format);
@@ -261,7 +266,7 @@ var _indicatorTypes = {
             if (t) {
                 t.style.color      = cfg.valueColor;
                 t.style.fontFamily = _getFontFamily(cfg.valueFont);
-                t.style.fontSize   = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+                t.style.fontSize   = _valueFontPx(cfg.valueSize);
                 t.style.textShadow = _tankTextShadow(cfg.valueBg);
             }
             var svg = el.querySelector('.tankSvg');
@@ -278,6 +283,7 @@ var _indicatorTypes = {
         cardId: '#typeHProgress',
         isNumeric: true,
         defaultSize: { width: 260, height: 100 },
+        defaultValueSize: 24,
         create: function (el, cfg) {
             var wrapper = document.createElement('div');
             wrapper.className             = 'hBarWrapper';
@@ -295,7 +301,7 @@ var _indicatorTypes = {
             valText.className        = 'hBarValue';
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
-            valText.style.fontSize   = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            valText.style.fontSize   = _valueFontPx(cfg.valueSize);
             valText.style.textShadow = _tankTextShadow(cfg.valueBg);
             valText.textContent      = _applyFormat(0, cfg.format);
 
@@ -324,7 +330,7 @@ var _indicatorTypes = {
             var fill = el.querySelector('.hBarFill');
             if (fill) { fill.style.backgroundColor = cfg.valueColor; fill.style.boxShadow = '0 0 8px ' + cfg.valueColor; }
             var val = el.querySelector('.hBarValue');
-            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth); val.style.textShadow = _tankTextShadow(cfg.valueBg); }
+            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = _valueFontPx(cfg.valueSize); val.style.textShadow = _tankTextShadow(cfg.valueBg); }
             var wrapper = el.querySelector('.hBarWrapper');
             if (wrapper) wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
@@ -335,6 +341,7 @@ var _indicatorTypes = {
         cardId: '#typeVProgress',
         isNumeric: true,
         defaultSize: { width: 80, height: 220 },
+        defaultValueSize: 26,
         create: function (el, cfg) {
             var wrapper = document.createElement('div');
             wrapper.className             = 'vBarWrapper';
@@ -356,7 +363,7 @@ var _indicatorTypes = {
             valText.className        = 'vBarValue';
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
-            valText.style.fontSize   = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            valText.style.fontSize   = _valueFontPx(cfg.valueSize);
             valText.style.textShadow = _tankTextShadow(cfg.valueBg);
             valText.textContent      = _applyFormat(0, cfg.format);
 
@@ -377,7 +384,7 @@ var _indicatorTypes = {
             var fill = el.querySelector('.vBarFill');
             if (fill) { fill.style.backgroundColor = cfg.valueColor; fill.style.boxShadow = '0 0 8px ' + cfg.valueColor; }
             var val = el.querySelector('.vBarValue');
-            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth); val.style.textShadow = _tankTextShadow(cfg.valueBg); }
+            if (val) { val.style.color = cfg.valueColor; val.style.fontFamily = _getFontFamily(cfg.valueFont); val.style.fontSize = _valueFontPx(cfg.valueSize); val.style.textShadow = _tankTextShadow(cfg.valueBg); }
             var wrapper = el.querySelector('.vBarWrapper');
             if (wrapper) wrapper.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
@@ -389,6 +396,7 @@ var _indicatorTypes = {
         isNumeric: false,
         lockParam: false,
         defaultSize: { width: 300, height: 80 },
+        defaultValueSize: 28,
         create: function (el, cfg) {
             var outer = document.createElement('div');
             outer.className             = 'tickerOuter';
@@ -398,7 +406,7 @@ var _indicatorTypes = {
             var inner = document.createElement('div');
             inner.className               = 'tickerInner';
             inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
-            inner.style.fontSize          = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            inner.style.fontSize          = _valueFontPx(cfg.valueSize);
             inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
             inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
 
@@ -428,7 +436,7 @@ var _indicatorTypes = {
             var inner = el.querySelector('.tickerInner');
             if (inner) {
                 inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
-                inner.style.fontSize          = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+                inner.style.fontSize          = _valueFontPx(cfg.valueSize);
                 inner.style.textShadow        = '0 0 8px ' + cfg.valueColor;
                 inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
             }
@@ -440,6 +448,7 @@ var _indicatorTypes = {
         cardId: '#typeManometer',
         isNumeric: true,
         defaultSize: { width: 200, height: 210 },
+        defaultValueSize: 28,
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
@@ -530,7 +539,7 @@ var _indicatorTypes = {
             valText.className        = 'manoValueText';
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
-            valText.style.fontSize   = _valueFontPx(cfg.valueSize, cfg.height, cfg.width);
+            valText.style.fontSize   = _valueFontPx(cfg.valueSize);
             valText.style.fontWeight = 'bold';
             valText.textContent      = _applyFormat(0, cfg.format);
             manoWrapper.appendChild(valText);
@@ -543,7 +552,7 @@ var _indicatorTypes = {
             if (t) {
                 t.style.color      = cfg.valueColor;
                 t.style.fontFamily = _getFontFamily(cfg.valueFont);
-                t.style.fontSize   = _valueFontPx(cfg.valueSize, cfg.height || el.offsetHeight, cfg.width || el.offsetWidth);
+                t.style.fontSize   = _valueFontPx(cfg.valueSize);
             }
             var svg = el.querySelector('.manoSvg');
             if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
@@ -568,6 +577,100 @@ var _indicatorTypes = {
         applyEdit:   function () {}
     },
 
+    // ── Alarm History Indicator ───────────────────────────────────────────────
+    alarmHistoryIndicator: {
+        cardId:      '#typeAlarmHistory',
+        isNumeric:   false,
+        defaultSize: { width: 420, height: 260 },
+        defaultValueSize: 13,
+
+        create: function (el, cfg) {
+            var wrap = document.createElement('div');
+            wrap.className = 'ahWrap';
+            wrap.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
+            wrap.style.color           = cfg.valueColor;
+            wrap.style.fontFamily      = _getFontFamily(cfg.valueFont);
+            wrap.style.fontSize        = _valueFontPx(cfg.valueSize);
+
+            var log_div = document.createElement('div');
+            log_div.className = 'ahLog';
+            wrap.appendChild(log_div);
+            el.appendChild(wrap);
+
+            function _pad(n) { return n < 10 ? '0' + n : String(n); }
+            function _fmt(ts) {
+                var d = ts instanceof Date ? ts : new Date(ts);
+                return '[' + _pad(d.getHours()) + ':' + _pad(d.getMinutes()) + ':' + _pad(d.getSeconds())
+                     + ' ' + _pad(d.getDate()) + '.' + _pad(d.getMonth() + 1) + '.' + d.getFullYear() + ']';
+            }
+
+            function _render() {
+                if (!el.isConnected) {
+                    document.removeEventListener('alarmLogUpdate', _render);
+                    return;
+                }
+                var entries = window.getAlarmLog ? window.getAlarmLog() : [];
+                log_div.innerHTML = '';
+                if (!entries.length) {
+                    var empty = document.createElement('div');
+                    empty.className   = 'ahEmpty';
+                    empty.textContent = 'Нет событий';
+                    log_div.appendChild(empty);
+                    return;
+                }
+                for (var i = 0; i < entries.length; i++) {
+                    var e = entries[i];
+
+                    var eventStr, eventColor;
+                    if (e.event === 'trigger')      { eventStr = '⚡ Тревога'; eventColor = '#f85149'; }
+                    else if (e.event === 'clear')   { eventStr = '✓ Сброс';   eventColor = '#3fb950'; }
+                    else                            { eventStr = '⚠ Квит.';   eventColor = '#d29922'; }
+
+                    var valStr = typeof e.value === 'number' ? e.value.toFixed(2) : String(e.value);
+
+                    var row = document.createElement('div');
+                    row.className = 'ahEntry';
+
+                    var tsSpan = document.createElement('span');
+                    tsSpan.className   = 'ahTs';
+                    tsSpan.textContent = _fmt(e.ts);
+
+                    var dotSpan = document.createElement('span');
+                    dotSpan.className   = 'ahDot';
+                    dotSpan.textContent = ' ■ ';
+                    dotSpan.style.color = e.color || cfg.valueColor;
+
+                    var evtSpan = document.createElement('span');
+                    evtSpan.className   = 'ahEvt';
+                    evtSpan.textContent = eventStr;
+                    evtSpan.style.color = eventColor;
+
+                    var msgSpan = document.createElement('span');
+                    msgSpan.className   = 'ahMsg';
+                    msgSpan.textContent = ' — ' + e.name + ' = ' + valStr;
+
+                    row.appendChild(tsSpan);
+                    row.appendChild(dotSpan);
+                    row.appendChild(evtSpan);
+                    row.appendChild(msgSpan);
+                    log_div.appendChild(row);
+                }
+            }
+
+            _render();
+            document.addEventListener('alarmLogUpdate', _render);
+        },
+
+        applyEdit: function (el, cfg) {
+            var wrap = el.querySelector('.ahWrap');
+            if (!wrap) return;
+            wrap.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
+            wrap.style.color           = cfg.valueColor;
+            wrap.style.fontFamily      = _getFontFamily(cfg.valueFont);
+            wrap.style.fontSize        = _valueFontPx(cfg.valueSize);
+        }
+    },
+
     // ── Alarm Panel Indicator ─────────────────────────────────────────────────
     // Invisible in the workspace when calm. On alarm: projects a fixed, full-
     // screen-centred red panel that cannot be closed or moved by the operator.
@@ -575,6 +678,7 @@ var _indicatorTypes = {
         cardId:      '#typeAlarmPanel',
         isNumeric:   true,
         defaultSize: { width: 400, height: 300 },
+        defaultValueSize: 40,
 
         create: function (el, cfg) {
             // Compact badge that lives in the workspace

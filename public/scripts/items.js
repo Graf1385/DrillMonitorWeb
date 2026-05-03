@@ -70,6 +70,7 @@ function _addAlarmLogEntry(el, val, event) {
         contentType: 'application/json',
         data:        JSON.stringify({ message: '[Сигнализация] ' + eventLabel + ': ' + name + ' = ' + valStr })
     });
+    document.dispatchEvent(new CustomEvent('alarmLogUpdate'));
 }
 
 function _checkAlarm(el, numericVal) {
@@ -445,6 +446,7 @@ function showNewItems() {
     _addModal.querySelector('#itemTypeList').style.display = '';
     _addModal.querySelector('#ni_settingsBody').style.display = 'none';
     _resetModalDefaults();
+    selectItemType(_activeType);
     $.when(_loadParameters(), _loadFonts(), _loadUnits()).then(function () {
         _applyTypeToParamSelect(_activeType);
         _addModal.showModal();
@@ -549,7 +551,7 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_headerSize').value  = 17;
     _addModal.querySelector('#ni_format').value      = '';
     _addModal.querySelector('#ni_valueFont').value   = 0;
-    _addModal.querySelector('#ni_valueSize').value   = 50;
+    _addModal.querySelector('#ni_valueSize').value   = 25;
     _addModal.querySelector('#ni_valueColor').value  = '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = '#0d1117';
     _addModal.querySelector('#ni_rangeMin').value      = 0;
@@ -574,6 +576,14 @@ function selectItemType(type) {
     var typeDef = _indicatorTypes[type];
     if (typeDef && typeDef.cardId) document.querySelector(typeDef.cardId).classList.add('selected');
     _applyTypeToParamSelect(type);
+    if (typeDef) {
+        var def = typeDef.defaultSize || {};
+        if (def.width)  _addModal.querySelector('#ni_width').value  = def.width;
+        if (def.height) _addModal.querySelector('#ni_height').value = def.height;
+        if (!def.width)  _addModal.querySelector('#ni_width').value  = '';
+        if (!def.height) _addModal.querySelector('#ni_height').value = '';
+        _addModal.querySelector('#ni_valueSize').value = typeDef.defaultValueSize || 25;
+    }
 }
 
 // ── Config read ───────────────────────────────────────────────────────────────
@@ -595,10 +605,10 @@ function _readConfig() {
         headerColor: _addModal.querySelector('#ni_headerColor').value,
         headerBg:    _addModal.querySelector('#ni_headerBg').value,
         headerFont:  parseInt(_addModal.querySelector('#ni_headerFont').value) || 0,
-        headerSize:  clamp(_addModal.querySelector('#ni_headerSize').value, 1, 100),
+        headerSize:  clamp(_addModal.querySelector('#ni_headerSize').value, 1, 200),
         format:      _addModal.querySelector('#ni_format').value,
         valueFont:   parseInt(_addModal.querySelector('#ni_valueFont').value) || 0,
-        valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 1, 100),
+        valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 1, 400),
         valueColor:  _addModal.querySelector('#ni_valueColor').value,
         valueBg:     _addModal.querySelector('#ni_valueBg').value,
         rangeMin:     nullable(_addModal.querySelector('#ni_rangeMin').value),
