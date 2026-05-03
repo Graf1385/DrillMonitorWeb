@@ -298,6 +298,8 @@ function closeTestModal() {
     _testTarget = null;
 }
 
+// ── Font helpers ──────────────────────────────────────────────────────────────
+
 // ── Drag / resize ─────────────────────────────────────────────────────────────
 
 var _drag   = { el: null, startX: 0, startY: 0, origLeft: 0, origTop: 0 };
@@ -544,10 +546,10 @@ function _resetModalDefaults() {
     _addModal.querySelector('#ni_headerColor').value = '#c9d1d9';
     _addModal.querySelector('#ni_headerBg').value    = '#161b22';
     _addModal.querySelector('#ni_headerFont').value  = 0;
-    _addModal.querySelector('#ni_headerSize').value  = 14;
+    _addModal.querySelector('#ni_headerSize').value  = 17;
     _addModal.querySelector('#ni_format').value      = '';
     _addModal.querySelector('#ni_valueFont').value   = 0;
-    _addModal.querySelector('#ni_valueSize').value   = 48;
+    _addModal.querySelector('#ni_valueSize').value   = 50;
     _addModal.querySelector('#ni_valueColor').value  = '#38bdf8';
     _addModal.querySelector('#ni_valueBg').value     = '#0d1117';
     _addModal.querySelector('#ni_rangeMin').value      = 0;
@@ -593,10 +595,10 @@ function _readConfig() {
         headerColor: _addModal.querySelector('#ni_headerColor').value,
         headerBg:    _addModal.querySelector('#ni_headerBg').value,
         headerFont:  parseInt(_addModal.querySelector('#ni_headerFont').value) || 0,
-        headerSize:  clamp(_addModal.querySelector('#ni_headerSize').value, 8, 72),
+        headerSize:  clamp(_addModal.querySelector('#ni_headerSize').value, 1, 100),
         format:      _addModal.querySelector('#ni_format').value,
         valueFont:   parseInt(_addModal.querySelector('#ni_valueFont').value) || 0,
-        valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 12, 120),
+        valueSize:   clamp(_addModal.querySelector('#ni_valueSize').value, 1, 100),
         valueColor:  _addModal.querySelector('#ni_valueColor').value,
         valueBg:     _addModal.querySelector('#ni_valueBg').value,
         rangeMin:     nullable(_addModal.querySelector('#ni_rangeMin').value),

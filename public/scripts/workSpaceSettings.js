@@ -40,6 +40,8 @@ let _settings = {
 function _applyResolution(w, h) {
     _wsWidth  = w || 0;
     _wsHeight = h || 0;
+    window._wsWidth  = _wsWidth;
+    window._wsHeight = _wsHeight;
     if (_wsWidth > 0 && _wsHeight > 0) {
         _wsCanvas.style.width  = _wsWidth  + 'px';
         _wsCanvas.style.height = _wsHeight + 'px';
@@ -67,38 +69,25 @@ function _updateWsScale() {
     scale = Math.round(scale * 10000) / 10000;
     var ox = Math.round((vw - _wsWidth  * scale) / 2);
     var oy = Math.round((vh - _wsHeight * scale) / 2);
-    var prevScale = window._wsScale || 1;
     _wsCanvas.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
     window._wsScale   = scale;
     window._wsOffsetX = ox;
     window._wsOffsetY = oy;
-    if (Math.abs(scale - prevScale) > 0.0001) _refreshAllIndicatorFonts();
 }
 
-function _refreshAllIndicatorFonts() {
-    var scale = window._wsScale || 1;
-    _wsCanvas.querySelectorAll('.indicator').forEach(function(el) {
-        var headerSize = parseFloat(el.dataset.headerSize);
-        var valueSize  = parseFloat(el.dataset.valueSize);
-        if (!isNaN(headerSize)) {
-            var h = el.querySelector('.indicatorHeader');
-            if (h) h.style.fontSize = (headerSize / scale) + 'px';
-        }
-        if (!isNaN(valueSize)) {
-            var fontPx = (valueSize / scale) + 'px';
-            var v = el.querySelector('.indicatorValue');
-            if (v) v.style.fontSize = fontPx;
-            var tv = el.querySelector('.tankValueText');
-            if (tv) tv.style.fontSize = fontPx;
-            var hv = el.querySelector('.hBarValue');
-            if (hv) hv.style.fontSize = fontPx;
-            var vv = el.querySelector('.vBarValue');
-            if (vv) vv.style.fontSize = fontPx;
-            var ti = el.querySelector('.tickerInner');
-            if (ti) ti.style.fontSize = fontPx;
-        }
-    });
-}
+window.updateResolutionHint = function(select) {
+    var hint = _modal.querySelector('#wsResolutionHint');
+    if (!hint) return;
+    var parts = (select.value || '0x0').split('x');
+    var w = parseInt(parts[0]) || 0;
+    var h = parseInt(parts[1]) || 0;
+    if (!w || !h) { hint.textContent = ''; return; }
+    var scaleX = Math.round(window.innerWidth  / w * 10) / 10;
+    var scaleY = Math.round(window.innerHeight / h * 10) / 10;
+    var scale  = Math.round(Math.min(scaleX, scaleY) * 10) / 10;
+    hint.textContent = 'масштаб на этом экране: ×' + scale;
+    hint.style.color = scale < 1 ? '#f85149' : scale > 1 ? '#3fb950' : '#d29922';
+};
 
 window.addEventListener('resize', _updateWsScale);
 
@@ -185,7 +174,10 @@ function applyProfile(selectEl, silent) {
     var dbW = parseInt(opt.dataset.wsWidth)  || 0;
     var dbH = parseInt(opt.dataset.wsHeight) || 0;
     var resSel = _modal.querySelector('#wsResolution');
-    if (resSel) resSel.value = (dbW && dbH) ? (dbW + 'x' + dbH) : '0x0';
+    if (resSel) {
+        resSel.value = (dbW && dbH) ? (dbW + 'x' + dbH) : '0x0';
+        if (window.updateResolutionHint) window.updateResolutionHint(resSel);
+    }
 
     if (!silent) {
         _wsWidth  = dbW;
@@ -305,7 +297,10 @@ function showWorkSpaceSettings() {
     _loadProfiles().then(function () {
         if (appliedW || appliedH) {
             var resSel = _modal.querySelector('#wsResolution');
-            if (resSel) resSel.value = (appliedW && appliedH) ? (appliedW + 'x' + appliedH) : '0x0';
+            if (resSel) {
+                resSel.value = (appliedW && appliedH) ? (appliedW + 'x' + appliedH) : '0x0';
+                window.updateResolutionHint(resSel);
+            }
         }
         _modal.showModal();
     });

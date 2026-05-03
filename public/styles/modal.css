@@ -357,6 +357,14 @@ input[type=number]::-webkit-inner-spin-button {
     color: #c9d1d9;
 }
 
+.wsResHint {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.85;
+    margin-left: 8px;
+    letter-spacing: 0.02em;
+}
+
 .profileCell {
     display: flex;
     gap: 6px;

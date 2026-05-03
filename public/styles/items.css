@@ -2,11 +2,15 @@
     --selected-color: lime;
 }
 
+body:has(#sideBar.open) .indicator {
+    resize: both;
+}
+
 .indicator {
     position: absolute;
     border: 2px solid;
     overflow: hidden;
-    resize: both;
+    resize: none;
     width: fit-content;
     height: fit-content;
     display: flex;
@@ -376,12 +380,28 @@
     user-select: none;
 }
 
-.manometerIndicator .manoSvg {
+.manoWrapper {
+    position: relative;
+    flex: 1;
+    min-height: 100px;
+    display: flex;
+}
+
+.manoWrapper .manoSvg {
     width: 100%;
     height: 100%;
     display: block;
     flex: 1;
-    min-height: 100px;
+}
+
+.manoWrapper .manoValueText {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 /* Gauge Indicator */
@@ -395,12 +415,28 @@
     user-select: none;
 }
 
-.gaugeIndicator .gaugeSvg {
+.gaugeWrapper {
+    position: relative;
+    flex: 1;
+    min-height: 60px;
+    display: flex;
+}
+
+.gaugeWrapper .gaugeSvg {
     width: 100%;
     height: 100%;
     display: block;
     flex: 1;
-    min-height: 60px;
+}
+
+.gaugeWrapper .gaugeValueText {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 /* Tank Indicator */

@@ -38,8 +38,12 @@ function _getFontFamily(fontId) {
     return id && _fontMap[id] ? _fontMap[id] : 'monospace';
 }
 
-function _scaledFontPx(size) {
-    return (size / (window._wsScale || 1)) + 'px';
+function _fontFromPct(pct, canvasH) {
+    return ((pct / 100) * (canvasH || 100)) + 'px';
+}
+
+function _valueFontPx(pct, canvasH, canvasW) {
+    return _fontFromPct(pct, canvasH);
 }
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
@@ -48,7 +52,7 @@ function _applyToHeader(headerEl, config) {
     headerEl.style.color           = config.headerColor;
     headerEl.style.backgroundColor = config.headerBg;
     headerEl.style.fontFamily      = _getFontFamily(config.headerFont);
-    headerEl.style.fontSize        = _scaledFontPx(config.headerSize);
+    headerEl.style.fontSize        = _fontFromPct(config.headerSize, config.height);
     headerEl.textContent           = config.headerText;
 }
 
@@ -138,7 +142,7 @@ function _applyToValue(valueEl, config, numericVal) {
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
     valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
-    valueEl.style.fontSize        = _scaledFontPx(config.valueSize);
+    valueEl.style.fontSize        = _valueFontPx(config.valueSize, config.height, config.width);
     valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
     valueEl.textContent           = _applyFormat(numericVal, config.format);
 }
