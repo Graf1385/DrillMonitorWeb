@@ -143,7 +143,7 @@ function _applyToValue(valueEl, config, numericVal) {
     valueEl.style.backgroundColor = config.valueBg;
     valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
     valueEl.style.fontSize        = _valueFontPx(config.valueSize);
-    valueEl.style.textShadow      = '0 0 10px ' + config.valueColor;
+    valueEl.style.textShadow      = '0 0 8px ' + config.valueColor + ', 0 0 24px ' + config.valueColor + ', 0 0 52px ' + config.valueColor;
     valueEl.textContent           = _applyFormat(numericVal, config.format);
 }
 

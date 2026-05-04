@@ -43,11 +43,12 @@ function _restoreIndicators(indicators) {
     indicators.forEach(function(ind) {
         var left = Math.round((ind.pos_left || 0) * wsW / 100);
         var top  = Math.round((ind.pos_top  || 0) * wsH / 100);
+        var el;
 
         if (ind.type === 'videoIndicator') {
             var extra = {};
             try { extra = JSON.parse(ind.extra_data || '{}'); } catch {}
-            var el = _buildVideoElement({
+            el = _buildVideoElement({
                 headerText:    ind.header_text  || 'Камера',
                 headerColor:   ind.header_color || '#c9d1d9',
                 headerBg:      ind.header_bg    || '#161b22',
@@ -64,36 +65,49 @@ function _restoreIndicators(indicators) {
             el.style.top  = top  + 'px';
             ws.appendChild(el);
             if (extra.streamHost) _startVideoStream(el);
-            return;
+        } else {
+            var config = {
+                paramId:     ind.param_id,
+                paramName:   ind.param_name || '',
+                width:       ind.width  != null ? Math.round(ind.width  * wsW / 100) : null,
+                height:      ind.height != null ? Math.round(ind.height * wsH / 100) : null,
+                headerText:  ind.header_text,
+                headerColor: ind.header_color,
+                headerBg:    ind.header_bg,
+                headerFont:  ind.header_font,
+                headerSize:  ind.header_size,
+                format:      ind.format,
+                valueColor:  ind.value_color,
+                valueBg:     ind.value_bg,
+                valueFont:   ind.value_font,
+                valueSize:   ind.value_size,
+                rangeMin:    ind.range_min,
+                rangeMax:    ind.range_max,
+                alarmMin:    ind.alarm_min,
+                alarmMax:    ind.alarm_max,
+                alarmEnabled: ind.alarm_enabled ? true : false,
+                alarmColor:   ind.alarm_color  || '#ff0000',
+                units:          ind.units          || '',
+                zoneColors:     ind.zone_colors    ? true : false,
+                tickerSpeed:    ind.ticker_speed   != null ? ind.ticker_speed   : 12,
+                valueBgOpacity: ind.value_bg_opacity != null ? ind.value_bg_opacity : 0
+            };
+            el = _addIndicator(ind.type || 'digitalIndicator', config, left, top);
+            ws.appendChild(el);
         }
 
-        var config = {
-            paramId:     ind.param_id,
-            paramName:   ind.param_name || '',
-            width:       ind.width  != null ? Math.round(ind.width  * wsW / 100) : null,
-            height:      ind.height != null ? Math.round(ind.height * wsH / 100) : null,
-            headerText:  ind.header_text,
-            headerColor: ind.header_color,
-            headerBg:    ind.header_bg,
-            headerFont:  ind.header_font,
-            headerSize:  ind.header_size,
-            format:      ind.format,
-            valueColor:  ind.value_color,
-            valueBg:     ind.value_bg,
-            valueFont:   ind.value_font,
-            valueSize:   ind.value_size,
-            rangeMin:    ind.range_min,
-            rangeMax:    ind.range_max,
-            alarmMin:    ind.alarm_min,
-            alarmMax:    ind.alarm_max,
-            alarmEnabled: ind.alarm_enabled ? true : false,
-            alarmColor:   ind.alarm_color  || '#ff0000',
-            units:          ind.units          || '',
-            zoneColors:     ind.zone_colors    ? true : false,
-            tickerSpeed:    ind.ticker_speed   != null ? ind.ticker_speed   : 12,
-            valueBgOpacity: ind.value_bg_opacity != null ? ind.value_bg_opacity : 0
-        };
-        ws.appendChild(_addIndicator(ind.type || 'digitalIndicator', config, left, top));
+        // Clamp position to visible canvas area (fixes cross-resolution overflow)
+        var scale = window._wsScale  || 1;
+        var ox    = window._wsOffsetX || 0;
+        var oy    = window._wsOffsetY || 0;
+        var iw    = el.offsetWidth;
+        var ih    = el.offsetHeight;
+        var minX  = Math.max(0, Math.ceil(-ox / scale));
+        var minY  = Math.max(0, Math.ceil(-oy / scale));
+        var maxX  = Math.min(ws.clientWidth  - iw, Math.floor((window.innerWidth  - ox) / scale) - iw);
+        var maxY  = Math.min(ws.clientHeight - ih, Math.floor((window.innerHeight - oy) / scale) - ih);
+        el.style.left = Math.min(Math.max(left, minX), maxX) + 'px';
+        el.style.top  = Math.min(Math.max(top,  minY), maxY) + 'px';
     });
 }
 

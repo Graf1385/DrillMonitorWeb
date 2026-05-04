@@ -65,7 +65,7 @@ function _updateWsScale() {
     }
     var vw    = window.innerWidth;
     var vh    = window.innerHeight;
-    var scale = Math.min(vw / _wsWidth, vh / _wsHeight);
+    var scale = Math.max(vw / _wsWidth, vh / _wsHeight);
     scale = Math.round(scale * 10000) / 10000;
     var ox = Math.round((vw - _wsWidth  * scale) / 2);
     var oy = Math.round((vh - _wsHeight * scale) / 2);
@@ -84,7 +84,7 @@ window.updateResolutionHint = function(select) {
     if (!w || !h) { hint.textContent = ''; return; }
     var scaleX = Math.round(window.innerWidth  / w * 10) / 10;
     var scaleY = Math.round(window.innerHeight / h * 10) / 10;
-    var scale  = Math.round(Math.min(scaleX, scaleY) * 10) / 10;
+    var scale  = Math.round(Math.max(scaleX, scaleY) * 10) / 10;
     hint.textContent = 'масштаб на этом экране: ×' + scale;
     hint.style.color = scale < 1 ? '#f85149' : scale > 1 ? '#3fb950' : '#d29922';
 };

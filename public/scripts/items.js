@@ -334,12 +334,19 @@ document.addEventListener('mousedown', function (e) {
 
 document.addEventListener('mousemove', function (e) {
     if (!_drag.el) return;
-    var scale  = window._wsScale || 1;
-    var ws     = _wsCanvas;
-    var maxX   = ws.clientWidth  - _drag.el.offsetWidth;
-    var maxY   = ws.clientHeight - _drag.el.offsetHeight;
-    var newX   = Math.min(Math.max(0, _drag.origLeft + (e.clientX - _drag.startX) / scale), maxX);
-    var newY   = Math.min(Math.max(0, _drag.origTop  + (e.clientY - _drag.startY) / scale), maxY);
+    var scale = window._wsScale  || 1;
+    var ox    = window._wsOffsetX || 0;
+    var oy    = window._wsOffsetY || 0;
+    var ws    = _wsCanvas;
+    var iw    = _drag.el.offsetWidth;
+    var ih    = _drag.el.offsetHeight;
+    // Clamp to the visible screen area within canvas coordinates
+    var minX = Math.max(0, Math.ceil(-ox / scale));
+    var minY = Math.max(0, Math.ceil(-oy / scale));
+    var maxX = Math.min(ws.clientWidth  - iw, Math.floor((window.innerWidth  - ox) / scale) - iw);
+    var maxY = Math.min(ws.clientHeight - ih, Math.floor((window.innerHeight - oy) / scale) - ih);
+    var newX = Math.min(Math.max(minX, _drag.origLeft + (e.clientX - _drag.startX) / scale), maxX);
+    var newY = Math.min(Math.max(minY, _drag.origTop  + (e.clientY - _drag.startY) / scale), maxY);
     _drag.el.style.left = newX + 'px';
     _drag.el.style.top  = newY + 'px';
 });

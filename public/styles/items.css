@@ -1,41 +1,83 @@
 :root {
-    --selected-color: lime;
+    --selected-color: #00e676;
 }
 
-body:has(#sideBar.open) .indicator {
-    resize: both;
-}
+body:has(#sideBar.open) .indicator { resize: both; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE INDICATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .indicator {
     position: absolute;
-    border: 2px solid;
     overflow: hidden;
     resize: none;
     width: fit-content;
     height: fit-content;
     display: flex;
     flex-direction: column;
-    border-radius: 4px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+    background-color: #070c11;
+    border: 1px solid;
+    border-top-width: 2px;
+    border-radius: 2px;
+    box-shadow:
+        0 0 0 1px rgba(0,0,0,0.85),
+        0 10px 40px rgba(0,0,0,0.85),
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 0 80px rgba(0,0,0,0.35);
+    transition: box-shadow 0.18s;
 }
 
 .indicator > .indicatorHeader {
-    letter-spacing: 0.07em;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0.4em 0.9em;
+    text-align: center;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+    font-weight: 700;
+    flex-shrink: 0;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.008) 100%),
+        repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px);
 }
 
 .indicator:hover {
-    box-shadow: 0 0 20px var(--value-color), 0 6px 28px rgba(0,0,0,0.65);
+    box-shadow:
+        0 0 0 1px rgba(0,0,0,0.85),
+        0 0 24px var(--value-color, rgba(255,255,255,0.1)),
+        0 10px 40px rgba(0,0,0,0.85),
+        inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .indicator.selected {
-    box-shadow: 0 0 20px currentColor, 0 6px 28px rgba(0,0,0,0.65);
+    outline: 1px dashed var(--selected-color);
+    outline-offset: 2px;
+    box-shadow:
+        0 0 0 1px rgba(0,0,0,0.85),
+        0 0 30px var(--selected-color),
+        0 10px 40px rgba(0,0,0,0.85),
+        inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
-/* Alarm states */
+/* ── Alarm states ───────────────────────────────────────────────────────── */
+
 @keyframes alarmBlink {
-    0%, 100% { box-shadow: 0 0 4px var(--alarm-color, #ff0000), 0 4px 24px rgba(0,0,0,0.55); }
-    50%       { box-shadow: 0 0 28px var(--alarm-color, #ff0000), 0 0 8px var(--alarm-color, #ff0000), 0 6px 28px rgba(0,0,0,0.65); }
+    0%, 100% {
+        box-shadow:
+            0 0 8px var(--alarm-color),
+            0 0 0 1px rgba(0,0,0,0.85),
+            0 6px 28px rgba(0,0,0,0.7);
+    }
+    50% {
+        box-shadow:
+            0 0 48px var(--alarm-color),
+            0 0 100px color-mix(in srgb, var(--alarm-color) 28%, transparent),
+            0 0 0 1px rgba(0,0,0,0.85),
+            0 6px 28px rgba(0,0,0,0.7);
+    }
 }
 
 .indicator.alarm-active {
@@ -44,94 +86,28 @@ body:has(#sideBar.open) .indicator {
 }
 
 .indicator.alarm-acked {
-    box-shadow: 0 0 14px var(--alarm-color, #ff0000) !important, 0 4px 24px rgba(0,0,0,0.55) !important;
+    box-shadow:
+        0 0 22px var(--alarm-color, #ff0000),
+        0 0 0 1px rgba(0,0,0,0.85),
+        0 4px 24px rgba(0,0,0,0.55) !important;
     border-color: var(--alarm-color, #ff0000) !important;
 }
 
-/* Digital Indicator */
-.digitalIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
+/* ── Alarm volume slider ─────────────────────────────────────────────────── */
 
-/* Time Indicator */
-.timeIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
+.alarmVolumeSlider { flex: 1; accent-color: #38bdf8; cursor: pointer; }
+.alarmVolumeNum { min-width: 28px; text-align: right; color: #c9d1d9; font-size: 13px; }
 
-.timeIndicator > .indicatorValue {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 0.08em;
-    font-variant-numeric: tabular-nums;
-}
+/* ── Context menu ───────────────────────────────────────────────────────── */
 
-/* Date Indicator */
-.dateIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
-
-.dateIndicator > .indicatorValue {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 0.06em;
-    font-variant-numeric: tabular-nums;
-}
-
-/* Alarm volume slider */
-.alarmVolumeSlider {
-    flex: 1;
-    accent-color: #38bdf8;
-    cursor: pointer;
-}
-
-.alarmVolumeNum {
-    min-width: 28px;
-    text-align: right;
-    color: #c9d1d9;
-    font-size: 13px;
-}
-
-/* Context menu */
 .indicatorCtxMenu {
     display: none;
     position: fixed;
     z-index: 9999;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    background: #0a1018;
+    border: 1px solid #1d2633;
+    border-radius: 3px;
+    box-shadow: 0 14px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,0,0,0.6);
     padding: 4px 0;
     min-width: 190px;
 }
@@ -142,80 +118,77 @@ body:has(#sideBar.open) .indicator {
     padding: 8px 16px;
     background: none;
     border: none;
-    color: #c9d1d9;
-    font-size: 13px;
+    color: #7a8899;
+    font-size: 11px;
     text-align: left;
     cursor: pointer;
     white-space: nowrap;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
 }
 
 .indicatorCtxMenu button:hover {
-    background: #21262d;
-    color: #58a6ff;
+    background: #121d2a;
+    color: #d4e8ff;
 }
 
-.indicatorCtxMenu button.ctxMenuDanger {
-    color: #f87171;
-}
+.indicatorCtxMenu button.ctxMenuDanger { color: #b03030; }
+.indicatorCtxMenu button.ctxMenuDanger:hover { color: #f87171; background: #180c0c; }
 
-.indicatorCtxMenu button.ctxMenuDanger:hover {
-    color: #f87171;
-    background: #2a1a1a;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIGITAL / TIME / DATE
+   Padding в em — масштабируется вместе с fontSize
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-.digitalIndicator > .indicatorValue {
+.digitalIndicator > .indicatorValue,
+.timeIndicator    > .indicatorValue,
+.dateIndicator    > .indicatorValue {
     text-align: center;
-    margin: 0;
-    padding: 4px 12px;
+    padding: 0.32em 0.7em;
     font-weight: bold;
     white-space: nowrap;
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     font-variant-numeric: tabular-nums;
 }
 
-/* Horizontal Progress Bar */
-.hProgressIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   HORIZONTAL PROGRESS BAR
+   .hBarWrapper получает font-size из JS → em масштабируется
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .hBarWrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 8px 12px;
-    gap: 4px;
+    padding: 0.42em 0.6em;
+    gap: 0.25em;
 }
 
 .hBarTrack {
     position: relative;
     flex: 1;
-    min-height: 28px;
-    background:
-        repeating-linear-gradient(90deg,
-            transparent 0, transparent calc(10% - 1px),
-            rgba(0,0,0,0.28) calc(10% - 1px), rgba(0,0,0,0.28) 10%
-        ),
-        #161d28;
-    border-radius: 2px;
+    min-height: 1.3em;
+    background-color: #060e18;
+    background-image: repeating-linear-gradient(
+        90deg,
+        transparent 0, transparent calc(10% - 1px),
+        rgba(255,255,255,0.04) calc(10% - 1px), rgba(255,255,255,0.04) 10%
+    );
+    border-radius: 1px;
     overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
 }
 
 .hBarFill {
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 0%;
-    border-radius: 2px;
+    border-radius: 1px;
     transition: width 0.3s ease;
 }
 
@@ -223,8 +196,17 @@ body:has(#sideBar.open) .indicator {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 55%);
+    background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 55%);
     pointer-events: none;
+}
+
+.hBarFill::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; right: 0;
+    width: 2px;
+    background: rgba(255,255,255,0.65);
+    filter: blur(1px);
 }
 
 .hBarValue {
@@ -243,64 +225,73 @@ body:has(#sideBar.open) .indicator {
 .hBarLabels {
     display: flex;
     justify-content: space-between;
-    font-size: 10px;
-    color: #4a5568;
+    font-size: clamp(9px, 0.52em, 13px);
+    color: rgba(255,255,255,0.2);
     font-family: monospace;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.09em;
 }
 
-/* Vertical Progress Bar */
-.vProgressIndicator {
-    flex-direction: row;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   VERTICAL PROGRESS BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.vProgressIndicator { flex-direction: row; }
 
 .vProgressIndicator > .indicatorHeader {
     text-align: center;
-    margin: 0;
-    padding: 2px 2px;
+    padding: 0.4em 0.18em;
     font-weight: bold;
     white-space: nowrap;
     cursor: grab;
     user-select: none;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    background-image:
+        linear-gradient(90deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.008) 100%),
+        repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px);
 }
 
 .vBarWrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 4px;
-    gap: 2px;
+    padding: 0.42em 0.5em;
+    gap: 0.22em;
 }
 
 .vBarMax, .vBarMin {
-    font-size: 10px;
-    color: #4a5568;
+    font-size: clamp(9px, 0.52em, 13px);
+    color: rgba(255,255,255,0.2);
     text-align: center;
     font-family: monospace;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.09em;
 }
 
 .vBarTrack {
     position: relative;
     flex: 1;
     min-height: 40px;
-    background:
-        repeating-linear-gradient(0deg,
-            transparent 0, transparent calc(10% - 1px),
-            rgba(0,0,0,0.28) calc(10% - 1px), rgba(0,0,0,0.28) 10%
-        ),
-        #161d28;
-    border-radius: 2px;
+    background-color: #060e18;
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent 0, transparent calc(10% - 1px),
+        rgba(255,255,255,0.04) calc(10% - 1px), rgba(255,255,255,0.04) 10%
+    );
+    border-radius: 1px;
     overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
 }
 
 .vBarFill {
     position: absolute;
     left: 0; right: 0; bottom: 0;
     height: 0%;
-    border-radius: 2px;
+    border-radius: 1px;
     transition: height 0.3s ease;
 }
 
@@ -308,8 +299,17 @@ body:has(#sideBar.open) .indicator {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0.13) 0%, transparent 45%);
+    background: linear-gradient(90deg, rgba(255,255,255,0.18) 0%, transparent 50%);
     pointer-events: none;
+}
+
+.vBarFill::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 2px;
+    background: rgba(255,255,255,0.65);
+    filter: blur(1px);
 }
 
 .vBarValue {
@@ -325,16 +325,9 @@ body:has(#sideBar.open) .indicator {
     font-variant-numeric: tabular-nums;
 }
 
-/* Ticker Indicator */
-.tickerIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   TICKER
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .tickerOuter {
     flex: 1;
@@ -342,11 +335,8 @@ body:has(#sideBar.open) .indicator {
     display: flex;
     align-items: center;
     background-image: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.09) 2px,
-        rgba(0,0,0,0.09) 4px
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.16) 2px, rgba(0,0,0,0.16) 4px
     );
 }
 
@@ -360,7 +350,7 @@ body:has(#sideBar.open) .indicator {
 
 .tickerInner span {
     display: inline-block;
-    padding: 0 20px;
+    padding: 0 0.7em;
     box-sizing: border-box;
 }
 
@@ -369,16 +359,9 @@ body:has(#sideBar.open) .indicator {
     to   { transform: translateX(-50%); }
 }
 
-/* Manometer Indicator */
-.manometerIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   MANOMETER
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .manoWrapper {
     position: relative;
@@ -402,18 +385,12 @@ body:has(#sideBar.open) .indicator {
     justify-content: center;
     pointer-events: none;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
-/* Gauge Indicator */
-.gaugeIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 12px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   GAUGE
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .gaugeWrapper {
     position: relative;
@@ -437,23 +414,32 @@ body:has(#sideBar.open) .indicator {
     justify-content: center;
     pointer-events: none;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
-/* Tank Indicator */
-.tankIndicator {
-    flex-direction: row;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   TANK
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tankIndicator { flex-direction: row; }
 
 .tankIndicator > .indicatorHeader {
     text-align: center;
-    margin: 0;
-    padding: 2px 2px;
+    padding: 0.4em 0.18em;
     font-weight: bold;
     white-space: nowrap;
     cursor: grab;
     user-select: none;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    background-image:
+        linear-gradient(90deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.008) 100%),
+        repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px);
 }
 
 .tankSvgWrapper {
@@ -478,19 +464,15 @@ body:has(#sideBar.open) .indicator {
     font-weight: bold;
     pointer-events: none;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
-/* ── Alarm History Indicator ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALARM HISTORY INDICATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .alarmHistoryIndicator > .indicatorHeader {
-    text-align: center;
-    margin: 0;
-    padding: 4px 10px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: grab;
-    user-select: none;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.14em;
 }
 
 .ahWrap {
@@ -498,20 +480,18 @@ body:has(#sideBar.open) .indicator {
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.12) transparent;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
-.ahWrap::-webkit-scrollbar       { width: 4px; }
-.ahWrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.ahWrap::-webkit-scrollbar       { width: 3px; }
+.ahWrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
-.ahLog {
-    padding: 4px 8px;
-}
+.ahLog { padding: 0.3em 0.6em; }
 
 .ahEntry {
-    padding: 3px 0;
+    padding: 0.22em 0;
     line-height: 1.5;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -519,31 +499,20 @@ body:has(#sideBar.open) .indicator {
 
 .ahEntry:last-child { border-bottom: none; }
 
-.ahTs {
-    font-variant-numeric: tabular-nums;
-    opacity: 0.55;
-}
-
-.ahDot {
-    font-variant-numeric: tabular-nums;
-}
-
-.ahEvt {
-    font-weight: 700;
-}
-
-.ahMsg {
-    opacity: 0.85;
-}
+.ahTs  { font-variant-numeric: tabular-nums; opacity: 0.45; }
+.ahEvt { font-weight: 700; }
+.ahMsg { opacity: 0.8; }
 
 .ahEmpty {
-    padding: 16px;
+    padding: 1.2em;
     text-align: center;
-    opacity: 0.3;
+    opacity: 0.25;
     font-style: italic;
 }
 
-/* ── Alarm Panel Indicator (workspace badge) ─────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALARM PANEL INDICATOR (workspace badge)
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .alarmPanelIndicator {
     resize: none !important;
@@ -573,12 +542,12 @@ body:has(#sideBar.open) .indicator {
 
 .alarmPanelIndicator > .indicatorHeader {
     text-align: center;
-    padding: 10px 16px;
+    padding: 0.55em 1em;
     font-weight: bold;
     white-space: nowrap;
     cursor: default;
     user-select: none;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     flex-shrink: 0;
 }
 
@@ -591,15 +560,14 @@ body:has(#sideBar.open) .indicator {
     padding: 16px 28px 20px;
     gap: 4px;
     background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0, 0, 0, 0.22) 2px,
-        rgba(0, 0, 0, 0.22) 4px
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.22) 2px, rgba(0,0,0,0.22) 4px
     );
 }
 
-/* ── Alarm Panel Overlay ─────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALARM PANEL OVERLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @keyframes apOverlayGlow {
     0%, 100% { box-shadow: 0 0 28px #cc000070, 0 0 80px #88000038; }
@@ -630,25 +598,13 @@ body:has(#sideBar.open) .indicator {
     transform: translate(-50%, -50%);
     width: clamp(400px, 52vw, 680px);
     min-height: 270px;
-
     background:
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0,0,0,0.22) 2px,
-            rgba(0,0,0,0.22) 4px
-        ),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.22) 2px, rgba(0,0,0,0.22) 4px),
         linear-gradient(160deg, #180000 0%, #0d0000 50%, #080000 100%);
-
     border: 2px solid #771111;
     flex-direction: column;
     overflow: hidden;
-
-    animation:
-        apOverlayGlow   1.5s ease-in-out infinite,
-        apBorderPulse   1.5s ease-in-out infinite;
-
+    animation: apOverlayGlow 1.5s ease-in-out infinite, apBorderPulse 1.5s ease-in-out infinite;
     pointer-events: all;
     user-select: none;
 }
@@ -673,12 +629,7 @@ body:has(#sideBar.open) .indicator {
     animation: apLabelBlink 0.95s step-end infinite;
 }
 
-.apTopDivider {
-    width: 1px;
-    height: 14px;
-    background: #551111;
-    flex-shrink: 0;
-}
+.apTopDivider { width: 1px; height: 14px; background: #551111; flex-shrink: 0; }
 
 .apMain {
     flex: 1;
@@ -687,7 +638,6 @@ body:has(#sideBar.open) .indicator {
     align-items: center;
     justify-content: center;
     padding: 22px 32px 26px;
-    gap: 0;
 }
 
 .apTitle {
@@ -737,8 +687,7 @@ body:has(#sideBar.open) .indicator {
 }
 
 .apStatusDot {
-    width: 7px;
-    height: 7px;
+    width: 7px; height: 7px;
     border-radius: 50%;
     background: #ff3333;
     box-shadow: 0 0 7px #ff3333aa;
@@ -754,17 +703,16 @@ body:has(#sideBar.open) .indicator {
     text-transform: uppercase;
 }
 
-/* ── Video indicator ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIDEO INDICATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-.videoIndicator {
-    min-width: 160px;
-    min-height: 120px;
-}
+.videoIndicator { min-width: 160px; min-height: 120px; }
 
 .videoIndicator > .indicatorHeader {
     text-align: center;
     margin: 0;
-    padding: 4px 12px;
+    padding: 0.38em 0.85em;
     font-weight: bold;
     font-size: 12px;
     white-space: nowrap;
@@ -779,7 +727,7 @@ body:has(#sideBar.open) .indicator {
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: #0d1117;
+    background: #050a0d;
     min-height: 0;
 }
 
@@ -796,8 +744,8 @@ body:has(#sideBar.open) .indicator {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6e7681;
+    color: #3a4550;
     font-size: 13px;
-    background: #0d1117;
+    background: #050a0d;
     pointer-events: none;
 }
