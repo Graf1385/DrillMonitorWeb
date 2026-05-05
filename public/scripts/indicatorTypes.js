@@ -10,6 +10,14 @@ var _indicatorTypes = {
         isNumeric: true,
         defaultSize: {},
         defaultValueSize: 30,
+        setValue: function (el, val, zc) {
+            var v = el.querySelector('.indicatorValue');
+            if (!v) return;
+            v.textContent = _formatValue(el, val);
+            var c = zc || el.dataset.valueColor;
+            v.style.color      = c;
+            v.style.textShadow = '0 0 10px ' + c;
+        },
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
@@ -24,7 +32,7 @@ var _indicatorTypes = {
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = _valueFontPx(cfg.valueSize);
-            v.style.textShadow      = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            v.style.textShadow      = _makeShadow(cfg.valueColor);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
     },
@@ -34,6 +42,7 @@ var _indicatorTypes = {
         isNumeric: false,
         defaultSize: {},
         defaultValueSize: 40,
+        setValue: null,
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
@@ -41,7 +50,7 @@ var _indicatorTypes = {
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = _valueFontPx(cfg.valueSize);
-            v.style.textShadow      = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            v.style.textShadow      = _makeShadow(cfg.valueColor);
             v.textContent           = '00:00:00';
             el.appendChild(v);
         },
@@ -51,7 +60,7 @@ var _indicatorTypes = {
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = _valueFontPx(cfg.valueSize);
-            v.style.textShadow      = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            v.style.textShadow      = _makeShadow(cfg.valueColor);
         }
     },
 
@@ -60,6 +69,7 @@ var _indicatorTypes = {
         isNumeric: false,
         defaultSize: {},
         defaultValueSize: 28,
+        setValue: null,
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
@@ -67,7 +77,7 @@ var _indicatorTypes = {
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = _valueFontPx(cfg.valueSize);
-            v.style.textShadow      = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            v.style.textShadow      = _makeShadow(cfg.valueColor);
             v.textContent           = 'дд.мм.гг';
             el.appendChild(v);
         },
@@ -77,7 +87,7 @@ var _indicatorTypes = {
             v.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = _valueFontPx(cfg.valueSize);
-            v.style.textShadow      = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            v.style.textShadow      = _makeShadow(cfg.valueColor);
         }
     },
 
@@ -86,6 +96,11 @@ var _indicatorTypes = {
         isNumeric: true,
         defaultSize: { width: 200, height: 160 },
         defaultValueSize: 30,
+        setValue: function (el, val) {
+            var t = el.querySelector('.gaugeValueText');
+            if (t) t.textContent = _formatValue(el, val);
+            _updateGaugeSvg(el, val);
+        },
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
@@ -159,7 +174,7 @@ var _indicatorTypes = {
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
             valText.style.fontSize   = _valueFontPx(cfg.valueSize);
             valText.style.fontWeight = 'bold';
-            valText.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            valText.style.textShadow = _makeShadow(cfg.valueColor);
             valText.textContent      = _applyFormat(0, cfg.format);
             gaugeWrapper.appendChild(valText);
 
@@ -172,7 +187,7 @@ var _indicatorTypes = {
             t.style.color      = cfg.valueColor;
             t.style.fontFamily = _getFontFamily(cfg.valueFont);
             t.style.fontSize   = _valueFontPx(cfg.valueSize);
-            t.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            t.style.textShadow = _makeShadow(cfg.valueColor);
             var svg = el.querySelector('.gaugeSvg');
             if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
             var seg = el.querySelector('.gaugeSeg');
@@ -186,6 +201,11 @@ var _indicatorTypes = {
         isNumeric: true,
         defaultSize: { width: 120, height: 200 },
         defaultValueSize: 28,
+        setValue: function (el, val) {
+            var t = el.querySelector('.tankValueText');
+            if (t) t.textContent = _formatValue(el, val);
+            _updateTankSvg(el, val);
+        },
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
@@ -286,6 +306,15 @@ var _indicatorTypes = {
         isNumeric: true,
         defaultSize: { width: 260, height: 100 },
         defaultValueSize: 24,
+        setValue: function (el, val, zc) {
+            var hv = el.querySelector('.hBarValue');
+            if (hv) {
+                hv.textContent = _formatValue(el, val);
+                if (zc) { hv.style.color = zc; hv.style.textShadow = _tankTextShadow(el.dataset.valueBg); }
+                else    { hv.style.color = el.dataset.valueColor; hv.style.textShadow = ''; }
+            }
+            _updateHBar(el, val);
+        },
         create: function (el, cfg) {
             var wrapper = document.createElement('div');
             wrapper.className             = 'hBarWrapper';
@@ -305,7 +334,7 @@ var _indicatorTypes = {
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
             valText.style.fontSize   = _valueFontPx(cfg.valueSize);
-            valText.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor;
+            valText.style.textShadow = _makeBarShadow(cfg.valueColor);
             valText.textContent      = _applyFormat(0, cfg.format);
 
             track.appendChild(fill);
@@ -340,7 +369,7 @@ var _indicatorTypes = {
                 val.style.color      = cfg.valueColor;
                 val.style.fontFamily = _getFontFamily(cfg.valueFont);
                 val.style.fontSize   = _valueFontPx(cfg.valueSize);
-                val.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor;
+                val.style.textShadow = _makeBarShadow(cfg.valueColor);
             }
             var wrapper = el.querySelector('.hBarWrapper');
             if (wrapper) {
@@ -356,6 +385,15 @@ var _indicatorTypes = {
         isNumeric: true,
         defaultSize: { width: 80, height: 220 },
         defaultValueSize: 26,
+        setValue: function (el, val, zc) {
+            var vv = el.querySelector('.vBarValue');
+            if (vv) {
+                vv.textContent = _formatValue(el, val);
+                if (zc) { vv.style.color = zc; vv.style.textShadow = _tankTextShadow(el.dataset.valueBg); }
+                else    { vv.style.color = el.dataset.valueColor; vv.style.textShadow = ''; }
+            }
+            _updateVBar(el, val);
+        },
         create: function (el, cfg) {
             var wrapper = document.createElement('div');
             wrapper.className             = 'vBarWrapper';
@@ -379,7 +417,7 @@ var _indicatorTypes = {
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
             valText.style.fontSize   = _valueFontPx(cfg.valueSize);
-            valText.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor;
+            valText.style.textShadow = _makeBarShadow(cfg.valueColor);
             valText.textContent      = _applyFormat(0, cfg.format);
 
             track.appendChild(fill);
@@ -406,7 +444,7 @@ var _indicatorTypes = {
                 val.style.color      = cfg.valueColor;
                 val.style.fontFamily = _getFontFamily(cfg.valueFont);
                 val.style.fontSize   = _valueFontPx(cfg.valueSize);
-                val.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor;
+                val.style.textShadow = _makeBarShadow(cfg.valueColor);
             }
             var wrapper = el.querySelector('.vBarWrapper');
             if (wrapper) {
@@ -423,6 +461,15 @@ var _indicatorTypes = {
         lockParam: false,
         defaultSize: { width: 300, height: 80 },
         defaultValueSize: 28,
+        setValue: function (el, val) {
+            var txt = val !== undefined && val !== null ? String(val) : '';
+            el._currentValue = txt;
+            var s1 = el.querySelector('.tickerSpan1');
+            var s2 = el.querySelector('.tickerSpan2');
+            if (s1) s1.textContent = txt;
+            if (s2) s2.textContent = txt;
+            _tickerResize(el);
+        },
         create: function (el, cfg) {
             var outer = document.createElement('div');
             outer.className             = 'tickerOuter';
@@ -434,7 +481,7 @@ var _indicatorTypes = {
             inner.className               = 'tickerInner';
             inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
             inner.style.fontSize          = _valueFontPx(cfg.valueSize);
-            inner.style.textShadow        = '0 0 8px ' + cfg.valueColor + ', 0 0 22px ' + cfg.valueColor;
+            inner.style.textShadow        = _makeBarShadow(cfg.valueColor);
             inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
 
             var s1 = document.createElement('span');
@@ -451,7 +498,8 @@ var _indicatorTypes = {
             el.appendChild(outer);
             setTimeout(function () { _tickerResize(el); }, 0);
             if (window.ResizeObserver) {
-                new ResizeObserver(function () { _tickerResize(el); }).observe(outer);
+                el._tickerObserver = new ResizeObserver(function () { _tickerResize(el); });
+                el._tickerObserver.observe(outer);
             }
         },
         applyEdit: function (el, cfg) {
@@ -465,7 +513,7 @@ var _indicatorTypes = {
             if (inner) {
                 inner.style.fontFamily        = _getFontFamily(cfg.valueFont);
                 inner.style.fontSize          = _valueFontPx(cfg.valueSize);
-                inner.style.textShadow        = '0 0 8px ' + cfg.valueColor + ', 0 0 22px ' + cfg.valueColor;
+                inner.style.textShadow        = _makeBarShadow(cfg.valueColor);
                 inner.style.animationDuration = (cfg.tickerSpeed || 12) + 's';
             }
             _tickerResize(el);
@@ -477,6 +525,11 @@ var _indicatorTypes = {
         isNumeric: true,
         defaultSize: { width: 200, height: 210 },
         defaultValueSize: 28,
+        setValue: function (el, val) {
+            var t = el.querySelector('.manoValueText');
+            if (t) t.textContent = _formatValue(el, val);
+            _updateManoSvg(el, val);
+        },
         create: function (el, cfg) {
             var NS  = 'http://www.w3.org/2000/svg';
             var svg = document.createElementNS(NS, 'svg');
@@ -569,7 +622,7 @@ var _indicatorTypes = {
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
             valText.style.fontSize   = _valueFontPx(cfg.valueSize);
             valText.style.fontWeight = 'bold';
-            valText.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+            valText.style.textShadow = _makeShadow(cfg.valueColor);
             valText.textContent      = _applyFormat(0, cfg.format);
             manoWrapper.appendChild(valText);
 
@@ -582,7 +635,7 @@ var _indicatorTypes = {
                 t.style.color      = cfg.valueColor;
                 t.style.fontFamily = _getFontFamily(cfg.valueFont);
                 t.style.fontSize   = _valueFontPx(cfg.valueSize);
-                t.style.textShadow = '0 0 8px ' + cfg.valueColor + ', 0 0 24px ' + cfg.valueColor + ', 0 0 52px ' + cfg.valueColor;
+                t.style.textShadow = _makeShadow(cfg.valueColor);
             }
             var svg = el.querySelector('.manoSvg');
             if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
@@ -753,7 +806,13 @@ var _indicatorTypes = {
         isNumeric:   true,
         defaultSize: { width: 400, height: 300 },
         defaultValueSize: 40,
-
+        setValue: function (el, val) {
+            var overlay = el._alarmOverlay;
+            if (overlay) {
+                var apv = overlay.querySelector('.apValue');
+                if (apv) apv.textContent = _applyFormat(val, el.dataset.format || '');
+            }
+        },
         create: function (el, cfg) {
             // Compact badge that lives in the workspace
             var body = document.createElement('div');

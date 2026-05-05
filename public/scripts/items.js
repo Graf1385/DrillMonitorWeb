@@ -7,7 +7,6 @@ function _isSidebarOpen() {
 }
 
 var _addModal      = document.querySelector('#newItemModal');
-var _errorModal    = document.querySelector('#addItemErrorModal');
 var _activeType    = 'digitalIndicator';
 var _editingEl     = null;
 var _fontsPromise  = null;
@@ -70,7 +69,7 @@ function _playAlarmSound() {
     if (!cfg.soundId) return;
     if (_alarmAudio && !_alarmAudio.paused) return;
     _alarmAudio = new Audio('/api/alarm-sounds/' + cfg.soundId + '/file');
-    _alarmAudio.volume = Math.max(0, Math.min(1, (cfg.volume || 50) / 100));
+    _alarmAudio.volume = Math.max(0, Math.min(1, (cfg.volume ?? 50) / 100));
     _alarmAudio.addEventListener('ended', function() {
         _alarmAudio = null;
         if (_hasUnackedAlarm()) {
@@ -346,8 +345,9 @@ function confirmDeleteIndicator() {
     document.querySelector('#deleteConfirmModal').close();
     if (!_deleteTarget) return;
     if (_deleteTarget.classList.contains('videoIndicator')) _stopVideoStream(_deleteTarget);
-    if (_deleteTarget._alarmObserver) _deleteTarget._alarmObserver.disconnect();
-    if (_deleteTarget._alarmOverlay)  _deleteTarget._alarmOverlay.remove();
+    if (_deleteTarget._tickerObserver) _deleteTarget._tickerObserver.disconnect();
+    if (_deleteTarget._alarmObserver)  _deleteTarget._alarmObserver.disconnect();
+    if (_deleteTarget._alarmOverlay)   _deleteTarget._alarmOverlay.remove();
     _deleteTarget.remove();
     _deleteTarget = null;
     showSaveBtn();
@@ -361,11 +361,8 @@ function ctxTestIndicator() {
     _testTarget = _ctxTarget;
     _ctxTarget  = null;
 
-    var d   = _testTarget.dataset;
-    var min = parseFloat(d.rangeMin);
-    var max = parseFloat(d.rangeMax);
-    if (isNaN(min)) min = 0;
-    if (isNaN(max) || max <= min) max = min + 100;
+    var r   = _parseRange(_testTarget.dataset);
+    var min = r.min, max = r.max;
     var cur = _testTarget._currentValue !== undefined ? _testTarget._currentValue : min;
 
     var modal = document.querySelector('#testIndicatorModal');
@@ -733,69 +730,19 @@ function _readConfig() {
 // ── setIndicatorValue ─────────────────────────────────────────────────────────
 
 function setIndicatorValue(el, val) {
-    if (_getIndicatorType(el) === 'tickerIndicator') {
-        var txt = val !== undefined && val !== null ? String(val) : '';
-        el._currentValue = txt;
-        var s1 = el.querySelector('.tickerSpan1');
-        var s2 = el.querySelector('.tickerSpan2');
-        if (s1) s1.textContent = txt;
-        if (s2) s2.textContent = txt;
-        _tickerResize(el);
+    var type    = _getIndicatorType(el);
+    var typeDef = _indicatorTypes[type] || _indicatorTypes.digitalIndicator;
+
+    if (!typeDef.isNumeric) {
+        if (typeDef.setValue) typeDef.setValue(el, val);
         return;
     }
 
-    var d   = el.dataset;
-    var min = parseFloat(d.rangeMin);
-    var max = parseFloat(d.rangeMax);
-    if (isNaN(min)) min = 0;
-    if (isNaN(max) || max <= min) max = min + 100;
-    el._currentValue = Math.max(min, Math.min(max, isNaN(+val) ? min : +val));
+    var r = _parseRange(el.dataset);
+    el._currentValue = Math.max(r.min, Math.min(r.max, isNaN(+val) ? r.min : +val));
+    var zc = _getZoneColor(el, el._currentValue);
 
-    var type = _getIndicatorType(el);
-    var zc   = _getZoneColor(el, el._currentValue);
-    if (type === 'digitalIndicator') {
-        var v = el.querySelector('.indicatorValue');
-        if (v) {
-            v.textContent = _formatValue(el, el._currentValue);
-            if (zc) { v.style.color = zc; v.style.textShadow = '0 0 10px ' + zc; }
-            else    { v.style.color = d.valueColor; v.style.textShadow = '0 0 10px ' + d.valueColor; }
-        }
-    } else if (type === 'gaugeIndicator') {
-        var gt = el.querySelector('.gaugeValueText');
-        if (gt) gt.textContent = _formatValue(el, el._currentValue);
-        _updateGaugeSvg(el, el._currentValue);
-    } else if (type === 'tankIndicator') {
-        var tt = el.querySelector('.tankValueText');
-        if (tt) tt.textContent = _formatValue(el, el._currentValue);
-        _updateTankSvg(el, el._currentValue);
-    } else if (type === 'manometerIndicator') {
-        var mt = el.querySelector('.manoValueText');
-        if (mt) mt.textContent = _formatValue(el, el._currentValue);
-        _updateManoSvg(el, el._currentValue);
-    } else if (type === 'hProgressIndicator') {
-        var hv = el.querySelector('.hBarValue');
-        if (hv) {
-            hv.textContent = _formatValue(el, el._currentValue);
-            if (zc) { hv.style.color = zc; hv.style.textShadow = _tankTextShadow(d.valueBg); }
-            else    { hv.style.color = d.valueColor; }
-        }
-        _updateHBar(el, el._currentValue);
-    } else if (type === 'vProgressIndicator') {
-        var vv = el.querySelector('.vBarValue');
-        if (vv) {
-            vv.textContent = _formatValue(el, el._currentValue);
-            if (zc) { vv.style.color = zc; vv.style.textShadow = _tankTextShadow(d.valueBg); }
-            else    { vv.style.color = d.valueColor; }
-        }
-        _updateVBar(el, el._currentValue);
-    } else if (type === 'alarmPanelIndicator') {
-        var overlay = el._alarmOverlay;
-        if (overlay) {
-            var apv = overlay.querySelector('.apValue');
-            if (apv) apv.textContent = _applyFormat(el._currentValue, el.dataset.format || '');
-        }
-    }
-
+    if (typeDef.setValue) typeDef.setValue(el, el._currentValue, zc);
     _checkAlarm(el, el._currentValue);
 }
 
@@ -875,7 +822,10 @@ function removeItem() {
     var ws   = document.querySelector('#workSpace');
     var last = ws.querySelector('.indicator:last-child');
     if (last) {
+        if (last._tickerObserver) last._tickerObserver.disconnect();
         if (last.classList.contains('videoIndicator')) _stopVideoStream(last);
+        if (last._alarmObserver)  last._alarmObserver.disconnect();
+        if (last._alarmOverlay)   last._alarmOverlay.remove();
         last.remove();
         showSaveBtn();
     }

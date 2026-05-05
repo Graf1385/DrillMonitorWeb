@@ -114,9 +114,8 @@ function _formatValue(el, numericVal) {
 
 function _getZoneColor(el, numericVal) {
     if (el.dataset.zoneColors !== '1') return null;
-    var min = parseFloat(el.dataset.rangeMin); if (isNaN(min)) min = 0;
-    var max = parseFloat(el.dataset.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
-    var pct = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var r   = _parseRange(el.dataset);
+    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
     if (pct < 0.6) return '#3fb950';
     if (pct < 0.8) return '#d29922';
     return '#f85149';
@@ -138,21 +137,34 @@ function _tankTextShadow(bg) {
     return '-1px -1px 0 ' + c + ',1px -1px 0 ' + c + ',-1px 1px 0 ' + c + ',1px 1px 0 ' + c + ',0 0 6px ' + c;
 }
 
+function _makeShadow(color) {
+    return '0 0 8px ' + color + ', 0 0 24px ' + color + ', 0 0 52px ' + color;
+}
+
+function _makeBarShadow(color) {
+    return '0 0 8px ' + color + ', 0 0 24px ' + color;
+}
+
+function _parseRange(d) {
+    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
+    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
+    return { min: min, max: max };
+}
+
 function _applyToValue(valueEl, config, numericVal) {
     valueEl.style.color           = config.valueColor;
     valueEl.style.backgroundColor = config.valueBg;
     valueEl.style.fontFamily      = _getFontFamily(config.valueFont);
     valueEl.style.fontSize        = _valueFontPx(config.valueSize);
-    valueEl.style.textShadow      = '0 0 8px ' + config.valueColor + ', 0 0 24px ' + config.valueColor + ', 0 0 52px ' + config.valueColor;
+    valueEl.style.textShadow      = _makeShadow(config.valueColor);
     valueEl.textContent           = _applyFormat(numericVal, config.format);
 }
 
 // ── SVG / DOM updaters ────────────────────────────────────────────────────────
 
 function _updateGaugeSvg(el, numericVal) {
-    var d = el.dataset;
-    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
-    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
+    var r   = _parseRange(el.dataset);
+    var min = r.min, max = r.max;
 
     var minLbl = el.querySelector('.gaugeMinLabel');
     var maxLbl = el.querySelector('.gaugeMaxLabel');
@@ -193,40 +205,33 @@ function _makeTankWavePath(waterY) {
 }
 
 function _updateTankSvg(el, numericVal) {
-    var d   = el.dataset;
-    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
-    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
-    var pct  = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var r   = _parseRange(el.dataset);
+    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
     var prog = el.querySelector('.tankProg');
     if (prog) prog.setAttribute('d', _makeTankWavePath(_TANK_BOT - pct * _TANK_H));
 }
 
 function _updateHBar(el, numericVal) {
-    var d = el.dataset;
-    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
-    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
-    var pct = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var r   = _parseRange(el.dataset);
+    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
     var fill = el.querySelector('.hBarFill');
     if (fill) fill.style.width = (pct * 100).toFixed(2) + '%';
-    var mn = el.querySelector('.hBarMin'); if (mn) mn.textContent = min;
-    var mx = el.querySelector('.hBarMax'); if (mx) mx.textContent = max;
+    var mn = el.querySelector('.hBarMin'); if (mn) mn.textContent = r.min;
+    var mx = el.querySelector('.hBarMax'); if (mx) mx.textContent = r.max;
 }
 
 function _updateVBar(el, numericVal) {
-    var d = el.dataset;
-    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
-    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
-    var pct = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var r   = _parseRange(el.dataset);
+    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
     var fill = el.querySelector('.vBarFill');
     if (fill) fill.style.height = (pct * 100).toFixed(2) + '%';
-    var mn = el.querySelector('.vBarMin'); if (mn) mn.textContent = min;
-    var mx = el.querySelector('.vBarMax'); if (mx) mx.textContent = max;
+    var mn = el.querySelector('.vBarMin'); if (mn) mn.textContent = r.min;
+    var mx = el.querySelector('.vBarMax'); if (mx) mx.textContent = r.max;
 }
 
 function _updateManoSvg(el, numericVal) {
-    var d = el.dataset;
-    var min = parseFloat(d.rangeMin); if (isNaN(min)) min = 0;
-    var max = parseFloat(d.rangeMax); if (isNaN(max) || max <= min) max = min + 100;
+    var r   = _parseRange(el.dataset);
+    var min = r.min, max = r.max;
 
     var minLbl = el.querySelector('.manoMinLabel');
     var maxLbl = el.querySelector('.manoMaxLabel');

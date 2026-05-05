@@ -35,6 +35,9 @@ function _restoreIndicators(indicators) {
     var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;
     var wsH = (_wsHeight > 0) ? _wsHeight : ws.clientHeight;
     ws.querySelectorAll('.videoIndicator').forEach(function(el) { _stopVideoStream(el); });
+    ws.querySelectorAll('.tickerIndicator').forEach(function(el) {
+        if (el._tickerObserver) el._tickerObserver.disconnect();
+    });
     ws.querySelectorAll('.alarmPanelIndicator').forEach(function(el) {
         if (el._alarmObserver) el._alarmObserver.disconnect();
         if (el._alarmOverlay)  el._alarmOverlay.remove();
@@ -47,7 +50,7 @@ function _restoreIndicators(indicators) {
 
         if (ind.type === 'videoIndicator') {
             var extra = {};
-            try { extra = JSON.parse(ind.extra_data || '{}'); } catch {}
+            try { extra = JSON.parse(ind.extra_data || '{}'); } catch (e) { console.warn('extra_data parse error', e); }
             el = _buildVideoElement({
                 headerText:    ind.header_text  || 'Камера',
                 headerColor:   ind.header_color || '#c9d1d9',
@@ -68,7 +71,7 @@ function _restoreIndicators(indicators) {
         } else {
             var ahExtra = {};
             if (ind.type === 'alarmHistoryIndicator') {
-                try { ahExtra = JSON.parse(ind.extra_data || '{}'); } catch {}
+                try { ahExtra = JSON.parse(ind.extra_data || '{}'); } catch (e) { console.warn('extra_data parse error', e); }
             }
             var config = {
                 paramId:     ind.param_id,
