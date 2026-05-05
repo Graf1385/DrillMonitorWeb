@@ -15,11 +15,6 @@ let _wsWidth            = 0;
 let _wsHeight           = 0;
 
 let _settings = {
-    ip:      '',
-    mask:    '',
-    gateway: '',
-    dhcp:    false,
-
     get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color').trim(); },
     set background(value) { _workSpace.style.setProperty('--workSpace-color', value); },
 
@@ -461,25 +456,6 @@ function testAlarmSound() {
     btn.textContent   = '■';
     _testAudio.play();
     _testAudio.addEventListener('ended', function () { btn.textContent = '▶'; });
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function setSettings(source, target) {
-    try {
-        for (let key in source) { target[key] = source[key]; }
-    } catch (error) { console.error(error); }
-}
-
-function getSettings() {
-    $.ajax({
-        url:      '/getSettings',
-        type:     'GET',
-        dataType: 'JSON',
-        success: function (data) {
-            setSettings(data, _settings);
-        }
-    });
 }
 
 window._getAlarmConfig = function() {

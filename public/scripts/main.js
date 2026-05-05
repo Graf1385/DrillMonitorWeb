@@ -28,8 +28,6 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
     };
 })();
 
-getSettings();
-
 function _restoreIndicators(indicators) {
     var ws  = document.querySelector('#wsCanvas');
     var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;

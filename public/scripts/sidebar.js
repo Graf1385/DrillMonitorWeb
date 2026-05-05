@@ -1,15 +1,9 @@
 // Parameters and units management live in parametersManager.js (loaded after).
 
-var _networkSettings = document.querySelector('#networkSettings');
-
 let sideBar = document.querySelector('#sideBar');
 let logo    = document.querySelector('#sideBarLogo');
 let rmBtn   = sideBar.querySelector('#removeButton');
 let saveBtn = sideBar.querySelector('#saveButton');
-
-function showNetworkSettings() {
-    _networkSettings.showModal();
-}
 
 function showRemoveBtn() {
     rmBtn.classList.add('visible');

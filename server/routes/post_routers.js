@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const helper = require('../helper');
 const db = require('../db');
 const sse = require('../sse');
 const multer = require('multer');
@@ -23,18 +22,6 @@ router.post('/api/auth/login', (req, res) => {
     } else {
         logger.log('Неудачная попытка входа: пользователь "' + (name || '?') + '"');
         res.status(401).json({ ok: false });
-    }
-});
-
-router.post('/setSettings', (req, res) => {
-    try {
-        var settings = JSON.parse(req.body.settings);
-        helper.saveSettings(settings);
-        logger.log('Сохранены сетевые настройки');
-        res.status(200).send();
-    } catch (error) {
-        res.status(400).send();
-        console.log(error);
     }
 });
 
