@@ -357,12 +357,14 @@ input[type=number]::-webkit-inner-spin-button {
     color: #c9d1d9;
 }
 
-.wsResHint {
-    font-size: 11px;
-    font-weight: 400;
-    opacity: 0.85;
-    margin-left: 8px;
-    letter-spacing: 0.02em;
+.wsResSelect {
+    font-size: 17px;
+    height: 44px;
+}
+
+.settingsTable td:has(.wsResSelect) {
+    height: 48px;
+    padding: 2px 4px;
 }
 
 .profileCell {

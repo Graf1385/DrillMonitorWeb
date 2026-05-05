@@ -23,8 +23,8 @@
         </tr>
         <tr>
             <td>Разрешение пульта</td>
-            <td style="display:flex;align-items:center;padding:0 8px;gap:0">
-                <select class="settingsSelect" id="wsResolution" onchange="updateResolutionHint(this)" style="flex:1">
+            <td>
+                <select class="settingsSelect wsResSelect" id="wsResolution">
                     <option value="0x0">Авто</option>
                     <option value="3840x2160">3840 × 2160 (4K)</option>
                     <option value="2560x1440">2560 × 1440 (QHD)</option>
@@ -33,7 +33,6 @@
                     <option value="1024x768">1024 × 768</option>
                     <option value="800x600">800 × 600</option>
                 </select>
-                <span id="wsResolutionHint" class="wsResHint"></span>
             </td>
         </tr>
         <tr><td colspan="2" class="sectionLabel">Звуковая сигнализация</td></tr>

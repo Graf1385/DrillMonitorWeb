@@ -75,19 +75,6 @@ function _updateWsScale() {
     window._wsOffsetY = oy;
 }
 
-window.updateResolutionHint = function(select) {
-    var hint = _modal.querySelector('#wsResolutionHint');
-    if (!hint) return;
-    var parts = (select.value || '0x0').split('x');
-    var w = parseInt(parts[0]) || 0;
-    var h = parseInt(parts[1]) || 0;
-    if (!w || !h) { hint.textContent = ''; return; }
-    var scaleX = Math.round(window.innerWidth  / w * 10) / 10;
-    var scaleY = Math.round(window.innerHeight / h * 10) / 10;
-    var scale  = Math.round(Math.max(scaleX, scaleY) * 10) / 10;
-    hint.textContent = 'масштаб на этом экране: ×' + scale;
-    hint.style.color = scale < 1 ? '#f85149' : scale > 1 ? '#3fb950' : '#d29922';
-};
 
 window.addEventListener('resize', _updateWsScale);
 
@@ -176,7 +163,6 @@ function applyProfile(selectEl, silent) {
     var resSel = _modal.querySelector('#wsResolution');
     if (resSel) {
         resSel.value = (dbW && dbH) ? (dbW + 'x' + dbH) : '0x0';
-        if (window.updateResolutionHint) window.updateResolutionHint(resSel);
     }
 
     if (!silent) {
@@ -299,7 +285,6 @@ function showWorkSpaceSettings() {
             var resSel = _modal.querySelector('#wsResolution');
             if (resSel) {
                 resSel.value = (appliedW && appliedH) ? (appliedW + 'x' + appliedH) : '0x0';
-                window.updateResolutionHint(resSel);
             }
         }
         _modal.showModal();
