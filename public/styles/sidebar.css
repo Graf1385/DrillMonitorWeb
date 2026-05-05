@@ -45,7 +45,11 @@
 	border: 1px solid var(--sidebar-border);
 	border-radius: 999px;
 	opacity: 0.25;
-	transition: all 0.9s;
+	/* при закрытии: сайдбар ждёт пока кнопки исчезнут */
+	transition:
+		height     0.9s  0.3s cubic-bezier(0.08, 1, 0.28, 1),
+		opacity    0.35s ease,
+		box-shadow 0.5s  ease;
 	box-shadow: 0 0.2vmin 1.1vmin rgba(0, 0, 0, 0.6);
 }
 
@@ -59,12 +63,42 @@
 	opacity: 1;
 	border-color: var(--sidebar-border);
 	box-shadow: 0 0.2vmin 1.5vmin rgba(0, 0, 0, 0.8), 0 0 0 1px var(--sidebar-border);
+	/* при открытии: без задержки */
+	transition:
+		height     0.9s  cubic-bezier(0.08, 1, 0.28, 1),
+		opacity    0.35s ease,
+		box-shadow 0.5s  ease;
 }
 
 #sideBar.open .sideBarButton {
 	opacity: 1;
-	transition: opacity 2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+	transform: translateY(0);
+	transition:
+		opacity   0.28s ease,
+		transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1),
+		background-color 0.18s, border-color 0.18s, box-shadow 0.18s;
+	transition-delay: 0.35s;
 }
+
+/* открытие: прямой stagger с 0.2s */
+#sideBar.open #buttonModul .sideBarButton:nth-child(1) { transition-delay: 0.20s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(2) { transition-delay: 0.25s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(3) { transition-delay: 0.30s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(4) { transition-delay: 0.35s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(5) { transition-delay: 0.40s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(6) { transition-delay: 0.45s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.50s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.55s; }
+
+/* закрытие: обратный stagger — последняя кнопка исчезает первой */
+#buttonModul .sideBarButton:nth-child(1) { transition-delay: 0.20s; }
+#buttonModul .sideBarButton:nth-child(2) { transition-delay: 0.17s; }
+#buttonModul .sideBarButton:nth-child(3) { transition-delay: 0.14s; }
+#buttonModul .sideBarButton:nth-child(4) { transition-delay: 0.11s; }
+#buttonModul .sideBarButton:nth-child(5) { transition-delay: 0.08s; }
+#buttonModul .sideBarButton:nth-child(6) { transition-delay: 0.05s; }
+#buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.02s; }
+#buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.00s; }
 
 #buttonModul {
 	display: flex;
@@ -75,7 +109,7 @@
 	justify-content: center;
 	overflow: hidden;
 	padding-top: calc(var(--sb-size) + var(--sb-gap) * 2 + 100%);
-	transition: padding-top 0.9s;
+	transition: padding-top 0.9s cubic-bezier(0.08, 1, 0.28, 1);
 }
 
 #sideBar.open #buttonModul {
@@ -89,11 +123,12 @@
 	border-radius: 0.75vmin;
 	border: 1px solid transparent;
 	opacity: 0;
+	transform: translateY(10px);
 	padding: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: opacity 0.5s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+	transition: opacity 0.2s, transform 0.2s, background-color 0.18s, border-color 0.18s, box-shadow 0.18s;
 	background-color: var(--sidebar-btn-bg);
 	cursor: pointer;
 	flex-shrink: 0;
@@ -112,12 +147,21 @@
 	box-shadow: 0 0 0.6vmin var(--sidebar-shadow);
 }
 
+#sideBar.open .sideBarButton:hover {
+	transform: scale(1.07);
+}
+
 .sideBarButton:hover img {
 	filter: brightness(1) drop-shadow(0 0 0.15vmin var(--sidebar-accent));
 }
 
 .sideBarButton:active {
-	box-shadow: inset 0 0 0.5vmin rgba(0, 0, 0, 0.6);
+	transform: scale(0.9);
+	transition: transform 0.08s ease;
+}
+
+#sideBar.open .sideBarButton:active {
+	transform: scale(0.9);
 }
 
 #gridButton.enable {
@@ -163,7 +207,7 @@
 	display: flex;
 	align-items: center;
 	opacity: 0.2;
-	transition: opacity 0.9s, box-shadow 0.2s;
+	transition: opacity 0.3s ease, box-shadow 0.2s;
 	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
@@ -201,7 +245,6 @@
 }
 
 .cdList {
-	display: none;
 	position: absolute;
 	top: calc(100% + 8px);
 	right: -8px;
@@ -215,10 +258,17 @@
 	box-shadow: 0 8px 24px rgba(0,0,0,0.6);
 	z-index: 10000;
 	white-space: nowrap;
+	opacity: 0;
+	transform: translateY(-6px) scale(0.97);
+	transform-origin: top right;
+	pointer-events: none;
+	transition: opacity 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.3, 0.64, 1);
 }
 
 .customDropdown.open .cdList {
-	display: block;
+	opacity: 1;
+	transform: translateY(0) scale(1);
+	pointer-events: auto;
 }
 
 .cdOption {
@@ -238,4 +288,16 @@
 
 .cdOption.active {
 	color: var(--sidebar-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#sideBar,
+	#buttonModul,
+	.sideBarButton,
+	#sideBar.open .sideBarButton,
+	#profileSwitcher,
+	.cdList {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+	}
 }

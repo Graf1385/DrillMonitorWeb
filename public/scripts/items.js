@@ -140,7 +140,7 @@ function _checkAlarm(el, numericVal) {
 }
 
 function ctxAckAlarm() {
-    _ctxMenu.style.display = 'none';
+    _ctxMenu.classList.remove('visible');
     if (!_ctxTarget) return;
     var el = _ctxTarget;
     _ctxTarget = null;
@@ -238,13 +238,13 @@ function _showCtxMenu(indicator, x, y) {
     if (ackBtn)      ackBtn.style.display      = (!isVideo && !isHistory && indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
     if (testBtn)     testBtn.style.display     = (isVideo || isHistory) ? 'none' : '';
     if (settingsBtn) settingsBtn.style.display = '';
-    _ctxMenu.style.display = 'block';
     var menuW = _ctxMenu.offsetWidth  || 190;
     var menuH = _ctxMenu.offsetHeight || 80;
     if (x + menuW > window.innerWidth)  x = window.innerWidth  - menuW - 4;
     if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 4;
     _ctxMenu.style.left = x + 'px';
     _ctxMenu.style.top  = y + 'px';
+    _ctxMenu.classList.add('visible');
 }
 
 window.showIndicatorCtxMenu = function(indicator, x, y) { _showCtxMenu(indicator, x, y); };
@@ -259,18 +259,18 @@ document.addEventListener('contextmenu', function (e) {
 
 document.addEventListener('mousedown', function (e) {
     if (!_ctxMenu.contains(e.target)) {
-        _ctxMenu.style.display = 'none';
+        _ctxMenu.classList.remove('visible');
         _ctxTarget = null;
     }
 }, true);
 
 document.addEventListener('scroll', function () {
-    _ctxMenu.style.display = 'none';
+    _ctxMenu.classList.remove('visible');
     _ctxTarget = null;
 }, true);
 
 function ctxOpenValueSettings() {
-    _ctxMenu.style.display = 'none';
+    _ctxMenu.classList.remove('visible');
     if (!_ctxTarget) return;
     var t = _ctxTarget;
     _ctxTarget = null;
@@ -334,7 +334,7 @@ function submitAhSettings() {
 }
 
 function ctxDeleteIndicator() {
-    _ctxMenu.style.display = 'none';
+    _ctxMenu.classList.remove('visible');
     if (!_ctxTarget) return;
     _deleteTarget = _ctxTarget;
     _ctxTarget = null;
@@ -356,7 +356,7 @@ function confirmDeleteIndicator() {
 var _testTarget = null;
 
 function ctxTestIndicator() {
-    _ctxMenu.style.display = 'none';
+    _ctxMenu.classList.remove('visible');
     if (!_ctxTarget) return;
     _testTarget = _ctxTarget;
     _ctxTarget  = null;
