@@ -66,6 +66,10 @@ function _restoreIndicators(indicators) {
             ws.appendChild(el);
             if (extra.streamHost) _startVideoStream(el);
         } else {
+            var ahExtra = {};
+            if (ind.type === 'alarmHistoryIndicator') {
+                try { ahExtra = JSON.parse(ind.extra_data || '{}'); } catch {}
+            }
             var config = {
                 paramId:     ind.param_id,
                 paramName:   ind.param_name || '',
@@ -90,7 +94,10 @@ function _restoreIndicators(indicators) {
                 units:          ind.units          || '',
                 zoneColors:     ind.zone_colors    ? true : false,
                 tickerSpeed:    ind.ticker_speed   != null ? ind.ticker_speed   : 12,
-                valueBgOpacity: ind.value_bg_opacity != null ? ind.value_bg_opacity : 0
+                valueBgOpacity: ind.value_bg_opacity != null ? ind.value_bg_opacity : 0,
+                showTrigger: ahExtra.showTrigger !== false,
+                showClear:   ahExtra.showClear   !== false,
+                showAck:     ahExtra.showAck     !== false
             };
             el = _addIndicator(ind.type || 'digitalIndicator', config, left, top);
             ws.appendChild(el);

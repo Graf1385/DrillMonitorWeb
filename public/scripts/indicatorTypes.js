@@ -611,16 +611,25 @@ var _indicatorTypes = {
     alarmHistoryIndicator: {
         cardId:      '#typeAlarmHistory',
         isNumeric:   false,
-        defaultSize: { width: 420, height: 260 },
-        defaultValueSize: 13,
+        defaultSize: { width: 480, height: 280 },
+        defaultValueSize: 12,
 
         create: function (el, cfg) {
+            // Lock header to a fixed title
+            var header = el.querySelector('.indicatorHeader');
+            if (header) {
+                header.textContent = 'История сигнализаций';
+                el.dataset.headerText = 'История сигнализаций';
+            }
+
+            el.dataset.ahShowTrigger = cfg.showTrigger !== false ? '1' : '0';
+            el.dataset.ahShowClear   = cfg.showClear   !== false ? '1' : '0';
+            el.dataset.ahShowAck     = cfg.showAck     !== false ? '1' : '0';
+
             var wrap = document.createElement('div');
             wrap.className = 'ahWrap';
-            wrap.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
-            wrap.style.color           = cfg.valueColor;
-            wrap.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            wrap.style.fontSize        = _valueFontPx(cfg.valueSize);
+            if (cfg.valueFont) wrap.style.fontFamily = _getFontFamily(cfg.valueFont);
+            if (cfg.valueSize) wrap.style.fontSize   = cfg.valueSize + 'px';
 
             var log_div = document.createElement('div');
             log_div.className = 'ahLog';
@@ -628,10 +637,13 @@ var _indicatorTypes = {
             el.appendChild(wrap);
 
             function _pad(n) { return n < 10 ? '0' + n : String(n); }
-            function _fmt(ts) {
+            function _fmtTime(ts) {
                 var d = ts instanceof Date ? ts : new Date(ts);
-                return '[' + _pad(d.getHours()) + ':' + _pad(d.getMinutes()) + ':' + _pad(d.getSeconds())
-                     + ' ' + _pad(d.getDate()) + '.' + _pad(d.getMonth() + 1) + '.' + d.getFullYear() + ']';
+                return _pad(d.getHours()) + ':' + _pad(d.getMinutes()) + ':' + _pad(d.getSeconds());
+            }
+            function _fmtDate(ts) {
+                var d = ts instanceof Date ? ts : new Date(ts);
+                return _pad(d.getDate()) + '.' + _pad(d.getMonth() + 1) + '.' + d.getFullYear();
             }
 
             function _render() {
@@ -639,7 +651,15 @@ var _indicatorTypes = {
                     document.removeEventListener('alarmLogUpdate', _render);
                     return;
                 }
-                var entries = window.getAlarmLog ? window.getAlarmLog() : [];
+                var showTrigger = el.dataset.ahShowTrigger !== '0';
+                var showClear   = el.dataset.ahShowClear   !== '0';
+                var showAck     = el.dataset.ahShowAck     !== '0';
+                var all = window.getAlarmLog ? window.getAlarmLog() : [];
+                var entries = all.filter(function(e) {
+                    if (e.event === 'trigger') return showTrigger;
+                    if (e.event === 'clear')   return showClear;
+                    return showAck;
+                });
                 log_div.innerHTML = '';
                 if (!entries.length) {
                     var empty = document.createElement('div');
@@ -651,53 +671,77 @@ var _indicatorTypes = {
                 for (var i = 0; i < entries.length; i++) {
                     var e = entries[i];
 
-                    var eventStr, eventColor;
-                    if (e.event === 'trigger')      { eventStr = '⚡ Тревога'; eventColor = '#f85149'; }
-                    else if (e.event === 'clear')   { eventStr = '✓ Сброс';   eventColor = '#3fb950'; }
-                    else                            { eventStr = '⚠ Квит.';   eventColor = '#d29922'; }
+                    var badgeText, badgeCls;
+                    if (e.event === 'trigger')    { badgeText = 'ТРЕВОГА'; badgeCls = 'ahBadge ahBadge--trigger'; }
+                    else if (e.event === 'clear') { badgeText = 'СБРОС';   badgeCls = 'ahBadge ahBadge--clear'; }
+                    else                          { badgeText = 'КВИТ.';   badgeCls = 'ahBadge ahBadge--ack'; }
 
                     var valStr = typeof e.value === 'number' ? e.value.toFixed(2) : String(e.value);
+                    var accentColor = e.color || '#f85149';
 
                     var row = document.createElement('div');
                     row.className = 'ahEntry';
+                    row.style.borderLeftColor = accentColor;
 
-                    var tsSpan = document.createElement('span');
-                    tsSpan.className   = 'ahTs';
-                    tsSpan.textContent = _fmt(e.ts);
+                    var left = document.createElement('div');
+                    left.className = 'ahLeft';
 
-                    var dotSpan = document.createElement('span');
-                    dotSpan.className   = 'ahDot';
-                    dotSpan.textContent = ' ■ ';
-                    dotSpan.style.color = e.color || cfg.valueColor;
+                    var timeSpan = document.createElement('span');
+                    timeSpan.className   = 'ahTime';
+                    timeSpan.textContent = _fmtTime(e.ts);
 
-                    var evtSpan = document.createElement('span');
-                    evtSpan.className   = 'ahEvt';
-                    evtSpan.textContent = eventStr;
-                    evtSpan.style.color = eventColor;
+                    var dateSpan = document.createElement('span');
+                    dateSpan.className   = 'ahDate';
+                    dateSpan.textContent = _fmtDate(e.ts);
 
-                    var msgSpan = document.createElement('span');
-                    msgSpan.className   = 'ahMsg';
-                    msgSpan.textContent = ' — ' + e.name + ' = ' + valStr;
+                    left.appendChild(timeSpan);
+                    left.appendChild(dateSpan);
 
-                    row.appendChild(tsSpan);
-                    row.appendChild(dotSpan);
-                    row.appendChild(evtSpan);
-                    row.appendChild(msgSpan);
+                    var badge = document.createElement('span');
+                    badge.className   = badgeCls;
+                    badge.textContent = badgeText;
+
+                    var right = document.createElement('div');
+                    right.className = 'ahRight';
+
+                    var nameSpan = document.createElement('span');
+                    nameSpan.className   = 'ahName';
+                    nameSpan.textContent = e.name;
+
+                    var valSpan = document.createElement('span');
+                    valSpan.className   = 'ahVal';
+                    valSpan.textContent = valStr;
+
+                    right.appendChild(nameSpan);
+                    right.appendChild(valSpan);
+
+                    row.appendChild(left);
+                    row.appendChild(badge);
+                    row.appendChild(right);
                     log_div.appendChild(row);
                 }
             }
 
-            _render();
+            setTimeout(_render, 0);
             document.addEventListener('alarmLogUpdate', _render);
+            el._ahRender = _render;
         },
 
         applyEdit: function (el, cfg) {
-            var wrap = el.querySelector('.ahWrap');
-            if (!wrap) return;
-            wrap.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
-            wrap.style.color           = cfg.valueColor;
-            wrap.style.fontFamily      = _getFontFamily(cfg.valueFont);
-            wrap.style.fontSize        = _valueFontPx(cfg.valueSize);
+            var header = el.querySelector('.indicatorHeader');
+            var wrap   = el.querySelector('.ahWrap');
+            if (header) {
+                if (cfg.headerFont !== undefined) header.style.fontFamily = _getFontFamily(cfg.headerFont);
+                if (cfg.headerSize !== undefined) header.style.fontSize   = cfg.headerSize + 'px';
+            }
+            if (wrap) {
+                if (cfg.valueFont !== undefined) wrap.style.fontFamily = _getFontFamily(cfg.valueFont);
+                if (cfg.valueSize !== undefined) wrap.style.fontSize   = cfg.valueSize + 'px';
+            }
+            if (cfg.showTrigger !== undefined) el.dataset.ahShowTrigger = cfg.showTrigger ? '1' : '0';
+            if (cfg.showClear   !== undefined) el.dataset.ahShowClear   = cfg.showClear   ? '1' : '0';
+            if (cfg.showAck     !== undefined) el.dataset.ahShowAck     = cfg.showAck     ? '1' : '0';
+            if (el._ahRender) el._ahRender();
         }
     },
 

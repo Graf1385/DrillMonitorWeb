@@ -1,3 +1,7 @@
+<div id="alarmAudioBanner" onclick="alarmAudioBannerClick()">
+    &#9888; Звук сигнализации заблокирован браузером &mdash; нажмите для включения
+</div>
+
 <dialog class="settingsModal" id="newItemModal">
     <h1>Добавить элемент</h1>
 
@@ -289,7 +293,7 @@
 </dialog>
 
 <div id="indicatorContextMenu" class="indicatorCtxMenu">
-    <button onclick="ctxOpenValueSettings()">Настройки</button>
+    <button id="ctxSettingsBtn" onclick="ctxOpenValueSettings()">Настройки</button>
     <button id="ctxTestBtn" onclick="ctxTestIndicator()">Тест</button>
     <button id="ctxAckBtn" onclick="ctxAckAlarm()" style="display:none">Квитировать тревогу</button>
     <button class="ctxMenuDanger" onclick="ctxDeleteIndicator()">Удалить</button>
@@ -448,5 +452,43 @@
     <footer>
         <button class="modalButton okBtn"     onclick="submitVideoSettings()">Применить</button>
         <button class="modalButton cancelBtn" onclick="document.querySelector('#videoSettingsModal').close()">Отмена</button>
+    </footer>
+</dialog>
+
+<dialog class="settingsModal" id="ahSettingsModal">
+    <h1>История сигнализаций — настройки</h1>
+    <table class="settingsTable">
+        <tr><td colspan="2" class="sectionLabel">Заголовок</td></tr>
+        <tr>
+            <td>Шрифт / размер (px)</td>
+            <td class="paramCell">
+                <select class="settingsSelect" id="ah_headerFont">
+                    <option value="0">Monospace</option>
+                </select>
+                <input type="number" class="settingsInput sizeInput" id="ah_headerSize" value="13" min="1" max="200">
+            </td>
+        </tr>
+        <tr><td colspan="2" class="sectionLabel">Записи</td></tr>
+        <tr>
+            <td>Шрифт / размер (px)</td>
+            <td class="paramCell">
+                <select class="settingsSelect" id="ah_contentFont">
+                    <option value="0">Monospace</option>
+                </select>
+                <input type="number" class="settingsInput sizeInput" id="ah_contentSize" value="12" min="1" max="200">
+            </td>
+        </tr>
+        <tr><td colspan="2" class="sectionLabel">Фильтры</td></tr>
+        <tr>
+            <td colspan="2" class="paramCell ahFilterRow">
+                <label class="ahFilterLabel"><input type="checkbox" id="ah_showTrigger" checked> ТРЕВОГА</label>
+                <label class="ahFilterLabel"><input type="checkbox" id="ah_showClear"   checked> СБРОС</label>
+                <label class="ahFilterLabel"><input type="checkbox" id="ah_showAck"     checked> КВИТ.</label>
+            </td>
+        </tr>
+    </table>
+    <footer>
+        <button class="modalButton okBtn"     onclick="submitAhSettings()">Применить</button>
+        <button class="modalButton cancelBtn" onclick="document.querySelector('#ahSettingsModal').close()">Отмена</button>
     </footer>
 </dialog>

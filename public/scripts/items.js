@@ -22,9 +22,32 @@ var _fontsPromise  = null;
 var _alarmLog           = [];
 var _alarmSoundTimeout  = null;
 var _alarmAudio         = null;
+var _alarmSoundPending  = false;
+var _alarmAudioBanner   = null;
 
 window.getAlarmLog      = function() { return _alarmLog; };
 window.stopAlarmSound   = function() { _stopAlarmSound(); };
+
+function _getAudioBanner() {
+    if (!_alarmAudioBanner) _alarmAudioBanner = document.getElementById('alarmAudioBanner');
+    return _alarmAudioBanner;
+}
+
+function _showAudioBanner() {
+    var b = _getAudioBanner();
+    if (b) b.classList.add('visible');
+}
+
+function _hideAudioBanner() {
+    var b = _getAudioBanner();
+    if (b) b.classList.remove('visible');
+}
+
+function alarmAudioBannerClick() {
+    _alarmSoundPending = false;
+    _hideAudioBanner();
+    if (_hasUnackedAlarm()) _playAlarmSound();
+}
 
 function _hasUnackedAlarm() {
     return !!document.querySelector('#workSpace .alarm-active');
@@ -33,6 +56,8 @@ function _hasUnackedAlarm() {
 function _stopAlarmSound() {
     clearTimeout(_alarmSoundTimeout);
     _alarmSoundTimeout = null;
+    _alarmSoundPending = false;
+    _hideAudioBanner();
     if (_alarmAudio) {
         _alarmAudio.pause();
         _alarmAudio.currentTime = 0;
@@ -53,7 +78,11 @@ function _playAlarmSound() {
             _alarmSoundTimeout = setTimeout(_playAlarmSound, delay);
         }
     });
-    _alarmAudio.play().catch(function() {});
+    _alarmAudio.play().catch(function() {
+        _alarmSoundPending = true;
+        _alarmAudio = null;
+        _showAudioBanner();
+    });
 }
 
 function _addAlarmLogEntry(el, val, event) {
@@ -145,6 +174,16 @@ function _loadFonts() {
                 sel.appendChild(opt);
             });
         });
+        ['#ah_headerFont', '#ah_contentFont'].forEach(function (selId) {
+            var sel = document.querySelector(selId);
+            if (!sel) return;
+            fonts.forEach(function (f) {
+                var opt = document.createElement('option');
+                opt.value       = f.id;
+                opt.textContent = f.name;
+                sel.appendChild(opt);
+            });
+        });
     });
     return _fontsPromise;
 }
@@ -192,11 +231,14 @@ var _ctxTarget = null;
 
 function _showCtxMenu(indicator, x, y) {
     _ctxTarget = indicator;
-    var isVideo = indicator.classList.contains('videoIndicator');
-    var ackBtn  = _ctxMenu.querySelector('#ctxAckBtn');
-    var testBtn = _ctxMenu.querySelector('#ctxTestBtn');
-    if (ackBtn)  ackBtn.style.display  = (!isVideo && indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
-    if (testBtn) testBtn.style.display = isVideo ? 'none' : '';
+    var isVideo   = indicator.classList.contains('videoIndicator');
+    var isHistory = indicator.classList.contains('alarmHistoryIndicator');
+    var ackBtn     = _ctxMenu.querySelector('#ctxAckBtn');
+    var testBtn    = _ctxMenu.querySelector('#ctxTestBtn');
+    var settingsBtn= _ctxMenu.querySelector('#ctxSettingsBtn');
+    if (ackBtn)      ackBtn.style.display      = (!isVideo && !isHistory && indicator._alarmActive && !indicator._alarmAcked) ? '' : 'none';
+    if (testBtn)     testBtn.style.display     = (isVideo || isHistory) ? 'none' : '';
+    if (settingsBtn) settingsBtn.style.display = '';
     _ctxMenu.style.display = 'block';
     var menuW = _ctxMenu.offsetWidth  || 190;
     var menuH = _ctxMenu.offsetHeight || 80;
@@ -230,11 +272,67 @@ document.addEventListener('scroll', function () {
 
 function ctxOpenValueSettings() {
     _ctxMenu.style.display = 'none';
-    if (_ctxTarget) _openEditModal(_ctxTarget);
+    if (!_ctxTarget) return;
+    var t = _ctxTarget;
     _ctxTarget = null;
+    if (t.classList.contains('alarmHistoryIndicator')) {
+        openAhSettings(t);
+    } else {
+        _openEditModal(t);
+    }
 }
 
 var _deleteTarget = null;
+
+// ── Alarm History Settings ────────────────────────────────────────────────────
+
+var _ahModal  = null;
+var _ahTarget = null;
+
+function openAhSettings(indicator) {
+    if (!_ahModal) _ahModal = document.querySelector('#ahSettingsModal');
+    _ahTarget = indicator;
+    var d = indicator.dataset;
+    _loadFonts().then(function () {
+        _ahModal.querySelector('#ah_headerFont').value  = parseInt(d.headerFont) || 0;
+        _ahModal.querySelector('#ah_headerSize').value  = parseInt(d.headerSize) || 13;
+        _ahModal.querySelector('#ah_contentFont').value = parseInt(d.valueFont)  || 0;
+        _ahModal.querySelector('#ah_contentSize').value = parseInt(d.valueSize)  || 12;
+        _ahModal.querySelector('#ah_showTrigger').checked = d.ahShowTrigger !== '0';
+        _ahModal.querySelector('#ah_showClear').checked   = d.ahShowClear   !== '0';
+        _ahModal.querySelector('#ah_showAck').checked     = d.ahShowAck     !== '0';
+        _ahModal.showModal();
+    });
+}
+
+function submitAhSettings() {
+    if (!_ahModal) return;
+    var hFont       = parseInt(_ahModal.querySelector('#ah_headerFont').value) || 0;
+    var hSize       = parseInt(_ahModal.querySelector('#ah_headerSize').value) || 13;
+    var cFont       = parseInt(_ahModal.querySelector('#ah_contentFont').value) || 0;
+    var cSize       = parseInt(_ahModal.querySelector('#ah_contentSize').value) || 12;
+    var showTrigger = _ahModal.querySelector('#ah_showTrigger').checked;
+    var showClear   = _ahModal.querySelector('#ah_showClear').checked;
+    var showAck     = _ahModal.querySelector('#ah_showAck').checked;
+    _ahModal.close();
+    if (!_ahTarget) return;
+    Object.assign(_ahTarget.dataset, {
+        headerFont:   hFont,
+        headerSize:   hSize,
+        valueFont:    cFont,
+        valueSize:    cSize,
+        ahShowTrigger: showTrigger ? '1' : '0',
+        ahShowClear:   showClear   ? '1' : '0',
+        ahShowAck:     showAck     ? '1' : '0'
+    });
+    _indicatorTypes.alarmHistoryIndicator.applyEdit(_ahTarget, {
+        headerFont: hFont, headerSize: hSize,
+        valueFont:  cFont, valueSize:  cSize,
+        showTrigger: showTrigger, showClear: showClear, showAck: showAck
+    });
+    _ahTarget = null;
+    showSaveBtn();
+}
 
 function ctxDeleteIndicator() {
     _ctxMenu.style.display = 'none';
@@ -467,6 +565,7 @@ function _openEditModal(indicator) {
         openVideoSettings(indicator);
         return;
     }
+    if (indicator.classList.contains('alarmHistoryIndicator')) { openAhSettings(indicator); return; }
     _editingEl = indicator;
     _addModal.querySelector('h1').textContent = 'Настройки индикатора';
     _addModal.querySelector('.okBtn').textContent = 'Применить';
@@ -801,6 +900,12 @@ function _collectIndicators() {
                 streamPass:    d.streamPass    || '',
                 streamChannel: d.streamChannel || '1',
                 streamSub:     d.streamSub     || '0'
+            });
+        } else if (type === 'alarmHistoryIndicator') {
+            extraData = JSON.stringify({
+                showTrigger: d.ahShowTrigger !== '0',
+                showClear:   d.ahShowClear   !== '0',
+                showAck:     d.ahShowAck     !== '0'
             });
         }
         indicators.push({
