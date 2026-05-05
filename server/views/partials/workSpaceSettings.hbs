@@ -55,6 +55,11 @@
             <td>Задержка (сек)</td>
             <td><input type="number" step="0.5" min="0.5" max="60" class="settingsInput" id="ws_alarmDelay" value="2"></td>
         </tr>
+        <tr><td colspan="2" class="sectionLabel">Сайдбар</td></tr>
+        <tr>
+            <td>Таймаут скрытия (сек)</td>
+            <td><input type="number" step="1" min="0" max="3600" class="settingsInput" id="ws_sidebarTimeout" value="20" placeholder="0 — отключено"></td>
+        </tr>
     </table>
     <footer>
         <input type="file" id="profileImportFile" accept=".json" style="display:none" onchange="importProfile(this)">

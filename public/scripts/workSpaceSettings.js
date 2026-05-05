@@ -11,6 +11,7 @@ let _savedCellSize      = null;
 let _alarmSoundId       = '';
 let _alarmVolume        = 50;
 let _alarmDelay         = 2;
+let _sidebarTimeout     = 20;
 let _wsWidth            = 0;
 let _wsHeight           = 0;
 
@@ -112,11 +113,12 @@ function _loadProfiles() {
                 opt.dataset.background   = p.background;
                 opt.dataset.cellSize     = p.cell_size;
                 opt.dataset.isDefault    = p.is_default;
-                opt.dataset.alarmSoundId = p.alarm_sound_id || '';
-                opt.dataset.alarmVolume  = p.alarm_volume  !== null ? p.alarm_volume  : 50;
-                opt.dataset.alarmDelay   = p.alarm_delay   !== null ? p.alarm_delay   : 2;
-                opt.dataset.wsWidth      = p.ws_width  || 0;
-                opt.dataset.wsHeight     = p.ws_height || 0;
+                opt.dataset.alarmSoundId    = p.alarm_sound_id || '';
+                opt.dataset.alarmVolume     = p.alarm_volume  !== null ? p.alarm_volume  : 50;
+                opt.dataset.alarmDelay      = p.alarm_delay   !== null ? p.alarm_delay   : 2;
+                opt.dataset.wsWidth         = p.ws_width  || 0;
+                opt.dataset.wsHeight        = p.ws_height || 0;
+                opt.dataset.sidebarTimeout  = p.sidebar_timeout != null ? p.sidebar_timeout : 20;
                 select.appendChild(opt);
             });
             if (prevId) select.value = prevId;
@@ -144,14 +146,17 @@ function applyProfile(selectEl, silent) {
     _modal.querySelector('#cellSize').value        = _savedCellSize;
     _modal.querySelector('#deleteProfileBtn').disabled = opt.dataset.isDefault === '1';
 
-    _alarmSoundId = opt.dataset.alarmSoundId || '';
-    _alarmVolume  = opt.dataset.alarmVolume !== undefined ? parseInt(opt.dataset.alarmVolume) : 50;
-    _alarmDelay   = parseFloat(opt.dataset.alarmDelay) || 2;
+    _alarmSoundId   = opt.dataset.alarmSoundId || '';
+    _alarmVolume    = opt.dataset.alarmVolume !== undefined ? parseInt(opt.dataset.alarmVolume) : 50;
+    _alarmDelay     = parseFloat(opt.dataset.alarmDelay) || 2;
+    _sidebarTimeout = opt.dataset.sidebarTimeout !== undefined ? parseInt(opt.dataset.sidebarTimeout) : 20;
 
     _modal.querySelector('#ws_alarmSound').value           = _alarmSoundId;
     _modal.querySelector('#ws_alarmVolume').value          = _alarmVolume;
     _modal.querySelector('#ws_alarmVolumeVal').textContent = _alarmVolume;
     _modal.querySelector('#ws_alarmDelay').value           = _alarmDelay;
+    _modal.querySelector('#ws_sidebarTimeout').value       = _sidebarTimeout;
+    if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
     var dbW = parseInt(opt.dataset.wsWidth)  || 0;
     var dbH = parseInt(opt.dataset.wsHeight) || 0;
@@ -173,9 +178,11 @@ function applyProfileFromSSE(profile) {
     _savedBackground = profile.background;
     _savedCellSize   = profile.cell_size;
     _alarmSoundId    = profile.alarm_sound_id || '';
-    _alarmVolume     = profile.alarm_volume  != null ? parseInt(profile.alarm_volume)  : 50;
-    _alarmDelay      = profile.alarm_delay   != null ? parseFloat(profile.alarm_delay) : 2;
+    _alarmVolume     = profile.alarm_volume    != null ? parseInt(profile.alarm_volume)    : 50;
+    _alarmDelay      = profile.alarm_delay     != null ? parseFloat(profile.alarm_delay)   : 2;
+    _sidebarTimeout  = profile.sidebar_timeout != null ? parseInt(profile.sidebar_timeout) : 20;
     _applyResolution(profile.ws_width || 0, profile.ws_height || 0);
+    if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
     var select = _modal.querySelector('#wsProfile');
     if (select) {
@@ -298,9 +305,11 @@ function applyWorkSpaceSettings() {
     _settings.background = _modal.querySelector('#workSpaceColor').value;
     _settings.cellSize   = cellSize;
 
-    _alarmSoundId = _modal.querySelector('#ws_alarmSound').value;
-    _alarmVolume  = parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50;
-    _alarmDelay   = parseFloat(_modal.querySelector('#ws_alarmDelay').value) || 2;
+    _alarmSoundId   = _modal.querySelector('#ws_alarmSound').value;
+    _alarmVolume    = parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50;
+    _alarmDelay     = parseFloat(_modal.querySelector('#ws_alarmDelay').value) || 2;
+    _sidebarTimeout = Math.max(0, parseInt(_modal.querySelector('#ws_sidebarTimeout').value) || 0);
+    if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
     var resParts = (_modal.querySelector('#wsResolution').value || '0x0').split('x');
     _applyResolution(parseInt(resParts[0]) || 0, parseInt(resParts[1]) || 0);
@@ -316,13 +325,14 @@ function saveSettings() {
     if (window.stopAlarmSound) window.stopAlarmSound();
 
     var data = {
-        background:   _settings.background,
-        cellSize:     _settings.cellSize,
-        alarmSoundId: _alarmSoundId,
-        alarmVolume:  _alarmVolume,
-        alarmDelay:   _alarmDelay,
-        wsWidth:      _wsWidth,
-        wsHeight:     _wsHeight
+        background:     _settings.background,
+        cellSize:       _settings.cellSize,
+        alarmSoundId:   _alarmSoundId,
+        alarmVolume:    _alarmVolume,
+        alarmDelay:     _alarmDelay,
+        wsWidth:        _wsWidth,
+        wsHeight:       _wsHeight,
+        sidebarTimeout: _sidebarTimeout
     };
 
     $.ajax({

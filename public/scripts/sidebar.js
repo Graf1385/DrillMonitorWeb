@@ -199,6 +199,7 @@ function submitLogin() {
             document.querySelector('#loginModal').close();
             document.querySelector('#login_password').value = '';
             sideBar.classList.add('open');
+            _restartCollapseTimer();
         },
         error: function() {
             showError('Неверный логин или пароль');
@@ -206,9 +207,35 @@ function submitLogin() {
     });
 }
 
+// ── Sidebar auto-collapse ─────────────────────────────────────────────────────
+
+var _collapseTimer = null;
+var _collapseDelay = 20;
+
+function _restartCollapseTimer() {
+    clearTimeout(_collapseTimer);
+    if (_collapseDelay > 0 && sideBar.classList.contains('open')) {
+        _collapseTimer = setTimeout(function () {
+            sideBar.classList.remove('open');
+        }, _collapseDelay * 1000);
+    }
+}
+
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function(evt) {
+    document.addEventListener(evt, _restartCollapseTimer, { passive: true });
+});
+
+window.setSidebarTimeout = function(sec) {
+    _collapseDelay = Math.max(0, parseInt(sec) || 0);
+    _restartCollapseTimer();
+};
+
+// ── Logo click ────────────────────────────────────────────────────────────────
+
 logo.addEventListener('click', function() {
     if (sideBar.classList.contains('open')) {
         sideBar.classList.remove('open');
+        clearTimeout(_collapseTimer);
         return;
     }
     if (!_isAuthenticated()) {
@@ -216,5 +243,6 @@ logo.addEventListener('click', function() {
         document.querySelector('#loginModal').showModal();
     } else {
         sideBar.classList.add('open');
+        _restartCollapseTimer();
     }
 });
