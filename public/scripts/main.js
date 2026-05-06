@@ -36,10 +36,6 @@ function _restoreIndicators(indicators) {
     ws.querySelectorAll('.tickerIndicator').forEach(function(el) {
         if (el._tickerObserver) el._tickerObserver.disconnect();
     });
-    ws.querySelectorAll('.alarmPanelIndicator').forEach(function(el) {
-        if (el._alarmObserver) el._alarmObserver.disconnect();
-        if (el._alarmOverlay)  el._alarmOverlay.remove();
-    });
     ws.querySelectorAll('.indicator').forEach(function(el) { el.remove(); });
     indicators.forEach(function(ind) {
         var left = Math.round((ind.pos_left || 0) * wsW / 100);

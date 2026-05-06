@@ -759,28 +759,11 @@ input[type=number]::-webkit-inner-spin-button {
     width: 600px;
 }
 
-#alarmOverviewModal[open] {
-    display: flex;
-    flex-direction: column;
-    width: 600px;
-    height: 600px;
-}
-
-#alarmOverviewList table {
-    table-layout: fixed;
-    width: 100%;
-    margin: 0;
-}
-
 .alarmOverviewEmpty {
     text-align: center;
     color: #6b7280;
     padding: 12px 0;
     font-size: 13px;
-}
-
-#alarmLogList {
-    padding: 4px 12px;
 }
 
 /* ── Parameters Modal ────────────────────────────────────────────────────────── */
