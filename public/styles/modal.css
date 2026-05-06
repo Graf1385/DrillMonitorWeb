@@ -32,7 +32,7 @@
 /* ── Loader ────────────────────────────────────────────────────────────────── */
 
 #loaderOverlay {
-    display: none;
+    display: flex;
     position: fixed;
     inset: 0;
     z-index: 9999;
@@ -42,17 +42,41 @@
     align-items: center;
     justify-content: center;
     gap: 22px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
 }
 
 #loaderOverlay.active {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .loader-ring {
+    position: relative;
     width: 64px;
     height: 64px;
-    filter: drop-shadow(0 0 8px var(--sidebar-accent));
-    animation: loader-glow 1.7s ease-in-out infinite;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.45));
+    transform: scale(0.75);
+    opacity: 0;
+    transition:
+        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity   0.35s ease;
+}
+
+.loader-ring::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 65%);
+    animation: loader-glow 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+#loaderOverlay.active .loader-ring {
+    transform: scale(1);
+    opacity: 1;
 }
 
 .loader-svg {
@@ -84,7 +108,16 @@
     text-transform: uppercase;
     color: var(--sidebar-accent);
     text-shadow: 0 0 10px var(--sidebar-accent);
-    animation: loader-pulse 1.7s ease-in-out infinite;
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity   0.35s ease                             0.12s,
+        transform 0.4s  cubic-bezier(0.34, 1.4, 0.64, 1) 0.12s;
+}
+
+#loaderOverlay.active .loader-text {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 @keyframes loader-spin {
@@ -92,13 +125,8 @@
 }
 
 @keyframes loader-glow {
-    0%, 100% { filter: drop-shadow(0 0 4px  var(--sidebar-shadow)); }
-    50%       { filter: drop-shadow(0 0 14px var(--sidebar-accent)); }
-}
-
-@keyframes loader-pulse {
-    0%, 100% { opacity: 0.5; }
-    50%       { opacity: 1.0; }
+    0%, 100% { opacity: 0.35; transform: scale(1);    }
+    50%       { opacity: 1;    transform: scale(1.08); }
 }
 
 /* ── /Loader ─────────────────────────────────────────────────────────────── */
@@ -985,7 +1013,12 @@ input[type="color"]:disabled {
     #errorToast,
     .cc-drop,
     .unitComboDropdown,
-    .modalButton {
+    .modalButton,
+    #loaderOverlay,
+    .loader-ring,
+    .loader-text,
+    .loader-arc,
+    .loader-ring::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
     }

@@ -141,6 +141,37 @@
 	transition: filter 0.2s;
 }
 
+/* ── SVG icon sizing & default colour ─────────────────────────────────────── */
+
+.sideBarButton svg {
+	width: 52%;
+	height: 52%;
+	flex-shrink: 0;
+	color: #5a6a7e;
+	transition: color 0.18s ease, filter 0.18s ease;
+}
+
+.sideBarButton:hover svg {
+	color: var(--sidebar-accent);
+	filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.35));
+}
+
+/* Удалить — семантический красный */
+#removeButton svg            { color: #4a5568; }
+#removeButton:hover svg      {
+	color: #f87171;
+	filter: drop-shadow(0 0 5px rgba(248, 113, 113, 0.35));
+}
+
+/* Сохранить — семантический зелёный */
+#saveButton svg              { color: #34d399; }
+#saveButton:hover svg        {
+	color: #4ade80;
+	filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.4));
+}
+
+/* ── Hover & active states ─────────────────────────────────────────────────── */
+
 .sideBarButton:hover {
 	background-color: var(--sidebar-btn-hover);
 	border-color: var(--sidebar-border);
@@ -172,6 +203,11 @@
 
 #gridButton.enable img {
 	filter: brightness(1) drop-shadow(0 0 0.2vmin var(--sidebar-accent));
+}
+
+#gridButton.enable svg {
+	color: var(--sidebar-accent);
+	filter: drop-shadow(0 0 0.2vmin var(--sidebar-accent));
 }
 
 #removeButton {
