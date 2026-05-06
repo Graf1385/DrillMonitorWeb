@@ -1,7 +1,53 @@
 const express = require('express');
-const router = express.Router();
-const db = require('../db');
+const https   = require('https');
+const router  = express.Router();
+const db  = require('../db');
 const sse = require('../sse');
+const pkg = require('../../package.json');
+
+// ── Update checker ────────────────────────────────────────────────────────────
+
+const GITHUB_REPO  = 'Graf1385/DrillMonitorWeb';
+const UPDATE_TTL   = 60 * 60 * 1000; // 1 hour cache
+let _updateCache   = null;
+let _updateCacheAt = 0;
+
+function _semverGt(a, b) {
+    var ap = a.split('.').map(Number);
+    var bp = b.split('.').map(Number);
+    for (var i = 0; i < 3; i++) {
+        if ((ap[i] || 0) > (bp[i] || 0)) return true;
+        if ((ap[i] || 0) < (bp[i] || 0)) return false;
+    }
+    return false;
+}
+
+function _fetchLatestRelease(cb) {
+    var options = {
+        hostname: 'api.github.com',
+        path:     '/repos/' + GITHUB_REPO + '/releases/latest',
+        headers:  { 'User-Agent': 'DrillMonitorWeb/' + pkg.version }
+    };
+    var req = https.get(options, function (res) {
+        var raw = '';
+        res.on('data', function (c) { raw += c; });
+        res.on('end', function () {
+            try {
+                var data    = JSON.parse(raw);
+                var tag     = (data.tag_name || '').replace(/^v/, '');
+                var current = pkg.version;
+                cb(null, {
+                    current:    current,
+                    latest:     tag || null,
+                    hasUpdate:  !!(tag && _semverGt(tag, current)),
+                    releaseUrl: data.html_url || null
+                });
+            } catch (e) { cb(e); }
+        });
+    });
+    req.setTimeout(6000, function () { req.destroy(); });
+    req.on('error', cb);
+}
 
 router.get('/', (req, res) =>{
     res.render('index');
@@ -127,6 +173,21 @@ router.get('/api/alarm-sounds/:id/file', (req, res) => {
     }
 });
 
+
+router.get('/api/update/check', function (req, res) {
+    var now = Date.now();
+    if (_updateCache && (now - _updateCacheAt) < UPDATE_TTL) {
+        return res.json(_updateCache);
+    }
+    _fetchLatestRelease(function (err, result) {
+        if (err) {
+            return res.status(503).json({ error: 'GitHub недоступен' });
+        }
+        _updateCache   = result;
+        _updateCacheAt = Date.now();
+        res.json(result);
+    });
+});
 
 router.get('/api/events', (req, res) => {
     res.setHeader('Content-Type',  'text/event-stream');

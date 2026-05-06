@@ -179,9 +179,9 @@ function _updateGaugeSvg(el, numericVal) {
     var gEl = el.querySelector('.gaugeGreenProg');
     var yEl = el.querySelector('.gaugeYellowProg');
     var rEl = el.querySelector('.gaugeRedProg');
-    if (gEl) gEl.setAttribute('stroke-dasharray', gPrg.toFixed(2) + ' ' + _GAUGE_L);
-    if (yEl) yEl.setAttribute('stroke-dasharray', yPrg.toFixed(2) + ' ' + _GAUGE_L);
-    if (rEl) rEl.setAttribute('stroke-dasharray', rPrg.toFixed(2) + ' ' + _GAUGE_L);
+    if (gEl) gEl.style.strokeDasharray = gPrg.toFixed(2) + ' ' + _GAUGE_L;
+    if (yEl) yEl.style.strokeDasharray = yPrg.toFixed(2) + ' ' + _GAUGE_L;
+    if (rEl) rEl.style.strokeDasharray = rPrg.toFixed(2) + ' ' + _GAUGE_L;
 }
 
 function _makeTankWavePath(waterY) {
@@ -246,16 +246,12 @@ function _updateManoSvg(el, numericVal) {
     var gEl = el.querySelector('.manoGreenProg');
     var yEl = el.querySelector('.manoYellowProg');
     var rEl = el.querySelector('.manoRedProg');
-    if (gEl) gEl.setAttribute('stroke-dasharray', gPrg.toFixed(2) + ' ' + _MANO_L);
-    if (yEl) yEl.setAttribute('stroke-dasharray', yPrg.toFixed(2) + ' ' + _MANO_L);
-    if (rEl) rEl.setAttribute('stroke-dasharray', rPrg.toFixed(2) + ' ' + _MANO_L);
+    if (gEl) gEl.style.strokeDasharray = gPrg.toFixed(2) + ' ' + _MANO_L;
+    if (yEl) yEl.style.strokeDasharray = yPrg.toFixed(2) + ' ' + _MANO_L;
+    if (rEl) rEl.style.strokeDasharray = rPrg.toFixed(2) + ' ' + _MANO_L;
 
-    var angleRad = (_MANO_START + pct * _MANO_SWEEP) * Math.PI / 180;
-    var needle   = el.querySelector('.manoNeedle');
-    if (needle) {
-        needle.setAttribute('x2', (_MANO_CX + _MANO_R_NDL * Math.cos(angleRad)).toFixed(2));
-        needle.setAttribute('y2', (_MANO_CY + _MANO_R_NDL * Math.sin(angleRad)).toFixed(2));
-    }
+    var needle = el.querySelector('.manoNeedle');
+    if (needle) needle.style.transform = 'rotate(' + (pct * 270 - 135).toFixed(2) + 'deg)';
 }
 
 function _tickerResize(el) {

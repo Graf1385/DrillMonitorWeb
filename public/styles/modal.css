@@ -1,4 +1,70 @@
 
+/* ── Update Banner ───────────────────────────────────────────────────────── */
+
+#updateBanner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 9000;
+    background: #071e38;
+    border-bottom: 1px solid #1a4a7a;
+    color: #7dd3fc;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    padding: 10px 52px;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    opacity: 0;
+    transform: translateY(-100%);
+}
+
+#updateBanner.visible {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#updateBannerText {
+    opacity: 0.85;
+}
+
+#updateBannerLink {
+    color: #38bdf8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 0.15s;
+}
+
+#updateBannerLink:hover {
+    color: #7dd3fc;
+}
+
+#updateBannerClose {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #4a7a9a;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+#updateBannerClose:hover {
+    color: #7dd3fc;
+    background: rgba(56, 189, 248, 0.1);
+}
+
 /* ── Error Toast ─────────────────────────────────────────────────────────── */
 
 #errorToast {

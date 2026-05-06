@@ -28,6 +28,61 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
     };
 })();
 
+// ── Update checker ────────────────────────────────────────────────────────────
+
+(function () {
+    var _banner     = document.getElementById('updateBanner');
+    var _bannerText = document.getElementById('updateBannerText');
+    var _bannerLink = document.getElementById('updateBannerLink');
+    var _bannerClose= document.getElementById('updateBannerClose');
+    var _badge      = document.getElementById('updateBadge');
+    var _btn        = document.getElementById('updateCheckButton');
+
+    function _showBanner(data) {
+        _bannerText.textContent = 'Доступна версия ' + data.latest + '   (текущая ' + data.current + ')';
+        _bannerLink.href = data.releaseUrl || 'https://github.com/Graf1385/DrillMonitorWeb/releases';
+        _banner.classList.add('visible');
+    }
+
+    function _check(manual) {
+        if (_btn) _btn.classList.add('checking');
+
+        $.getJSON('/api/update/check')
+            .done(function (data) {
+                if (data.hasUpdate) {
+                    if (_badge) _badge.classList.add('visible');
+                    var dismissed = localStorage.getItem('updateDismissed');
+                    if (manual || dismissed !== data.latest) {
+                        _showBanner(data);
+                    }
+                } else {
+                    if (_badge) _badge.classList.remove('visible');
+                    _banner.classList.remove('visible');
+                    if (manual) showError('Версия актуальна: ' + (data.current || '—'));
+                }
+            })
+            .fail(function () {
+                if (manual) showError('Не удалось проверить обновления');
+            })
+            .always(function () {
+                if (_btn) _btn.classList.remove('checking');
+            });
+    }
+
+    if (_bannerClose) {
+        _bannerClose.addEventListener('click', function () {
+            var m = _bannerText.textContent.match(/(\d+\.\d+\.\d+)/);
+            if (m) localStorage.setItem('updateDismissed', m[1]);
+            _banner.classList.remove('visible');
+        });
+    }
+
+    if (_btn) _btn.addEventListener('click', function () { _check(true); });
+
+    // Проверяем при загрузке страницы
+    _check(false);
+})();
+
 function _restoreIndicators(indicators) {
     var ws  = document.querySelector('#wsCanvas');
     var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;

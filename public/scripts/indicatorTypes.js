@@ -106,46 +106,48 @@ var _indicatorTypes = {
             var svg = document.createElementNS(NS, 'svg');
             svg.setAttribute('viewBox', '0 0 200 115');
             svg.setAttribute('class', 'gaugeSvg');
-            svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
+            svg.style.overflow = 'visible';
 
             function mkArc(cls, stroke, dashArray, dashOffset) {
                 var p = document.createElementNS(NS, 'path');
                 p.setAttribute('d', _GAUGE_ARC);
                 p.setAttribute('fill', 'none');
                 p.setAttribute('stroke', stroke);
-                p.setAttribute('stroke-width', '22');
+                p.setAttribute('stroke-width', '14');
                 p.setAttribute('stroke-linecap', 'butt');
                 p.setAttribute('class', cls);
                 p.setAttribute('stroke-dasharray', dashArray);
-                if (dashOffset !== 0) p.setAttribute('stroke-dashoffset', String(dashOffset));
+                if (dashOffset) p.setAttribute('stroke-dashoffset', String(dashOffset));
                 return p;
             }
 
-            svg.appendChild(mkArc('gaugeTrack',      '#14202e', _GAUGE_L + ' ' + _GAUGE_L, 0));
-            svg.appendChild(mkArc('gaugeGreenDim',   '#0a2212', '147.02 ' + _GAUGE_L,      0));
-            svg.appendChild(mkArc('gaugeYellowDim',  '#221900', '49.01 '  + _GAUGE_L,      -147.02));
-            svg.appendChild(mkArc('gaugeRedDim',     '#220606', '49.01 '  + _GAUGE_L,      -196.03));
-            svg.appendChild(mkArc('gaugeGreenProg',  '#3fb950', '0 '      + _GAUGE_L,      0));
-            svg.appendChild(mkArc('gaugeYellowProg', '#d29922', '0 '      + _GAUGE_L,      -147.02));
-            svg.appendChild(mkArc('gaugeRedProg',    '#f85149', '0 '      + _GAUGE_L,      -196.03));
+            svg.appendChild(mkArc('gaugeTrack',      '#0b1929', _GAUGE_L + ' ' + _GAUGE_L, 0));
+            svg.appendChild(mkArc('gaugeGreenDim',   '#071910', '147.02 ' + _GAUGE_L,      0));
+            svg.appendChild(mkArc('gaugeYellowDim',  '#1a1200', '49.01 '  + _GAUGE_L,      -147.02));
+            svg.appendChild(mkArc('gaugeRedDim',     '#180505', '49.01 '  + _GAUGE_L,      -196.03));
+            svg.appendChild(mkArc('gaugeGreenProg',  '#00d47e', '0 '      + _GAUGE_L,      0));
+            svg.appendChild(mkArc('gaugeYellowProg', '#f0a020', '0 '      + _GAUGE_L,      -147.02));
+            svg.appendChild(mkArc('gaugeRedProg',    '#ff4444', '0 '      + _GAUGE_L,      -196.03));
 
-            var _segGap    = 3;
-            var _segPeriod = _GAUGE_L / 10;
-            var _segInner  = (_segPeriod - _segGap).toFixed(3);
-            var _segFirst  = (_segPeriod - _segGap / 2).toFixed(3);
-            var _dashArr   = '0 ' + _segFirst;
-            for (var si = 0; si < 8; si++) _dashArr += ' ' + _segGap + ' ' + _segInner;
-            _dashArr += ' ' + _segGap + ' ' + _segFirst;
-            var seg = document.createElementNS(NS, 'path');
-            seg.setAttribute('d', _GAUGE_ARC);
-            seg.setAttribute('fill', 'none');
-            seg.setAttribute('stroke', cfg.valueBg);
-            seg.setAttribute('stroke-width', '24');
-            seg.setAttribute('stroke-linecap', 'butt');
-            seg.setAttribute('class', 'gaugeSeg');
-            seg.setAttribute('stroke-dasharray', _dashArr);
-            svg.appendChild(seg);
+            // Radial tick marks outside the arc
+            // Arc center (100, 100); θ_i = 180 + i*9° in SVG screen coords (Y-down)
+            for (var i = 0; i <= 20; i++) {
+                var angRad  = (180 + i * 9) * Math.PI / 180;
+                var isMajor = (i % 5 === 0);
+                var rOuter  = isMajor ? 93 : 89;
+                var cosA = Math.cos(angRad), sinA = Math.sin(angRad);
+                var tick = document.createElementNS(NS, 'line');
+                tick.setAttribute('x1', (100 + 85 * cosA).toFixed(2));
+                tick.setAttribute('y1', (100 + 85 * sinA).toFixed(2));
+                tick.setAttribute('x2', (100 + rOuter * cosA).toFixed(2));
+                tick.setAttribute('y2', (100 + rOuter * sinA).toFixed(2));
+                tick.setAttribute('stroke', isMajor ? '#1e3f64' : '#122033');
+                tick.setAttribute('stroke-width', isMajor ? '1.5' : '0.75');
+                tick.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(tick);
+            }
 
             function mkText(cls, x, y, fontSize, fill, content) {
                 var t = document.createElementNS(NS, 'text');
@@ -156,13 +158,14 @@ var _indicatorTypes = {
                 t.setAttribute('dominant-baseline', 'middle');
                 t.setAttribute('fill', fill);
                 t.setAttribute('font-size', String(fontSize));
-                t.setAttribute('font-weight', 'bold');
+                t.setAttribute('font-family', 'monospace');
+                t.setAttribute('font-weight', 'normal');
                 t.textContent = content;
                 return t;
             }
 
-            svg.appendChild(mkText('gaugeMinLabel',  16,  109, 9, '#6e7681', cfg.rangeMin !== null ? cfg.rangeMin : 0));
-            svg.appendChild(mkText('gaugeMaxLabel', 184,  109, 9, '#6e7681', cfg.rangeMax !== null ? cfg.rangeMax : 100));
+            svg.appendChild(mkText('gaugeMinLabel',  20, 110, 8, '#344e66', cfg.rangeMin !== null ? cfg.rangeMin : 0));
+            svg.appendChild(mkText('gaugeMaxLabel', 180, 110, 8, '#344e66', cfg.rangeMax !== null ? cfg.rangeMax : 100));
 
             var gaugeWrapper = document.createElement('div');
             gaugeWrapper.className = 'gaugeWrapper';
@@ -310,8 +313,9 @@ var _indicatorTypes = {
             var hv = el.querySelector('.hBarValue');
             if (hv) {
                 hv.textContent = _formatValue(el, val);
-                if (zc) { hv.style.color = zc; hv.style.textShadow = _tankTextShadow(el.dataset.valueBg); }
-                else    { hv.style.color = el.dataset.valueColor; hv.style.textShadow = ''; }
+                var c = zc || el.dataset.valueColor;
+                hv.style.color      = c;
+                hv.style.textShadow = _tankTextShadow(el.dataset.valueBg) + ', 0 0 16px ' + c;
             }
             _updateHBar(el, val);
         },
@@ -334,7 +338,7 @@ var _indicatorTypes = {
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
             valText.style.fontSize   = _valueFontPx(cfg.valueSize);
-            valText.style.textShadow = _makeBarShadow(cfg.valueColor);
+            valText.style.textShadow = _tankTextShadow(cfg.valueBg) + ', 0 0 16px ' + cfg.valueColor;
             valText.textContent      = _applyFormat(0, cfg.format);
 
             track.appendChild(fill);
@@ -369,7 +373,7 @@ var _indicatorTypes = {
                 val.style.color      = cfg.valueColor;
                 val.style.fontFamily = _getFontFamily(cfg.valueFont);
                 val.style.fontSize   = _valueFontPx(cfg.valueSize);
-                val.style.textShadow = _makeBarShadow(cfg.valueColor);
+                val.style.textShadow = _tankTextShadow(cfg.valueBg) + ', 0 0 16px ' + cfg.valueColor;
             }
             var wrapper = el.querySelector('.hBarWrapper');
             if (wrapper) {
@@ -389,8 +393,9 @@ var _indicatorTypes = {
             var vv = el.querySelector('.vBarValue');
             if (vv) {
                 vv.textContent = _formatValue(el, val);
-                if (zc) { vv.style.color = zc; vv.style.textShadow = _tankTextShadow(el.dataset.valueBg); }
-                else    { vv.style.color = el.dataset.valueColor; vv.style.textShadow = ''; }
+                var c = zc || el.dataset.valueColor;
+                vv.style.color      = c;
+                vv.style.textShadow = _tankTextShadow(el.dataset.valueBg) + ', 0 0 16px ' + c;
             }
             _updateVBar(el, val);
         },
@@ -417,7 +422,7 @@ var _indicatorTypes = {
             valText.style.color      = cfg.valueColor;
             valText.style.fontFamily = _getFontFamily(cfg.valueFont);
             valText.style.fontSize   = _valueFontPx(cfg.valueSize);
-            valText.style.textShadow = _makeBarShadow(cfg.valueColor);
+            valText.style.textShadow = _tankTextShadow(cfg.valueBg) + ', 0 0 16px ' + cfg.valueColor;
             valText.textContent      = _applyFormat(0, cfg.format);
 
             track.appendChild(fill);
@@ -444,7 +449,7 @@ var _indicatorTypes = {
                 val.style.color      = cfg.valueColor;
                 val.style.fontFamily = _getFontFamily(cfg.valueFont);
                 val.style.fontSize   = _valueFontPx(cfg.valueSize);
-                val.style.textShadow = _makeBarShadow(cfg.valueColor);
+                val.style.textShadow = _tankTextShadow(cfg.valueBg) + ', 0 0 16px ' + cfg.valueColor;
             }
             var wrapper = el.querySelector('.vBarWrapper');
             if (wrapper) {
@@ -537,6 +542,7 @@ var _indicatorTypes = {
             svg.setAttribute('class', 'manoSvg');
             svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
+            svg.style.overflow = 'visible';
 
             function mkArc(cls, stroke, dashArray, dashOffset) {
                 var p = document.createElementNS(NS, 'path');
@@ -551,50 +557,65 @@ var _indicatorTypes = {
                 return p;
             }
 
-            svg.appendChild(mkArc('manoTrack',      '#14202e', _MANO_L + ' ' + _MANO_L, 0));
-            svg.appendChild(mkArc('manoGreenDim',   '#0a2212', '197.92 ' + _MANO_L,     0));
-            svg.appendChild(mkArc('manoYellowDim',  '#221900', '65.97 '  + _MANO_L,     -_MANO_GREEN));
-            svg.appendChild(mkArc('manoRedDim',     '#220606', '65.98 '  + _MANO_L,     -_MANO_YELLOW));
-            svg.appendChild(mkArc('manoGreenProg',  '#3fb950', '0 '      + _MANO_L,     0));
-            svg.appendChild(mkArc('manoYellowProg', '#d29922', '0 '      + _MANO_L,     -_MANO_GREEN));
-            svg.appendChild(mkArc('manoRedProg',    '#f85149', '0 '      + _MANO_L,     -_MANO_YELLOW));
+            svg.appendChild(mkArc('manoTrack',      '#0b1929', _MANO_L + ' ' + _MANO_L, 0));
+            svg.appendChild(mkArc('manoGreenDim',   '#071910', '197.92 ' + _MANO_L,     0));
+            svg.appendChild(mkArc('manoYellowDim',  '#1a1200', '65.97 '  + _MANO_L,     -_MANO_GREEN));
+            svg.appendChild(mkArc('manoRedDim',     '#180505', '65.98 '  + _MANO_L,     -_MANO_YELLOW));
+            svg.appendChild(mkArc('manoGreenProg',  '#00d47e', '0 '      + _MANO_L,     0));
+            svg.appendChild(mkArc('manoYellowProg', '#f0a020', '0 '      + _MANO_L,     -_MANO_GREEN));
+            svg.appendChild(mkArc('manoRedProg',    '#ff4444', '0 '      + _MANO_L,     -_MANO_YELLOW));
 
-            var segGap    = 3;
-            var segPeriod = _MANO_L / 10;
-            var segInner  = (segPeriod - segGap).toFixed(3);
-            var segFirst  = (segPeriod - segGap / 2).toFixed(3);
-            var segDash   = '0 ' + segFirst;
-            for (var si = 0; si < 8; si++) segDash += ' ' + segGap + ' ' + segInner;
-            segDash += ' ' + segGap + ' ' + segFirst;
-            var seg = document.createElementNS(NS, 'path');
-            seg.setAttribute('d', _MANO_ARC);
-            seg.setAttribute('fill', 'none');
-            seg.setAttribute('stroke', cfg.valueBg);
-            seg.setAttribute('stroke-width', '16');
-            seg.setAttribute('stroke-linecap', 'butt');
-            seg.setAttribute('class', 'manoSeg');
-            seg.setAttribute('stroke-dasharray', segDash);
-            svg.appendChild(seg);
+            // Radial tick marks outside the arc
+            // Arc center (100, 105), start 135°, sweep 270°; θ_i = 135 + i*13.5°
+            for (var i = 0; i <= 20; i++) {
+                var angRad  = (135 + i * 13.5) * Math.PI / 180;
+                var isMajor = (i % 5 === 0);
+                var rOuter  = isMajor ? 84 : 80;
+                var cosA = Math.cos(angRad), sinA = Math.sin(angRad);
+                var tick = document.createElementNS(NS, 'line');
+                tick.setAttribute('x1', (_MANO_CX + 75 * cosA).toFixed(2));
+                tick.setAttribute('y1', (_MANO_CY + 75 * sinA).toFixed(2));
+                tick.setAttribute('x2', (_MANO_CX + rOuter * cosA).toFixed(2));
+                tick.setAttribute('y2', (_MANO_CY + rOuter * sinA).toFixed(2));
+                tick.setAttribute('stroke', isMajor ? '#1e3f64' : '#122033');
+                tick.setAttribute('stroke-width', isMajor ? '1.5' : '0.75');
+                tick.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(tick);
+            }
 
+            // Needle: fixed vertical line, rotated via CSS transform
             var needle = document.createElementNS(NS, 'line');
             needle.setAttribute('class', 'manoNeedle');
             needle.setAttribute('x1', String(_MANO_CX));
             needle.setAttribute('y1', String(_MANO_CY));
             needle.setAttribute('x2', String(_MANO_CX));
-            needle.setAttribute('y2', String(_MANO_CY));
+            needle.setAttribute('y2', String(_MANO_CY - _MANO_R_NDL + 5));
             needle.setAttribute('stroke', cfg.valueColor);
-            needle.setAttribute('stroke-width', '2.5');
+            needle.setAttribute('stroke-width', '1.5');
             needle.setAttribute('stroke-linecap', 'round');
             svg.appendChild(needle);
 
+            // Hub outer decorative ring
+            var hubRing = document.createElementNS(NS, 'circle');
+            hubRing.setAttribute('class', 'manoHubRing');
+            hubRing.setAttribute('cx', String(_MANO_CX));
+            hubRing.setAttribute('cy', String(_MANO_CY));
+            hubRing.setAttribute('r', '9');
+            hubRing.setAttribute('fill', 'none');
+            hubRing.setAttribute('stroke', cfg.valueColor);
+            hubRing.setAttribute('stroke-width', '0.75');
+            hubRing.setAttribute('opacity', '0.35');
+            svg.appendChild(hubRing);
+
+            // Hub center dot
             var hub = document.createElementNS(NS, 'circle');
             hub.setAttribute('class', 'manoHub');
             hub.setAttribute('cx', String(_MANO_CX));
             hub.setAttribute('cy', String(_MANO_CY));
-            hub.setAttribute('r', '6');
+            hub.setAttribute('r', '5');
             hub.setAttribute('fill', cfg.valueColor);
-            hub.setAttribute('stroke', cfg.valueBg);
-            hub.setAttribute('stroke-width', '2');
+            hub.setAttribute('stroke', '#080e18');
+            hub.setAttribute('stroke-width', '1.5');
             svg.appendChild(hub);
 
             function mkLbl(cls, x, y, anchor, content) {
@@ -604,13 +625,14 @@ var _indicatorTypes = {
                 t.setAttribute('y', String(y));
                 t.setAttribute('text-anchor', anchor);
                 t.setAttribute('dominant-baseline', 'middle');
-                t.setAttribute('fill', '#6e7681');
-                t.setAttribute('font-size', '9');
+                t.setAttribute('fill', '#344e66');
+                t.setAttribute('font-size', '8');
+                t.setAttribute('font-family', 'monospace');
                 t.textContent = content;
                 return t;
             }
-            svg.appendChild(mkLbl('manoMinLabel', 38,  172, 'middle', cfg.rangeMin !== null ? cfg.rangeMin : 0));
-            svg.appendChild(mkLbl('manoMaxLabel', 162, 172, 'middle', cfg.rangeMax !== null ? cfg.rangeMax : 100));
+            svg.appendChild(mkLbl('manoMinLabel', 38,  174, 'middle', cfg.rangeMin !== null ? cfg.rangeMin : 0));
+            svg.appendChild(mkLbl('manoMaxLabel', 162, 174, 'middle', cfg.rangeMax !== null ? cfg.rangeMax : 100));
 
             var manoWrapper = document.createElement('div');
             manoWrapper.className = 'manoWrapper';
@@ -639,12 +661,12 @@ var _indicatorTypes = {
             }
             var svg = el.querySelector('.manoSvg');
             if (svg) svg.style.backgroundColor = _hexToRgba(cfg.valueBg, cfg.valueBgOpacity);
-            var seg = el.querySelector('.manoSeg');
-            if (seg) seg.setAttribute('stroke', cfg.valueBg);
             var needle = el.querySelector('.manoNeedle');
             if (needle) needle.setAttribute('stroke', cfg.valueColor);
+            var hubRing = el.querySelector('.manoHubRing');
+            if (hubRing) hubRing.setAttribute('stroke', cfg.valueColor);
             var hub = el.querySelector('.manoHub');
-            if (hub) { hub.setAttribute('fill', cfg.valueColor); hub.setAttribute('stroke', cfg.valueBg); }
+            if (hub) hub.setAttribute('fill', cfg.valueColor);
             setIndicatorValue(el, el._currentValue !== undefined ? el._currentValue : 0);
         }
     },
