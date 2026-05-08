@@ -1,6 +1,6 @@
 {
   "name": "drillmonitorweb",
-  "version": "0.75.0",
+  "version": "1.0.1",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
