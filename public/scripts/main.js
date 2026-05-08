@@ -59,19 +59,6 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         _overlay.classList.add('visible');
     }
 
-    function _applyUpdate() {
-        _dialog.close();
-        _banner.classList.remove('visible');
-        _showProgress('Устанавливается обновление…');
-
-        $.ajax({ url: '/api/update/apply', method: 'POST' })
-            .fail(function (xhr) {
-                _overlay.classList.remove('visible');
-                var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка обновления';
-                showError(msg);
-            });
-    }
-
     function _pollUntilAlive() {
         _overlayText.textContent = 'Перезапуск сервера…';
         var attempts = 0;
@@ -80,17 +67,38 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
             $.ajax({ url: '/api/health', method: 'GET', timeout: 2000 })
                 .done(function () {
                     clearInterval(timer);
+                    window._updateInProgress = false;
                     _overlayText.textContent = 'Готово! Перезагрузка…';
                     setTimeout(function () { window.location.reload(); }, 800);
                 })
                 .fail(function () {
-                    if (attempts > 60) {
+                    if (attempts > 90) {
                         clearInterval(timer);
+                        window._updateInProgress = false;
                         _overlay.classList.remove('visible');
-                        showError('Сервер не отвечает после обновления');
+                        showError('Сервер не отвечает — обновите страницу вручную');
                     }
                 });
         }, 1000);
+    }
+
+    function _applyUpdate() {
+        _dialog.close();
+        _banner.classList.remove('visible');
+        window._updateInProgress = true;
+        _overlayText.textContent = 'Устанавливается обновление…';
+        _overlay.classList.add('visible');
+
+        $.ajax({ url: '/api/update/apply', method: 'POST', timeout: 180000 })
+            .done(function () {
+                setTimeout(_pollUntilAlive, 2500);
+            })
+            .fail(function (xhr) {
+                window._updateInProgress = false;
+                _overlay.classList.remove('visible');
+                var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка обновления';
+                showError(msg);
+            });
     }
 
     function _check(manual) {
@@ -278,6 +286,8 @@ $.getJSON('/api/profiles/active', function (profile) {
 
     evtSource.onerror = function () {
         evtSource.close();
-        setTimeout(function () { window.location.reload(); }, 3000);
+        if (!window._updateInProgress) {
+            setTimeout(function () { window.location.reload(); }, 3000);
+        }
     };
 })();
