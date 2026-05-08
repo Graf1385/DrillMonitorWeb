@@ -4,10 +4,12 @@ const path          = require('path');
 const fs            = require('fs');
 const streamManager = require('../streams/StreamManager');
 
+const STREAM_KEY_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+
 router.post('/api/streams/start', (req, res) => {
     try {
         const { streamKey, rtspUrl, host, port, username, password, channel, substream } = req.body;
-        if (!streamKey) return res.status(400).json({ error: 'streamKey required' });
+        if (!streamKey || !STREAM_KEY_RE.test(streamKey)) return res.status(400).json({ error: 'Invalid streamKey' });
         const url = streamManager.buildRtspUrl({ rtspUrl, host, port, username, password, channel, substream });
         streamManager.start(streamKey, url);
         res.json({ ok: true, hlsUrl: `/api/streams/${streamKey}/index.m3u8` });
@@ -27,6 +29,7 @@ router.post('/api/streams/stop', (req, res) => {
 });
 
 router.get('/api/streams/:key/index.m3u8', (req, res) => {
+    if (!STREAM_KEY_RE.test(req.params.key)) return res.status(400).end();
     const hlsDir = streamManager.getHlsDir(req.params.key);
     if (!hlsDir) return res.status(404).json({ error: 'Stream not active' });
     const file = path.join(hlsDir, 'index.m3u8');
@@ -38,10 +41,12 @@ router.get('/api/streams/:key/index.m3u8', (req, res) => {
 
 router.get('/api/streams/:key/:segment', (req, res) => {
     const { key, segment } = req.params;
+    if (!STREAM_KEY_RE.test(key)) return res.status(400).end();
     if (!/^[a-zA-Z0-9_-]+\.ts$/.test(segment)) return res.status(400).end();
     const hlsDir = streamManager.getHlsDir(key);
     if (!hlsDir) return res.status(404).end();
     const file = path.join(hlsDir, segment);
+    if (!file.startsWith(hlsDir + path.sep) && file !== hlsDir) return res.status(400).end();
     if (!fs.existsSync(file)) return res.status(404).end();
     res.setHeader('Content-Type', 'video/mp2t');
     res.setHeader('Cache-Control', 'no-cache');

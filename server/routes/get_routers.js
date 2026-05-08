@@ -10,6 +10,22 @@ const pkg      = require('../../package.json');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
 
+// ── Rate limiter ──────────────────────────────────────────────────────────────
+
+const _rlMap = new Map();
+function _isRateLimited(ip, max, windowMs) {
+    const now   = Date.now();
+    let   entry = _rlMap.get(ip);
+    if (!entry || now > entry.reset) entry = { count: 0, reset: now + windowMs };
+    entry.count++;
+    _rlMap.set(ip, entry);
+    return entry.count > max;
+}
+setInterval(function () {
+    const now = Date.now();
+    for (const [k, v] of _rlMap) if (now > v.reset) _rlMap.delete(k);
+}, 5 * 60 * 1000);
+
 // ── Update checker ────────────────────────────────────────────────────────────
 
 const GITHUB_REPO  = 'Graf1385/DrillMonitorWeb';
@@ -180,6 +196,9 @@ router.get('/api/alarm-sounds/:id/file', (req, res) => {
 
 
 router.get('/api/update/check', function (req, res) {
+    if (_isRateLimited(req.ip || 'unknown', 20, 60 * 1000)) {
+        return res.status(429).json({ error: 'Слишком много запросов' });
+    }
     var now = Date.now();
     if (_updateCache && (now - _updateCacheAt) < UPDATE_TTL) {
         return res.json(_updateCache);

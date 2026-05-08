@@ -1,8 +1,4 @@
-const crypto = require('crypto');
-
-function _sha256(str) {
-    return crypto.createHash('sha256').update(str).digest('hex');
-}
+const pw = require('../utils/password');
 
 class UserRepository {
     constructor(db) {
@@ -16,12 +12,18 @@ class UserRepository {
     verifyUser(name, password) {
         const user = this.db.prepare('SELECT * FROM users WHERE name = ?').get(name);
         if (!user) return false;
-        return user.password === _sha256(password);
+        const result = pw.verify(password, user.password);
+        if (!result.ok) return false;
+        if (result.legacy) {
+            this.db.prepare('UPDATE users SET password = ? WHERE name = ?')
+                .run(pw.hash(password), name);
+        }
+        return true;
     }
 
     updateUserPassword(name, newPassword) {
         return this.db.prepare('UPDATE users SET password = ? WHERE name = ?')
-            .run(_sha256(newPassword), name);
+            .run(pw.hash(newPassword), name);
     }
 }
 

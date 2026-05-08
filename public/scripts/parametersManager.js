@@ -1,3 +1,12 @@
+function _esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 class ParametersManager {
     constructor() {
         this._types  = [];
@@ -55,7 +64,7 @@ class ParametersManager {
         return '<option value="">— нет —</option>' +
             this._units.map(function(u) {
                 return '<option value="' + u.id + '"' + (selectedId === u.id ? ' selected' : '') + '>' +
-                    u.symbol + ' — ' + u.name + '</option>';
+                    _esc(u.symbol) + ' — ' + _esc(u.name) + '</option>';
             }).join('');
     }
 
@@ -63,11 +72,11 @@ class ParametersManager {
         var self = this;
         var rows = params.map(function(p) {
             var typeOpts = self._types.map(function(t) {
-                return '<option value="' + t.id + '"' + (p.type_id === t.id ? ' selected' : '') + '>' + t.name + '</option>';
+                return '<option value="' + t.id + '"' + (p.type_id === t.id ? ' selected' : '') + '>' + _esc(t.name) + '</option>';
             }).join('');
             return '<tr data-param-id="' + p.id + '">' +
                 '<td class="il-id">' + p.id + '</td>' +
-                '<td class="il-input"><input class="settingsInput pm-nameInput" value="' + p.name.replace(/"/g, '&quot;') + '"></td>' +
+                '<td class="il-input"><input class="settingsInput pm-nameInput" value="' + _esc(p.name) + '"></td>' +
                 '<td class="il-input"><select class="settingsSelect pm-typeSelect">' + typeOpts + '</select></td>' +
                 '<td class="il-input"><select class="settingsSelect pm-unitSelect">' + self._unitsOptions(p.unit_id) + '</select></td>' +
                 '<td class="il-del"><button class="il-delBtn" onclick="parametersManager.deleteParam(' + p.id + ')">Удалить</button></td>' +
@@ -222,8 +231,8 @@ class ParametersManager {
         var rows = units.map(function(u) {
             return '<tr data-unit-id="' + u.id + '">' +
                 '<td class="il-id">' + u.id + '</td>' +
-                '<td class="il-input"><input class="settingsInput um-nameInput" value="' + u.name.replace(/"/g, '&quot;') + '" onchange="parametersManager.updateUnit(' + u.id + ')"></td>' +
-                '<td class="il-input"><input class="settingsInput um-symbolInput" value="' + u.symbol.replace(/"/g, '&quot;') + '" onchange="parametersManager.updateUnit(' + u.id + ')" style="width:90px"></td>' +
+                '<td class="il-input"><input class="settingsInput um-nameInput" value="' + _esc(u.name) + '" onchange="parametersManager.updateUnit(' + u.id + ')"></td>' +
+                '<td class="il-input"><input class="settingsInput um-symbolInput" value="' + _esc(u.symbol) + '" onchange="parametersManager.updateUnit(' + u.id + ')" style="width:90px"></td>' +
                 '<td class="il-del"><button class="il-delBtn" onclick="parametersManager.deleteUnit(' + u.id + ')">Удалить</button></td>' +
             '</tr>';
         }).join('');

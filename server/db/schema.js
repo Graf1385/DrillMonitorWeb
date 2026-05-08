@@ -1,10 +1,7 @@
 const crypto = require('crypto');
 const path   = require('path');
 const fs     = require('fs');
-
-function _sha256(str) {
-    return crypto.createHash('sha256').update(str).digest('hex');
-}
+const pw     = require('../utils/password');
 
 function initSchema(db) {
 
@@ -51,16 +48,14 @@ function initSchema(db) {
         )
     `);
 
-    db.prepare('DELETE FROM data_types').run();
-    db.prepare('DELETE FROM sqlite_sequence WHERE name = ?').run('data_types');
     const seedDataTypes = [
         [1, 'time',   'HH:mm:ss'],
         [2, 'float',  '0000.00'],
         [3, 'short',  '0000'],
         [4, 'string', '""'],
     ];
-    const insertDataType = db.prepare('INSERT INTO data_types (id, name, default_format) VALUES (?, ?, ?)');
-    for (const [id, name, fmt] of seedDataTypes) insertDataType.run(id, name, fmt);
+    const upsertDataType = db.prepare('INSERT OR REPLACE INTO data_types (id, name, default_format) VALUES (?, ?, ?)');
+    for (const [id, name, fmt] of seedDataTypes) upsertDataType.run(id, name, fmt);
 
     // ── Units ─────────────────────────────────────────────────────────────────
 
@@ -306,9 +301,16 @@ function initSchema(db) {
         )
     `);
 
-    db.prepare(`
-        INSERT OR IGNORE INTO users (name, password) VALUES ('admin', ?)
-    `).run(_sha256('RFVtgb12345678'));
+    const adminExists = db.prepare('SELECT COUNT(*) as c FROM users WHERE name = ?').get('admin').c > 0;
+    if (!adminExists) {
+        const adminPass = process.env.ADMIN_PASSWORD || (() => {
+            const generated = crypto.randomBytes(8).toString('hex');
+            console.log('\n[DrillMonitor] Создан пользователь admin с паролем: ' + generated);
+            console.log('[DrillMonitor] Смените пароль после первого входа.\n');
+            return generated;
+        })();
+        db.prepare('INSERT INTO users (name, password) VALUES (?, ?)').run('admin', pw.hash(adminPass));
+    }
 
     // ── Fonts ─────────────────────────────────────────────────────────────────
 

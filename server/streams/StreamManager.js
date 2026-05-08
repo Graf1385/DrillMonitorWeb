@@ -21,6 +21,7 @@ class StreamManager {
     }
 
     start(streamKey, rtspUrl) {
+        if (!/^[a-zA-Z0-9_-]{1,64}$/.test(streamKey)) throw new Error('Invalid streamKey');
         this.stop(streamKey);
 
         const hlsDir = path.join(this._hlsBase, streamKey);
