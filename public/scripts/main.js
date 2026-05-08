@@ -133,7 +133,6 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
     if (_btn) _btn.addEventListener('click', function () { _check(true); });
 
     _check(false);
-    setInterval(function () { _check(false); }, 60 * 60 * 1000);
 })();
 
 function _restoreIndicators(indicators) {

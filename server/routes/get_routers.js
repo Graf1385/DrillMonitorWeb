@@ -28,13 +28,10 @@ function _semverGt(a, b) {
 }
 
 function _fetchLatestRelease(cb) {
-    var token = process.env.GITHUB_TOKEN;
-    var hdrs  = { 'User-Agent': 'DrillMonitorWeb/' + pkg.version };
-    if (token) hdrs['Authorization'] = 'token ' + token;
     var options = {
         hostname: 'api.github.com',
         path:     '/repos/' + GITHUB_REPO + '/releases/latest',
-        headers:  hdrs
+        headers:  { 'User-Agent': 'DrillMonitorWeb/' + pkg.version }
     };
     var req = https.get(options, function (res) {
         var raw = '';
