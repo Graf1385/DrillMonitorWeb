@@ -1,9 +1,13 @@
-const express = require('express');
-const https   = require('https');
-const router  = express.Router();
-const db  = require('../db');
-const sse = require('../sse');
-const pkg = require('../../package.json');
+const express        = require('express');
+const https          = require('https');
+const { exec }       = require('child_process');
+const path           = require('path');
+const router         = express.Router();
+const db             = require('../db');
+const sse            = require('../sse');
+const pkg            = require('../../package.json');
+
+const ROOT_DIR = path.join(__dirname, '..', '..');
 
 // ── Update checker ────────────────────────────────────────────────────────────
 
@@ -23,10 +27,12 @@ function _semverGt(a, b) {
 }
 
 function _fetchLatestRelease(cb) {
+    var headers = { 'User-Agent': 'DrillMonitorWeb/' + pkg.version };
+    if (process.env.GITHUB_TOKEN) headers['Authorization'] = 'token ' + process.env.GITHUB_TOKEN;
     var options = {
         hostname: 'api.github.com',
         path:     '/repos/' + GITHUB_REPO + '/releases/latest',
-        headers:  { 'User-Agent': 'DrillMonitorWeb/' + pkg.version }
+        headers:  headers
     };
     var req = https.get(options, function (res) {
         var raw = '';
@@ -45,8 +51,14 @@ function _fetchLatestRelease(cb) {
             } catch (e) { cb(e); }
         });
     });
+    var done = false;
     req.setTimeout(6000, function () { req.destroy(); });
-    req.on('error', cb);
+    req.on('error', function (e) {
+        if (done) return;
+        done = true;
+        console.error('[update] fetch error:', e.message);
+        cb(e);
+    });
 }
 
 router.get('/', (req, res) =>{
@@ -187,6 +199,65 @@ router.get('/api/update/check', function (req, res) {
         _updateCacheAt = Date.now();
         res.json(result);
     });
+});
+
+router.get('/api/health', (req, res) => {
+    res.json({ ok: true, version: pkg.version });
+});
+
+// ── Auto-updater ──────────────────────────────────────────────────────────────
+
+let _updateInProgress = false;
+
+function _runCmd(cmd, opts) {
+    return new Promise((resolve, reject) => {
+        exec(cmd, opts, (err, stdout, stderr) => {
+            if (err) reject(new Error(stderr || err.message));
+            else resolve(stdout.trim());
+        });
+    });
+}
+
+router.post('/api/update/apply', async (req, res) => {
+    if (_updateInProgress) {
+        return res.status(409).json({ error: 'Обновление уже выполняется' });
+    }
+    _updateInProgress = true;
+
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+        _updateInProgress = false;
+        return res.status(500).json({ error: 'GITHUB_TOKEN не настроен' });
+    }
+
+    const remoteUrl = 'https://' + token + '@github.com/' + GITHUB_REPO + '.git';
+
+    try {
+        await _runCmd('git fetch ' + remoteUrl + ' main:main', { cwd: ROOT_DIR, timeout: 30000 });
+        await _runCmd('git reset --hard main', { cwd: ROOT_DIR, timeout: 15000 });
+        await _runCmd('npm install --omit=dev --no-fund --no-audit', { cwd: ROOT_DIR, timeout: 120000 });
+
+        _updateCache   = null;
+        _updateCacheAt = 0;
+
+        res.json({ ok: true });
+
+        sse.broadcast('update-restart', {});
+
+        setTimeout(() => {
+            exec('pm2 restart DrillMonitor', (err) => {
+                if (err) {
+                    console.error('[update] pm2 restart failed:', err.message);
+                    process.exit(0);
+                }
+            });
+        }, 800);
+
+    } catch (e) {
+        _updateInProgress = false;
+        console.error('[update] apply error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 router.get('/api/events', (req, res) => {
