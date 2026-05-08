@@ -31,74 +31,17 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 // ── Update checker ────────────────────────────────────────────────────────────
 
 (function () {
-    var _banner      = document.getElementById('updateBanner');
-    var _bannerText  = document.getElementById('updateBannerText');
-    var _bannerLink  = document.getElementById('updateBannerLink');
-    var _bannerClose = document.getElementById('updateBannerClose');
-    var _bannerApply = document.getElementById('updateBannerApply');
-    var _badge       = document.getElementById('updateBadge');
-    var _btn         = document.getElementById('updateCheckButton');
-    var _dialog      = document.getElementById('updateConfirmDialog');
-    var _confirmText = document.getElementById('updateConfirmText');
-    var _confirmYes  = document.getElementById('updateConfirmYes');
-    var _confirmNo   = document.getElementById('updateConfirmNo');
-    var _overlay     = document.getElementById('updateProgressOverlay');
-    var _overlayText = document.getElementById('updateProgressText');
-
-    var _latestVersion = null;
+    var _banner     = document.getElementById('updateBanner');
+    var _bannerText = document.getElementById('updateBannerText');
+    var _bannerLink = document.getElementById('updateBannerLink');
+    var _bannerClose= document.getElementById('updateBannerClose');
+    var _badge      = document.getElementById('updateBadge');
+    var _btn        = document.getElementById('updateCheckButton');
 
     function _showBanner(data) {
-        _latestVersion = data.latest;
-        _bannerText.textContent = 'Доступна версия ' + data.latest + '  (текущая ' + data.current + ')';
+        _bannerText.textContent = 'Доступна версия ' + data.latest + '   (текущая ' + data.current + ')';
         _bannerLink.href = data.releaseUrl || 'https://github.com/Graf1385/DrillMonitorWeb/releases';
         _banner.classList.add('visible');
-    }
-
-    function _showProgress(text) {
-        _overlayText.textContent = text || 'Устанавливается обновление…';
-        _overlay.classList.add('visible');
-    }
-
-    function _pollUntilAlive() {
-        _overlayText.textContent = 'Перезапуск сервера…';
-        var attempts = 0;
-        var timer = setInterval(function () {
-            attempts++;
-            $.ajax({ url: '/api/health', method: 'GET', timeout: 2000 })
-                .done(function () {
-                    clearInterval(timer);
-                    window._updateInProgress = false;
-                    _overlayText.textContent = 'Готово! Перезагрузка…';
-                    setTimeout(function () { window.location.reload(); }, 800);
-                })
-                .fail(function () {
-                    if (attempts > 90) {
-                        clearInterval(timer);
-                        window._updateInProgress = false;
-                        _overlay.classList.remove('visible');
-                        showError('Сервер не отвечает — обновите страницу вручную');
-                    }
-                });
-        }, 1000);
-    }
-
-    function _applyUpdate() {
-        _dialog.close();
-        _banner.classList.remove('visible');
-        window._updateInProgress = true;
-        _overlayText.textContent = 'Устанавливается обновление…';
-        _overlay.classList.add('visible');
-
-        $.ajax({ url: '/api/update/apply', method: 'POST', timeout: 180000 })
-            .done(function () {
-                setTimeout(_pollUntilAlive, 2500);
-            })
-            .fail(function (xhr) {
-                window._updateInProgress = false;
-                _overlay.classList.remove('visible');
-                var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка обновления';
-                showError(msg);
-            });
     }
 
     function _check(manual) {
@@ -126,31 +69,17 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
             });
     }
 
-    if (_bannerApply) {
-        _bannerApply.addEventListener('click', function () {
-            _confirmText.textContent = 'Обновить до версии ' + (_latestVersion || '?') + '?\nСервер перезапустится автоматически.';
-            _dialog.showModal();
-        });
-    }
-
-    if (_confirmYes) _confirmYes.addEventListener('click', _applyUpdate);
-    if (_confirmNo)  _confirmNo.addEventListener('click', function () { _dialog.close(); });
-
     if (_bannerClose) {
         _bannerClose.addEventListener('click', function () {
-            if (_latestVersion) localStorage.setItem('updateDismissed', _latestVersion);
+            var m = _bannerText.textContent.match(/(\d+\.\d+\.\d+)/);
+            if (m) localStorage.setItem('updateDismissed', m[1]);
             _banner.classList.remove('visible');
         });
     }
 
     if (_btn) _btn.addEventListener('click', function () { _check(true); });
 
-    // Слушаем SSE событие перезапуска сервера
-    document.addEventListener('sse-update-restart', function () {
-        _showProgress('Перезапуск сервера…');
-        setTimeout(_pollUntilAlive, 1500);
-    });
-
+    // Проверяем при загрузке страницы
     _check(false);
 })();
 
@@ -279,15 +208,8 @@ $.getJSON('/api/profiles/active', function (profile) {
         if (window.profileSwitcherSetActive) profileSwitcherSetActive(profile.id);
     });
 
-    evtSource.addEventListener('update-restart', function () {
-        document.dispatchEvent(new Event('sse-update-restart'));
-        evtSource.close();
-    });
-
     evtSource.onerror = function () {
         evtSource.close();
-        if (!window._updateInProgress) {
-            setTimeout(function () { window.location.reload(); }, 3000);
-        }
+        setTimeout(function () { window.location.reload(); }, 3000);
     };
 })();
