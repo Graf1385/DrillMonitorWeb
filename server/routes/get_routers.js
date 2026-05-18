@@ -120,9 +120,9 @@ router.get('/api/data-types', (req, res) => {
     }
 });
 
-router.get('/api/profiles/:id/indicators/active', (req, res) => {
+router.get('/api/indicators/active', (req, res) => {
     try {
-        res.status(200).json(db.getActiveIndicatorsByProfile(parseInt(req.params.id)));
+        res.status(200).json(db.getActiveIndicators());
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });

@@ -12,14 +12,14 @@ class IndicatorRepository {
         `).all(profileId);
     }
 
-    getActiveIndicatorsByProfile(profileId) {
+    getActiveIndicators() {
         return this.db.prepare(`
             SELECT i.id, i.param_id, p.name AS param_name
             FROM indicators i
             INNER JOIN parameters p ON p.id = i.param_id
-            WHERE i.profile_id = ?
+            INNER JOIN profiles pr ON pr.id = i.profile_id AND pr.is_active = 1
             ORDER BY i.id ASC
-        `).all(profileId);
+        `).all();
     }
 
     saveIndicators(profileId, list) {

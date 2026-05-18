@@ -55,9 +55,9 @@ module.exports = {
     deleteDataType: (id) => dataTypes.deleteDataType(id),
 
     // indicators
-    getIndicatorsByProfile:       (profileId) => indicators.getIndicatorsByProfile(profileId),
-    getActiveIndicatorsByProfile: (profileId) => indicators.getActiveIndicatorsByProfile(profileId),
-    saveIndicators:               (profileId, list) => indicators.saveIndicators(profileId, list),
+    getIndicatorsByProfile: (profileId) => indicators.getIndicatorsByProfile(profileId),
+    getActiveIndicators:    ()           => indicators.getActiveIndicators(),
+    saveIndicators:         (profileId, list) => indicators.saveIndicators(profileId, list),
 
     // logs
     createLog:    (msg) => logs.createLog(msg),
