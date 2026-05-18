@@ -5,7 +5,16 @@ class IndicatorRepository {
 
     getIndicatorsByProfile(profileId) {
         return this.db.prepare(`
-            SELECT i.*, p.name AS param_name
+            SELECT *
+            FROM indicators
+            WHERE profile_id = ?
+            ORDER BY id ASC
+        `).all(profileId);
+    }
+
+    getActiveIndicatorsByProfile(profileId) {
+        return this.db.prepare(`
+            SELECT i.id, i.param_id, p.name AS param_name
             FROM indicators i
             INNER JOIN parameters p ON p.id = i.param_id
             WHERE i.profile_id = ?
