@@ -7,7 +7,7 @@ class IndicatorRepository {
         return this.db.prepare(`
             SELECT i.*, p.name AS param_name
             FROM indicators i
-            LEFT JOIN parameters p ON p.id = i.param_id
+            INNER JOIN parameters p ON p.id = i.param_id
             WHERE i.profile_id = ?
             ORDER BY i.id ASC
         `).all(profileId);
