@@ -14,10 +14,10 @@ class IndicatorRepository {
 
     getActiveIndicators() {
         return this.db.prepare(`
-            SELECT i.id, i.param_id, p.name AS param_name
+            SELECT i.id, i.header_text
             FROM indicators i
-            INNER JOIN parameters p ON p.id = i.param_id
             INNER JOIN profiles pr ON pr.id = i.profile_id AND pr.is_active = 1
+            WHERE i.param_id IS NOT NULL
             ORDER BY i.id ASC
         `).all();
     }
