@@ -42,8 +42,8 @@ module.exports = {
     // parameters
     getParameters:    () => parameters.getParameters(),
     getParameter:     (id) => parameters.getParameter(id),
-    createParameter:  (id, name, typeId, unitId) => parameters.createParameter(id, name, typeId, unitId),
-    updateParameter:  (id, name, typeId, unitId) => parameters.updateParameter(id, name, typeId, unitId),
+    createParameter:  (id, name, typeId, unitId, size, accuracy, refUnit) => parameters.createParameter(id, name, typeId, unitId, size, accuracy, refUnit),
+    updateParameter:  (id, name, typeId, unitId, size, accuracy, refUnit) => parameters.updateParameter(id, name, typeId, unitId, size, accuracy, refUnit),
     importParameters: (params) => parameters.importParameters(params),
     deleteParameter:  (id) => parameters.deleteParameter(id),
 

@@ -176,9 +176,16 @@ router.delete('/api/units/:id', (req, res) => {
 
 router.post('/api/parameters', (req, res) => {
     try {
-        const { id, name, typeId, unitId } = req.body;
+        const { id, name, typeId, unitId, size, accuracy, refUnit } = req.body;
         if (id == null || !name) return res.status(400).json({ error: 'id и name обязательны' });
-        db.createParameter(parseInt(id), name.trim(), typeId != null ? parseInt(typeId) : null, unitId ? parseInt(unitId) : null);
+        db.createParameter(
+            parseInt(id), name.trim(),
+            typeId != null ? parseInt(typeId) : null,
+            unitId ? parseInt(unitId) : null,
+            size != null ? parseInt(size) : undefined,
+            accuracy != null ? parseInt(accuracy) : undefined,
+            refUnit != null ? refUnit : undefined
+        );
         res.status(201).json({ ok: true });
     } catch (error) {
         console.error(error);
