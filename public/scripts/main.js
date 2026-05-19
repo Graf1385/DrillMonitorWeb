@@ -287,6 +287,15 @@ $.getJSON('/api/profiles/active', function (profile) {
         if (window.profileSwitcherSetActive) profileSwitcherSetActive(profile.id);
     });
 
+    evtSource.addEventListener('drill-data', function (e) {
+        var record = JSON.parse(e.data);
+        var params = record.params;
+        Object.keys(params).forEach(function (id) {
+            document.querySelectorAll('.indicator[data-param-id="' + id + '"]')
+                .forEach(function (el) { setIndicatorValue(el, params[id]); });
+        });
+    });
+
     evtSource.onerror = function () {
         evtSource.close();
         if (!window._updateInProgress) {
