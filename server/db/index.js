@@ -29,7 +29,7 @@ module.exports = {
     createProfile:  (name, bg, size) => profiles.createProfile(name, bg, size),
     getActiveProfile: () => profiles.getActiveProfile(),
     selectProfile:  (id) => profiles.selectProfile(id),
-    updateProfile:  (id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout) => profiles.updateProfile(id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout),
+    updateProfile:  (id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz) => profiles.updateProfile(id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz),
     deleteProfile:  (id) => profiles.deleteProfile(id),
 
     // units
