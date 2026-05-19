@@ -15,8 +15,6 @@
     window.showDataSourceSettings = function () {
         var modal = document.getElementById('dataSourceModal');
         if (!modal) return;
-        document.getElementById('dsCheckResult').textContent = '';
-        document.getElementById('dsCheckResult').className = 'ds-check-result';
         $.getJSON('/api/data-source/settings', function (s) {
             document.getElementById('dsStorePath').value = s.storePath || '';
             _applyRunState(s.running);
