@@ -46,9 +46,16 @@ var _indicatorTypes = {
         setValue: function (el, epochSeconds) {
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
-            var d = new Date(epochSeconds * 1000);
-            function pad(n) { return n < 10 ? '0' + n : String(n); }
-            v.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+            var tz = _settings && _settings.timezone || '';
+            var d  = new Date(epochSeconds * 1000);
+            if (tz) {
+                v.textContent = new Intl.DateTimeFormat('ru-RU', {
+                    timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                }).format(d);
+            } else {
+                function pad(n) { return n < 10 ? '0' + n : String(n); }
+                v.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+            }
         },
         create: function (el, cfg) {
             var v = document.createElement('div');
@@ -80,9 +87,16 @@ var _indicatorTypes = {
         setValue: function (el, epochSeconds) {
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
-            var d = new Date(epochSeconds * 1000);
-            function pad(n) { return n < 10 ? '0' + n : String(n); }
-            v.textContent = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear();
+            var tz = _settings && _settings.timezone || '';
+            var d  = new Date(epochSeconds * 1000);
+            if (tz) {
+                v.textContent = new Intl.DateTimeFormat('ru-RU', {
+                    timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric'
+                }).format(d);
+            } else {
+                function pad(n) { return n < 10 ? '0' + n : String(n); }
+                v.textContent = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear();
+            }
         },
         create: function (el, cfg) {
             var v = document.createElement('div');

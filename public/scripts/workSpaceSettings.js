@@ -14,6 +14,7 @@ let _alarmDelay         = 2;
 let _sidebarTimeout     = 20;
 let _wsWidth            = 0;
 let _wsHeight           = 0;
+let _timezone           = '';
 
 let _settings = {
     get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color').trim(); },
@@ -28,7 +29,9 @@ let _settings = {
         if (_gridActive) {
             _wsCanvas.style.backgroundSize = value + 'px ' + value + 'px';
         }
-    }
+    },
+
+    timezone: ''
 };
 
 // ── Resolution ───────────────────────────────────────────────────────────────
@@ -119,6 +122,7 @@ function _loadProfiles() {
                 opt.dataset.wsWidth         = p.ws_width  || 0;
                 opt.dataset.wsHeight        = p.ws_height || 0;
                 opt.dataset.sidebarTimeout  = p.sidebar_timeout != null ? p.sidebar_timeout : 20;
+                opt.dataset.timezone        = p.timezone || '';
                 select.appendChild(opt);
             });
             if (prevId) select.value = prevId;
@@ -151,11 +155,15 @@ function applyProfile(selectEl, silent) {
     _alarmDelay     = parseFloat(opt.dataset.alarmDelay) || 2;
     _sidebarTimeout = opt.dataset.sidebarTimeout !== undefined ? parseInt(opt.dataset.sidebarTimeout) : 20;
 
+    _timezone = opt.dataset.timezone || '';
+    _settings.timezone = _timezone;
+
     _modal.querySelector('#ws_alarmSound').value           = _alarmSoundId;
     _modal.querySelector('#ws_alarmVolume').value          = _alarmVolume;
     _modal.querySelector('#ws_alarmVolumeVal').textContent = _alarmVolume;
     _modal.querySelector('#ws_alarmDelay').value           = _alarmDelay;
     _modal.querySelector('#ws_sidebarTimeout').value       = _sidebarTimeout;
+    _modal.querySelector('#ws_timezone').value             = _timezone;
     if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
     var dbW = parseInt(opt.dataset.wsWidth)  || 0;
@@ -181,6 +189,8 @@ function applyProfileFromSSE(profile) {
     _alarmVolume     = profile.alarm_volume    != null ? parseInt(profile.alarm_volume)    : 50;
     _alarmDelay      = profile.alarm_delay     != null ? parseFloat(profile.alarm_delay)   : 2;
     _sidebarTimeout  = profile.sidebar_timeout != null ? parseInt(profile.sidebar_timeout) : 20;
+    _timezone        = profile.timezone || '';
+    _settings.timezone = _timezone;
     _applyResolution(profile.ws_width || 0, profile.ws_height || 0);
     if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
@@ -309,6 +319,8 @@ function applyWorkSpaceSettings() {
     _alarmVolume    = parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50;
     _alarmDelay     = parseFloat(_modal.querySelector('#ws_alarmDelay').value) || 2;
     _sidebarTimeout = Math.max(0, parseInt(_modal.querySelector('#ws_sidebarTimeout').value) || 0);
+    _timezone       = _modal.querySelector('#ws_timezone').value;
+    _settings.timezone = _timezone;
     if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
     var resParts = (_modal.querySelector('#wsResolution').value || '0x0').split('x');
@@ -332,7 +344,8 @@ function saveSettings() {
         alarmDelay:     _alarmDelay,
         wsWidth:        _wsWidth,
         wsHeight:       _wsHeight,
-        sidebarTimeout: _sidebarTimeout
+        sidebarTimeout: _sidebarTimeout,
+        timezone:       _timezone
     };
 
     $.ajax({
