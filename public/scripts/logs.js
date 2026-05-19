@@ -28,7 +28,7 @@ function showLogs() {
             }).join('');
         }
         document.querySelector('#logModal').showModal();
-    });
+    }).fail(function () { showError('Ошибка загрузки логов'); });
 }
 
 function clearLogs() {
@@ -38,7 +38,8 @@ function clearLogs() {
         success: function () {
             document.querySelector('#logBody').innerHTML =
                 '<p class="alarmOverviewEmpty">Логов нет</p>';
-        }
+        },
+        error: function () { showError('Ошибка очистки логов'); }
     });
 }
 

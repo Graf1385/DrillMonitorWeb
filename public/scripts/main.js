@@ -255,7 +255,7 @@ function _loadIndicatorsForProfile(profileId) {
         _loadFonts()
     ).then(function(indicatorsResp) {
         _restoreIndicators(indicatorsResp[0]);
-    });
+    }).fail(function () { showError('Ошибка загрузки индикаторов'); });
 }
 
 // Apply active profile from DB on page load
@@ -266,7 +266,7 @@ $.getJSON('/api/profiles/active', function (profile) {
     _settings.cellSize   = profile.cell_size;
     applyProfileFromSSE(profile);
     _loadIndicatorsForProfile(profile.id);
-});
+}).fail(function () { showError('Ошибка загрузки профиля'); });
 
 // Listen for profile activation from other clients
 (function () {

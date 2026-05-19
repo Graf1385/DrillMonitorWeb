@@ -91,8 +91,8 @@ function _loadAlarmSounds(selectedId) {
             select.value = selectedId || '';
             deferred.resolve();
         })
-        .fail(function (err) {
-            console.error('Ошибка загрузки звуков:', err);
+        .fail(function () {
+            showError('Ошибка загрузки звуков тревоги');
             select.innerHTML = '<option value="">— без звука —</option>';
             deferred.resolve();
         });
@@ -127,8 +127,8 @@ function _loadProfiles() {
                 deferred.resolve();
             });
         })
-        .fail(function (err) {
-            console.error('Ошибка загрузки профилей:', err);
+        .fail(function () {
+            showError('Ошибка загрузки профилей');
             deferred.resolve();
         });
     return deferred.promise();
@@ -232,7 +232,7 @@ function createProfileConfirm() {
             });
         },
         error: function (xhr) {
-            console.error('Ошибка сохранения профиля:', xhr.responseJSON);
+            showError((xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка сохранения профиля');
         }
     });
 }
@@ -270,7 +270,7 @@ function deleteProfileConfirm() {
             });
         },
         error: function (xhr) {
-            console.error('Ошибка удаления профиля:', xhr.responseJSON);
+            showError((xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка удаления профиля');
         }
     });
 }
@@ -348,11 +348,12 @@ function saveSettings() {
                 type:        'POST',
                 contentType: 'application/json',
                 data:        JSON.stringify({ indicators: _collectIndicators() }),
-                complete:    function () { hideSaveBtn(); }
+                complete:    function () { hideSaveBtn(); },
+                error:       function (xhr) { showError((xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка сохранения индикаторов'); }
             });
         },
         error: function (xhr) {
-            console.error('Ошибка сохранения в профиль:', xhr.responseJSON);
+            showError((xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка сохранения');
         }
     });
 }
@@ -384,7 +385,7 @@ window.exportProfile = function() {
         a.download = profile.name.replace(/[^\wа-яА-ЯёЁ\- ]/g, '_') + '.json';
         a.click();
         URL.revokeObjectURL(url);
-    });
+    }).fail(function () { showError('Ошибка экспорта профиля'); });
 };
 
 window.importProfile = function(input) {

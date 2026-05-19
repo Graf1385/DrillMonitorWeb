@@ -183,6 +183,9 @@ function _loadFonts() {
                 sel.appendChild(opt);
             });
         });
+    }, function () {
+        showError('Ошибка загрузки шрифтов');
+        _fontsPromise = null;
     });
     return _fontsPromise;
 }
@@ -192,6 +195,8 @@ var _availableUnits = [];
 function _loadUnits() {
     return $.getJSON('/api/units').then(function (units) {
         _availableUnits = units;
+    }, function () {
+        showError('Ошибка загрузки единиц измерения');
     });
 }
 
@@ -505,6 +510,8 @@ function _loadParameters(selectedId) {
         if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
             select.value = selectedId;
         }
+    }, function () {
+        showError('Ошибка загрузки параметров');
     });
 }
 
@@ -793,7 +800,7 @@ function addNewItem() {
     }
 
     var config;
-    try { config = _readConfig(); } catch(err) { console.error('_readConfig error:', err); return; }
+    try { config = _readConfig(); } catch(err) { showError('Ошибка чтения настроек: ' + err.message); return; }
 
     if (_editingEl) {
         var typeDef = _indicatorTypes[_getIndicatorType(_editingEl)] || _indicatorTypes.digitalIndicator;
