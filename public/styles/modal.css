@@ -1199,6 +1199,21 @@ input[type="color"]:disabled {
 
 /* ── Data Source Settings modal ──────────────────────────────────────────── */
 
+.ds-run-btn {
+    min-width: 68px;
+}
+
+.ds-run-btn.ds-running {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(248, 113, 113, 0.08);
+}
+
+.ds-run-btn.ds-running:hover {
+    background: rgba(248, 113, 113, 0.16);
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
+}
+
 .ds-check-result {
     min-height: 18px;
     font-size: 12px;

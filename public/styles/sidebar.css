@@ -89,18 +89,20 @@
 #sideBar.open #buttonModul .sideBarButton:nth-child(6) { transition-delay: 0.45s; }
 #sideBar.open #buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.50s; }
 #sideBar.open #buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.55s; }
-#sideBar.open #buttonModul .sideBarButton:nth-child(9) { transition-delay: 0.60s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(9)  { transition-delay: 0.60s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(10) { transition-delay: 0.65s; }
 
 /* закрытие: обратный stagger — последняя кнопка исчезает первой */
-#buttonModul .sideBarButton:nth-child(1) { transition-delay: 0.20s; }
-#buttonModul .sideBarButton:nth-child(2) { transition-delay: 0.17s; }
-#buttonModul .sideBarButton:nth-child(3) { transition-delay: 0.14s; }
-#buttonModul .sideBarButton:nth-child(4) { transition-delay: 0.11s; }
-#buttonModul .sideBarButton:nth-child(5) { transition-delay: 0.08s; }
-#buttonModul .sideBarButton:nth-child(6) { transition-delay: 0.05s; }
-#buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.03s; }
-#buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.01s; }
-#buttonModul .sideBarButton:nth-child(9) { transition-delay: 0.00s; }
+#buttonModul .sideBarButton:nth-child(1)  { transition-delay: 0.22s; }
+#buttonModul .sideBarButton:nth-child(2)  { transition-delay: 0.19s; }
+#buttonModul .sideBarButton:nth-child(3)  { transition-delay: 0.16s; }
+#buttonModul .sideBarButton:nth-child(4)  { transition-delay: 0.13s; }
+#buttonModul .sideBarButton:nth-child(5)  { transition-delay: 0.10s; }
+#buttonModul .sideBarButton:nth-child(6)  { transition-delay: 0.07s; }
+#buttonModul .sideBarButton:nth-child(7)  { transition-delay: 0.05s; }
+#buttonModul .sideBarButton:nth-child(8)  { transition-delay: 0.03s; }
+#buttonModul .sideBarButton:nth-child(9)  { transition-delay: 0.01s; }
+#buttonModul .sideBarButton:nth-child(10) { transition-delay: 0.00s; }
 
 #buttonModul {
 	display: flex;
@@ -363,7 +365,20 @@
 	color: var(--sidebar-accent);
 }
 
-/* ── Data Source button ──────────────────────────────────────────────────── */
+/* ── Data Source run button ──────────────────────────────────────────────── */
+
+#dsRunButton.ds-sb-running {
+	background-color: rgba(56, 189, 248, 0.08);
+	border-color: var(--sidebar-accent);
+	box-shadow: inset 0 0 0.5vmin rgba(56, 189, 248, 0.15), 0 0 0.6vmin var(--sidebar-shadow);
+}
+
+#dsRunButton.ds-sb-running svg {
+	color: var(--sidebar-accent);
+	filter: drop-shadow(0 0 0.2vmin var(--sidebar-accent));
+}
+
+/* ── Data Source settings button ─────────────────────────────────────────── */
 
 #dataSourceButton svg { color: #4a6080; }
 #dataSourceButton:hover svg {

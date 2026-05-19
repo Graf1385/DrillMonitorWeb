@@ -4,7 +4,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'data-source-settings.json');
-const DEFAULTS      = { storePath: '' };
+const DEFAULTS      = { storePath: '', running: false };
 
 function _load() {
     try {
@@ -19,22 +19,30 @@ function getSettings() {
 }
 
 function saveSettings(body) {
-    const current  = _load();
-    const updated  = Object.assign(current, { storePath: String(body.storePath || '') });
+    const current = _load();
+    const updated = Object.assign(current, { storePath: String(body.storePath || '') });
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf8');
+    return updated;
+}
+
+function setRunning(state) {
+    const current = _load();
+    const updated = Object.assign(current, { running: !!state });
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf8');
     return updated;
 }
 
 function checkPath(storePath) {
-    const p = String(storePath || '').trim();
-    if (!p) return { ok: false, message: 'Путь не указан' };
+    const base = String(storePath || '').trim();
+    if (!base) return { ok: false, message: 'Путь не указан' };
+    const full = path.join(base, 'Database', 'Online', 'Store');
     try {
-        const stat = fs.statSync(p);
-        if (stat.isDirectory()) return { ok: true,  message: 'Папка существует' };
-        return { ok: false, message: 'Путь указывает на файл, а не на папку' };
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) return { ok: true,  message: 'Папка найдена: ' + full };
+        return { ok: false, message: 'Путь указывает на файл, а не на папку: ' + full };
     } catch (_) {
-        return { ok: false, message: 'Папка не найдена' };
+        return { ok: false, message: 'Папка не найдена: ' + full };
     }
 }
 
-module.exports = { getSettings, saveSettings, checkPath };
+module.exports = { getSettings, saveSettings, checkPath, setRunning };
