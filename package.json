@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "node --test tests/password.test.js tests/profileRepository.test.js tests/indicatorRepository.test.js tests/streamManager.test.js tests/dataSource.test.js tests/api.test.js"
+    "test": "node --test tests/password.test.js tests/profileRepository.test.js tests/indicatorRepository.test.js tests/streamManager.test.js tests/dataSource.test.js tests/api.test.js",
+    "test:e2e": "npx playwright test"
   },
   "author": "Andrey Podlesnyy",
   "license": "ISC",
@@ -16,5 +17,8 @@
     "express-handlebars": "^7.1.2",
     "multer": "^2.1.1",
     "nodemon": "^3.1.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }
