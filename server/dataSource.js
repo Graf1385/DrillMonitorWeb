@@ -2,6 +2,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const db   = require('./db/connection');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'data-source-settings.json');
 const DEFAULTS      = { storePath: '', running: false };
@@ -60,7 +61,7 @@ let _pollTimer = null;
 let _lastAddr  = -1;
 let _onRecord  = null;
 
-function _loadParamSizes(db) {
+function _loadParamSizes() {
     _paramSize = new Uint8Array(255);
     db.prepare('SELECT id, size FROM parameters').all()
       .forEach(p => { _paramSize[p.id] = p.size; });
@@ -157,9 +158,9 @@ function _poll() {
     _onRecord({ recNo: record.recNo, depth: lst.depth, time: lst.time, params: record.params });
 }
 
-function startPolling(db, onRecord) {
+function startPolling(onRecord) {
     if (_pollTimer) return;
-    _loadParamSizes(db);
+    _loadParamSizes();
     _onRecord  = onRecord;
     _lastAddr  = -1;
     _pollTimer = setInterval(_poll, 1000);

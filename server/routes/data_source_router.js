@@ -3,6 +3,7 @@
 const express    = require('express');
 const router     = express.Router();
 const dataSource = require('../dataSource');
+const sse        = require('../sse');
 
 router.get('/api/data-source/settings', function (req, res) {
     res.json(dataSource.getSettings());
@@ -21,11 +22,22 @@ router.post('/api/data-source/check-path', function (req, res) {
 });
 
 router.post('/api/data-source/start', function (req, res) {
-    res.json({ ok: true, settings: dataSource.setRunning(true) });
+    const settings = dataSource.setRunning(true);
+    dataSource.startPolling(function (record) {
+        sse.broadcast('drill-data', {
+            recNo:  record.recNo,
+            depth:  record.depth,
+            time:   record.time,
+            params: Object.fromEntries(record.params),
+        });
+    });
+    res.json({ ok: true, settings });
 });
 
 router.post('/api/data-source/stop', function (req, res) {
-    res.json({ ok: true, settings: dataSource.setRunning(false) });
+    dataSource.stopPolling();
+    const settings = dataSource.setRunning(false);
+    res.json({ ok: true, settings });
 });
 
 module.exports = router;
