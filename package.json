@@ -4,7 +4,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "test": "node --test tests/password.test.js tests/profileRepository.test.js tests/indicatorRepository.test.js tests/streamManager.test.js tests/dataSource.test.js tests/api.test.js"
   },
   "author": "Andrey Podlesnyy",
   "license": "ISC",
