@@ -89,6 +89,7 @@
 #sideBar.open #buttonModul .sideBarButton:nth-child(6) { transition-delay: 0.45s; }
 #sideBar.open #buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.50s; }
 #sideBar.open #buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.55s; }
+#sideBar.open #buttonModul .sideBarButton:nth-child(9) { transition-delay: 0.60s; }
 
 /* закрытие: обратный stagger — последняя кнопка исчезает первой */
 #buttonModul .sideBarButton:nth-child(1) { transition-delay: 0.20s; }
@@ -97,8 +98,9 @@
 #buttonModul .sideBarButton:nth-child(4) { transition-delay: 0.11s; }
 #buttonModul .sideBarButton:nth-child(5) { transition-delay: 0.08s; }
 #buttonModul .sideBarButton:nth-child(6) { transition-delay: 0.05s; }
-#buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.02s; }
-#buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.00s; }
+#buttonModul .sideBarButton:nth-child(7) { transition-delay: 0.03s; }
+#buttonModul .sideBarButton:nth-child(8) { transition-delay: 0.01s; }
+#buttonModul .sideBarButton:nth-child(9) { transition-delay: 0.00s; }
 
 #buttonModul {
 	display: flex;
@@ -359,6 +361,14 @@
 
 .cdOption.active {
 	color: var(--sidebar-accent);
+}
+
+/* ── Data Source button ──────────────────────────────────────────────────── */
+
+#dataSourceButton svg { color: #4a6080; }
+#dataSourceButton:hover svg {
+	color: var(--sidebar-accent);
+	filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.35));
 }
 
 @media (prefers-reduced-motion: reduce) {

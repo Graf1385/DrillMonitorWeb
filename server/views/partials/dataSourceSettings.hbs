@@ -1,0 +1,29 @@
+<dialog id="dataSourceModal" class="settingsModal">
+    <h1>ИСТОЧНИК ДАННЫХ</h1>
+
+    <table class="settingsTable" style="width:460px">
+        <tbody>
+            <tr>
+                <th>Каталог PetroServices</th>
+                <td>
+                    <input id="dsStorePath" class="settingsInput" type="text"
+                           placeholder="/path/to/store"
+                           title="Путь к папке с данными">
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div id="dsCheckResult" class="ds-check-result"></div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <footer>
+        <div class="pmFooterRow">
+            <button class="modalButton" onclick="dsCheckPath()">Проверить путь</button>
+            <button class="modalButton okBtn"     onclick="dsSave()">Сохранить</button>
+            <button class="modalButton cancelBtn" onclick="dsClose()">Отмена</button>
+        </div>
+    </footer>
+</dialog>

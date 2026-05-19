@@ -1196,3 +1196,27 @@ input[type="color"]:disabled {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ── Data Source Settings modal ──────────────────────────────────────────── */
+
+.ds-check-result {
+    min-height: 18px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.ds-checking { color: #8b949e; }
+
+.ds-ok {
+    color: #3fb950;
+    background: rgba(63, 185, 80, 0.08);
+    border: 1px solid rgba(63, 185, 80, 0.25);
+}
+
+.ds-fail {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+}
