@@ -14,10 +14,6 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         }
 
         return function show(msg) {
-            var openDialog = Array.from(document.querySelectorAll('dialog')).find(function (d) { return d.open; });
-            var parent = openDialog || document.body;
-            if (toast.parentNode !== parent) parent.appendChild(toast);
-
             toast.textContent = msg;
             toast.classList.add('visible');
             clearTimeout(timer);
