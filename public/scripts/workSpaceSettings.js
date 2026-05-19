@@ -77,6 +77,12 @@ function _updateWsScale() {
 
 window.addEventListener('resize', _updateWsScale);
 
+function _refreshTimeIndicators() {
+    document.querySelectorAll('#wsCanvas .timeIndicator, #wsCanvas .dateIndicator').forEach(function (el) {
+        if (el._lastEpoch !== undefined) setIndicatorValue(el, el._lastEpoch);
+    });
+}
+
 // ── Profiles ──────────────────────────────────────────────────────────────────
 
 function _loadAlarmSounds(selectedId) {
@@ -191,6 +197,7 @@ function applyProfileFromSSE(profile) {
     _sidebarTimeout  = profile.sidebar_timeout != null ? parseInt(profile.sidebar_timeout) : 20;
     _timezone        = profile.timezone || '';
     _settings.timezone = _timezone;
+    _refreshTimeIndicators();
     _applyResolution(profile.ws_width || 0, profile.ws_height || 0);
     if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
@@ -321,6 +328,7 @@ function applyWorkSpaceSettings() {
     _sidebarTimeout = Math.max(0, parseInt(_modal.querySelector('#ws_sidebarTimeout').value) || 0);
     _timezone       = _modal.querySelector('#ws_timezone').value;
     _settings.timezone = _timezone;
+    _refreshTimeIndicators();
     if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 
     var resParts = (_modal.querySelector('#wsResolution').value || '0x0').split('x');

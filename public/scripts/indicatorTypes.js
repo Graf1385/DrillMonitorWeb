@@ -44,6 +44,7 @@ var _indicatorTypes = {
         defaultSize: {},
         defaultValueSize: 40,
         setValue: function (el, epochSeconds) {
+            el._lastEpoch = epochSeconds;
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
             var tz = _settings && _settings.timezone || '';
@@ -85,6 +86,7 @@ var _indicatorTypes = {
         defaultSize: {},
         defaultValueSize: 28,
         setValue: function (el, epochSeconds) {
+            el._lastEpoch = epochSeconds;
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
             var tz = _settings && _settings.timezone || '';
