@@ -40,9 +40,16 @@ var _indicatorTypes = {
     timeIndicator: {
         cardId: '#typeTime',
         isNumeric: false,
+        usesGlobalTime: true,
         defaultSize: {},
         defaultValueSize: 40,
-        setValue: null,
+        setValue: function (el, epochSeconds) {
+            var v = el.querySelector('.indicatorValue');
+            if (!v) return;
+            var d = new Date(epochSeconds * 1000);
+            function pad(n) { return n < 10 ? '0' + n : String(n); }
+            v.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        },
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';
@@ -67,9 +74,16 @@ var _indicatorTypes = {
     dateIndicator: {
         cardId: '#typeDate',
         isNumeric: false,
+        usesGlobalTime: true,
         defaultSize: {},
         defaultValueSize: 28,
-        setValue: null,
+        setValue: function (el, epochSeconds) {
+            var v = el.querySelector('.indicatorValue');
+            if (!v) return;
+            var d = new Date(epochSeconds * 1000);
+            function pad(n) { return n < 10 ? '0' + n : String(n); }
+            v.textContent = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear();
+        },
         create: function (el, cfg) {
             var v = document.createElement('div');
             v.className = 'indicatorValue';

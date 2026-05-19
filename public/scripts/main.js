@@ -294,6 +294,10 @@ $.getJSON('/api/profiles/active', function (profile) {
             document.querySelectorAll('.indicator[data-param-id="' + id + '"]')
                 .forEach(function (el) { setIndicatorValue(el, params[id]); });
         });
+        if (record.time) {
+            document.querySelectorAll('.timeIndicator, .dateIndicator')
+                .forEach(function (el) { setIndicatorValue(el, record.time); });
+        }
     });
 
     evtSource.onerror = function () {

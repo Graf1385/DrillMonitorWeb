@@ -518,13 +518,20 @@ function _loadParameters(selectedId) {
 function _applyTypeToParamSelect(type) {
     var typeDef     = _indicatorTypes[type] || _indicatorTypes.digitalIndicator;
     var select      = _addModal.querySelector('#ni_paramId');
+    var paramRow    = _addModal.querySelector('#ni_paramRow');
     var numericRows = _addModal.querySelectorAll('.numericOnlyRow');
     var zoneRows    = _addModal.querySelectorAll('.zoneColorRow');
     var tickerRows  = _addModal.querySelectorAll('.tickerOnlyRow');
 
     var zoneTypes   = { digitalIndicator: true, hProgressIndicator: true, vProgressIndicator: true };
 
-    if (!typeDef.isNumeric) {
+    if (typeDef.usesGlobalTime) {
+        if (paramRow) paramRow.style.display = 'none';
+        select.value    = '';
+        select.disabled = true;
+        numericRows.forEach(function (r) { r.style.display = 'none'; });
+    } else if (!typeDef.isNumeric) {
+        if (paramRow) paramRow.style.display = '';
         if (typeDef.lockParam !== false) {
             var prefer = typeDef.preferredParamType || 'time';
             var dtOpt = Array.from(select.options).find(function (o) { return o.dataset.type === prefer; })
@@ -536,6 +543,7 @@ function _applyTypeToParamSelect(type) {
         }
         numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else {
+        if (paramRow) paramRow.style.display = '';
         select.disabled = false;
         numericRows.forEach(function (r) { r.style.display = ''; });
     }
