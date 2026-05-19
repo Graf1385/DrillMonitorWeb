@@ -1,29 +1,30 @@
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 
-// ── Error Toast ───────────────────────────────────────────────────────────────
+// ── Toasts ────────────────────────────────────────────────────────────────────
 
 (function () {
-    var _toast   = document.getElementById('errorToast');
-    var _timer   = null;
+    function _makeToast(id) {
+        var toast = document.getElementById(id);
+        var timer = null;
 
-    function _hide() {
-        _toast.classList.remove('visible');
-        clearTimeout(_timer);
-        document.removeEventListener('mousedown', _hide);
+        function hide() {
+            toast.classList.remove('visible');
+            clearTimeout(timer);
+            document.removeEventListener('mousedown', hide);
+        }
+
+        return function show(msg) {
+            toast.textContent = msg;
+            toast.classList.add('visible');
+            clearTimeout(timer);
+            document.removeEventListener('mousedown', hide);
+            timer = setTimeout(hide, 5000);
+            setTimeout(function () { document.addEventListener('mousedown', hide); }, 0);
+        };
     }
 
-    window.showError = function (msg) {
-        if (_toast.parentNode !== document.body) document.body.appendChild(_toast);
-
-        _toast.textContent = msg;
-        _toast.classList.add('visible');
-        clearTimeout(_timer);
-        document.removeEventListener('mousedown', _hide);
-        _timer = setTimeout(_hide, 5000);
-        setTimeout(function () {
-            document.addEventListener('mousedown', _hide);
-        }, 0);
-    };
+    window.showError   = _makeToast('errorToast');
+    window.showSuccess = _makeToast('successToast');
 })();
 
 // ── Update checker ────────────────────────────────────────────────────────────

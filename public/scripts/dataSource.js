@@ -38,20 +38,14 @@
     };
 
     window.dsCheckPath = function () {
-        var el  = document.getElementById('dsCheckResult');
         var val = document.getElementById('dsStorePath').value.trim();
-        el.textContent = 'Проверка...';
-        el.className   = 'ds-check-result ds-checking';
         $.ajax({ url: '/api/data-source/check-path', method: 'POST',
                  contentType: 'application/json', data: JSON.stringify({ storePath: val }) })
             .done(function (r) {
-                el.textContent = r.message;
-                el.className   = 'ds-check-result ' + (r.ok ? 'ds-ok' : 'ds-fail');
+                if (r.ok) showSuccess(r.message);
+                else      showError(r.message);
             })
-            .fail(function () {
-                el.textContent = 'Ошибка запроса';
-                el.className   = 'ds-check-result ds-fail';
-            });
+            .fail(function () { showError('Ошибка запроса'); });
     };
 
     window.dsToggleRun = function () {
