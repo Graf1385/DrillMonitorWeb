@@ -4,22 +4,50 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 
 (function () {
     function _makeToast(id) {
-        var toast = document.getElementById(id);
-        var timer = null;
+        var toast   = document.getElementById(id);
+        var msgEl   = toast.querySelector('.toast-msg');
+        var barEl   = toast.querySelector('.toast-bar');
+        var closeEl = toast.querySelector('.toast-close');
+        var timer   = null;
+
+        var _supportsPopover = typeof toast.showPopover === 'function';
 
         function hide() {
             toast.classList.remove('visible');
             clearTimeout(timer);
-            document.removeEventListener('mousedown', hide);
+            document.removeEventListener('mousedown', onDocClick);
+            if (_supportsPopover) {
+                setTimeout(function () {
+                    try { toast.hidePopover(); } catch (e) {}
+                }, 460);
+            }
         }
 
+        function onDocClick(e) {
+            if (!toast.contains(e.target)) hide();
+        }
+
+        closeEl.addEventListener('click', function (e) {
+            e.stopPropagation();
+            hide();
+        });
+
         return function show(msg) {
-            toast.textContent = msg;
+            msgEl.textContent = msg;
+            barEl.style.animation = 'none';
+            void barEl.offsetWidth;
+            barEl.style.animation = '';
+            if (_supportsPopover) {
+                try {
+                    if (toast.matches(':popover-open')) toast.hidePopover();
+                    toast.showPopover();
+                } catch (e) {}
+            }
             toast.classList.add('visible');
             clearTimeout(timer);
-            document.removeEventListener('mousedown', hide);
+            document.removeEventListener('mousedown', onDocClick);
             timer = setTimeout(hide, 5000);
-            setTimeout(function () { document.addEventListener('mousedown', hide); }, 0);
+            setTimeout(function () { document.addEventListener('mousedown', onDocClick); }, 0);
         };
     }
 

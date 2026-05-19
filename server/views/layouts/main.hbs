@@ -3,8 +3,26 @@
         {{> header }}
     <body>
         <script type="text/javascript" src="jquery.min.js"></script>
-        <div id="errorToast"></div>
-        <div id="successToast"></div>
+        <div id="errorToast" class="toast-notif" popover="manual" role="alert" aria-live="assertive">
+            <div class="toast-stripe"></div>
+            <div class="toast-icon"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 3.5L17.5 16.5H2.5L10 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><line x1="10" y1="9" x2="10" y2="12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.75" r="0.85" fill="currentColor"/></svg></div>
+            <div class="toast-content">
+                <span class="toast-label">ОШИБКА</span>
+                <span class="toast-msg"></span>
+            </div>
+            <button class="toast-close" aria-label="Закрыть">&#x2715;</button>
+            <div class="toast-bar"></div>
+        </div>
+        <div id="successToast" class="toast-notif toast-success" popover="manual" role="status" aria-live="polite">
+            <div class="toast-stripe"></div>
+            <div class="toast-icon"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 10.5L8.5 15L16 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="toast-content">
+                <span class="toast-label">ГОТОВО</span>
+                <span class="toast-msg"></span>
+            </div>
+            <button class="toast-close" aria-label="Закрыть">&#x2715;</button>
+            <div class="toast-bar"></div>
+        </div>
 
         <div id="updateBanner">
             <span id="updateBannerText"></span>
