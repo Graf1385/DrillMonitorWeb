@@ -56,15 +56,26 @@ function checkPath(storePath) {
 
 const LST_RECORD_SIZE = 21;
 
-let _paramSize = null;   // Uint8Array[255]: index = param id, value = byte size
-let _pollTimer = null;
-let _lastAddr  = -1;
-let _onRecord  = null;
+let _paramSize    = null;        // Uint8Array[255]: index = param id, value = byte size
+let _watchedParams = new Set();  // param ids currently on screen (active profile)
+let _pollTimer    = null;
+let _lastAddr     = -1;
+let _onRecord     = null;
 
 function _loadParamSizes() {
     _paramSize = new Uint8Array(255);
     db.prepare('SELECT id, size FROM parameters').all()
       .forEach(p => { _paramSize[p.id] = p.size; });
+}
+
+function refreshWatchedParams() {
+    const rows = db.prepare(`
+        SELECT DISTINCT i.param_id
+        FROM indicators i
+        INNER JOIN profiles pr ON pr.id = i.profile_id AND pr.is_active = 1
+        WHERE i.param_id IS NOT NULL
+    `).all();
+    _watchedParams = new Set(rows.map(r => r.param_id));
 }
 
 function _findLatestLst(storeDir) {
@@ -155,12 +166,19 @@ function _poll() {
     const record  = _readDepRecord(depPath, lst.addr);
     if (!record) return;
 
-    _onRecord({ recNo: record.recNo, depth: lst.depth, time: lst.time, params: record.params });
+    const filtered = new Map();
+    for (const [id, val] of record.params) {
+        if (_watchedParams.has(id)) filtered.set(id, val);
+    }
+    if (filtered.size === 0) return;
+
+    _onRecord({ recNo: record.recNo, depth: lst.depth, time: lst.time, params: filtered });
 }
 
 function startPolling(onRecord) {
     if (_pollTimer) return;
     _loadParamSizes();
+    refreshWatchedParams();
     _onRecord  = onRecord;
     _lastAddr  = -1;
     _pollTimer = setInterval(_poll, 1000);
@@ -172,4 +190,4 @@ function stopPolling() {
     _lastAddr = -1;
 }
 
-module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath, startPolling, stopPolling };
+module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath, startPolling, stopPolling, refreshWatchedParams };
