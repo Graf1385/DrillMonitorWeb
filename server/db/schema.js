@@ -91,8 +91,7 @@ function initSchema(db) {
             type_id  INTEGER,
             unit_id  INTEGER REFERENCES units(id) ON DELETE SET NULL,
             size     INTEGER,
-            accuracy INTEGER,
-            ref_unit TEXT
+            accuracy INTEGER
         )
     `);
 
@@ -108,8 +107,7 @@ function initSchema(db) {
                     type_id  INTEGER,
                     unit_id  INTEGER REFERENCES units(id) ON DELETE SET NULL,
                     size     INTEGER,
-                    accuracy INTEGER,
-                    ref_unit TEXT
+                    accuracy INTEGER
                 )`);
                 db.exec('INSERT INTO parameters_new (id, name, type_id, unit_id) SELECT id, name, type_id, unit_id FROM parameters');
                 db.exec('DROP TABLE parameters');
@@ -119,7 +117,6 @@ function initSchema(db) {
             try { db.exec('ALTER TABLE parameters ADD COLUMN unit_id  INTEGER REFERENCES units(id) ON DELETE SET NULL'); } catch {}
             try { db.exec('ALTER TABLE parameters ADD COLUMN size     INTEGER'); } catch {}
             try { db.exec('ALTER TABLE parameters ADD COLUMN accuracy INTEGER'); } catch {}
-            try { db.exec('ALTER TABLE parameters ADD COLUMN ref_unit TEXT'); } catch {}
         }
     }
 
@@ -386,13 +383,12 @@ function initSchema(db) {
     ];
 
     db.transaction(() => {
-        const ins = db.prepare('INSERT OR IGNORE INTO parameters (id, name, type_id, size, accuracy, ref_unit) VALUES (?, ?, ?, ?, ?, ?)');
-        const upd = db.prepare('UPDATE parameters SET type_id = ?, size = ?, accuracy = ?, ref_unit = ? WHERE id = ?');
-        for (const [id, name, size, typeChar, unit, accuracy] of refParams) {
-            const refUnit = unit != null ? String(unit).trim() || null : null;
-            const typeId  = REF_TYPE[typeChar] || null;
-            ins.run(id, name.trim(), typeId, size, accuracy, refUnit);
-            upd.run(typeId, size, accuracy, refUnit, id);
+        const ins = db.prepare('INSERT OR IGNORE INTO parameters (id, name, type_id, size, accuracy) VALUES (?, ?, ?, ?, ?)');
+        const upd = db.prepare('UPDATE parameters SET type_id = ?, size = ?, accuracy = ? WHERE id = ?');
+        for (const [id, name, size, typeChar, , accuracy] of refParams) {
+            const typeId = REF_TYPE[typeChar] || null;
+            ins.run(id, name.trim(), typeId, size, accuracy);
+            upd.run(typeId, size, accuracy, id);
         }
     })();
 

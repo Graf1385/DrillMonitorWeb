@@ -13,9 +13,7 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
     }
 
     window.showError = function (msg) {
-        var openDialog = Array.from(document.querySelectorAll('dialog')).find(function(d) { return d.open; });
-        var parent = openDialog || document.body;
-        if (_toast.parentNode !== parent) parent.appendChild(_toast);
+        if (_toast.parentNode !== document.body) document.body.appendChild(_toast);
 
         _toast.textContent = msg;
         _toast.classList.add('visible');

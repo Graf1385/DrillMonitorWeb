@@ -32,6 +32,12 @@ function setRunning(state) {
     return updated;
 }
 
+function getEffectivePath() {
+    const base = _load().storePath.trim();
+    if (!base) return null;
+    return path.join(base, 'Database', 'Online', 'Store');
+}
+
 function checkPath(storePath) {
     const base = String(storePath || '').trim();
     if (!base) return { ok: false, message: 'Путь не указан' };
@@ -45,4 +51,4 @@ function checkPath(storePath) {
     }
 }
 
-module.exports = { getSettings, saveSettings, checkPath, setRunning };
+module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath };

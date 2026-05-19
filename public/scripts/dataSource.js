@@ -5,18 +5,6 @@
     var STOP_ICON = '<rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" fill-opacity="0.18" stroke="currentColor"/>';
 
     function _applyRunState(running) {
-        /* modal button */
-        var btn = document.getElementById('dsRunBtn');
-        if (btn) {
-            if (running) {
-                btn.textContent = 'Стоп';
-                btn.classList.add('ds-running');
-            } else {
-                btn.textContent = 'Старт';
-                btn.classList.remove('ds-running');
-            }
-        }
-
         /* sidebar button */
         var sbBtn  = document.getElementById('dsRunButton');
         var sbIcon = document.getElementById('dsRunIcon');
