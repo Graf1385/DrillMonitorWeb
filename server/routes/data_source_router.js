@@ -33,8 +33,8 @@ router.post('/api/data-source/start', function (req, res) {
             });
         },
         {
-            onStale:  () => sse.broadcast('run-state', { running: false }),
-            onResume: () => sse.broadcast('run-state', { running: true }),
+            onStale:  (reason) => sse.broadcast('run-state', { running: false, reason: reason || null }),
+            onResume: ()       => sse.broadcast('run-state', { running: true }),
         }
     );
     sse.broadcast('run-state', { running: true });

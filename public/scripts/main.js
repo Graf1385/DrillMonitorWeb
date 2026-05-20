@@ -268,6 +268,21 @@ $.getJSON('/api/profiles/active', function (profile) {
     _loadIndicatorsForProfile(profile.id);
 }).fail(function () { showError('Ошибка загрузки профиля'); });
 
+// ── Data loss banner ──────────────────────────────────────────────────────────
+
+function _showDataBanner(msg) {
+    var el  = document.getElementById('dataBanner');
+    var txt = document.getElementById('dataBannerText');
+    if (!el || !txt) return;
+    txt.textContent = msg;
+    el.classList.add('visible');
+}
+
+function _hideDataBanner() {
+    var el = document.getElementById('dataBanner');
+    if (el) el.classList.remove('visible');
+}
+
 // Listen for profile activation from other clients
 (function () {
     var evtSource = new EventSource('/api/events');
@@ -294,6 +309,14 @@ $.getJSON('/api/profiles/active', function (profile) {
             document.querySelectorAll('.indicator').forEach(function (el) {
                 if (window.setIndicatorValue) setIndicatorValue(el, null);
             });
+            if (data.reason) {
+                var msg = data.reason === 'network'
+                    ? 'Обрыв сетевого подключения'
+                    : 'Каталог с данными недоступен';
+                _showDataBanner(msg);
+            }
+        } else {
+            _hideDataBanner();
         }
     });
 

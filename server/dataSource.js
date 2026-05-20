@@ -3,6 +3,7 @@
 const fs   = require('fs');
 const fsp  = require('fs').promises;
 const path = require('path');
+const net  = require('net');
 const db   = require('./db/connection');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'data-source-settings.json');
@@ -73,6 +74,7 @@ let _onRecord       = null;
 let _onStale        = null;       // called when data goes silent
 let _onResume       = null;       // called when data resumes after stale
 let _staleTimer     = null;       // setInterval handle for stale detection
+let _lastIoError    = false;      // true when last poll failed due to I/O
 let _cachedLstPath  = null;       // avoid readdirSync on every tick over the network
 
 function _loadParamSizes() {
@@ -108,6 +110,40 @@ function _withTimeout(promise, ms) {
             e => { clearTimeout(timer); reject(e); }
         );
     });
+}
+
+// Extracts hostname from a UNC path: \\server\share → 'server'
+function _extractUncHost(p) {
+    const m = String(p || '').match(/^[\\\/]{2}([^\\\/\s]+)/);
+    return m ? m[1] : null;
+}
+
+// TCP connect to port 445 (SMB): resolves true if host is reachable
+function _checkHostReachable(host, timeoutMs) {
+    return new Promise(function (resolve) {
+        var socket = new net.Socket();
+        var settled = false;
+        function done(ok) {
+            if (settled) return;
+            settled = true;
+            socket.destroy();
+            resolve(ok);
+        }
+        socket.setTimeout(timeoutMs);
+        socket.on('connect', function () { done(true); });
+        socket.on('error',   function () { done(false); });
+        socket.on('timeout', function () { done(false); });
+        socket.connect(445, host);
+    });
+}
+
+// Determine why data went stale: 'network' | 'folder' | null
+async function _detectStaleReason() {
+    if (!_lastIoError) return null;  // data just stopped, no I/O failure
+    const host = _extractUncHost(getSettings().storePath);
+    if (!host) return 'folder';      // local path — folder issue
+    const reachable = await _checkHostReachable(host, 1500);
+    return reachable ? 'folder' : 'network';
 }
 
 async function _findLatestLst(storeDir) {
@@ -206,7 +242,10 @@ async function _poll() {
     if (!storeDir) return;
 
     const lstPath = await _findLatestLst(storeDir);
-    if (!lstPath) return;
+    if (!lstPath) {
+        _lastIoError = true;
+        return;
+    }
 
     // Reset size cache on file rotation (Shrt_1.lst → Shrt_2.lst)
     if (lstPath !== _lastLstPath) {
@@ -218,8 +257,10 @@ async function _poll() {
     let lstSize;
     try {
         lstSize = (await _withTimeout(fsp.stat(lstPath), IO_TIMEOUT)).size;
+        _lastIoError = false;
     } catch (e) {
         if (e.message === 'IO_TIMEOUT') console.warn('[dataSource] Таймаут stat LST:', lstPath);
+        _lastIoError = true;
         return;
     }
     if (lstSize === _lastLstSize) return;
@@ -281,14 +322,16 @@ function startPolling(onRecord, { onStale, onResume } = {}) {
     _lastLstPath    = null;
     _lastRecordTime = 0;
     _dataStale      = false;
+    _lastIoError    = false;
     _polling        = true;
 
     // Independent stale timer: fires every second regardless of I/O hangs in _poll
-    _staleTimer = setInterval(function () {
+    _staleTimer = setInterval(async function () {
         if (_dataStale || _lastRecordTime === 0) return;
         if (Date.now() - _lastRecordTime > STALE_TIMEOUT) {
             _dataStale = true;
-            if (_onStale) _onStale();
+            const reason = await _detectStaleReason();
+            if (_onStale) _onStale(reason);
         }
     }, 1000);
 
@@ -306,6 +349,7 @@ function stopPolling() {
     _lastLstPath    = null;
     _lastRecordTime = 0;
     _dataStale      = false;
+    _lastIoError    = false;
     _cachedLstPath  = null;
 }
 
