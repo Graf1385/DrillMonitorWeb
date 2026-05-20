@@ -74,7 +74,6 @@ let _onRecord       = null;
 let _onStale        = null;       // called when data goes silent
 let _onResume       = null;       // called when data resumes after stale
 let _staleTimer     = null;       // setInterval handle for stale detection
-let _lastIoError    = false;      // true when last poll failed due to I/O
 let _cachedLstPath  = null;       // avoid readdirSync on every tick over the network
 
 function _loadParamSizes() {
@@ -138,12 +137,24 @@ function _checkHostReachable(host, timeoutMs) {
 }
 
 // Determine why data went stale: 'network' | 'folder' | null
+// Called only once when stale is first detected.
 async function _detectStaleReason() {
-    if (!_lastIoError) return null;  // data just stopped, no I/O failure
-    const host = _extractUncHost(getSettings().storePath);
-    if (!host) return 'folder';      // local path — folder issue
-    const reachable = await _checkHostReachable(host, 1500);
-    return reachable ? 'folder' : 'network';
+    const storeDir = getEffectivePath();
+    if (!storeDir) return null;
+
+    // Directly probe the store directory right now.
+    // readdir (not stat) is used because Windows can answer stat from OS metadata
+    // cache even when the SMB share is already broken, causing a false "accessible" result.
+    try {
+        await _withTimeout(fsp.readdir(storeDir), 2000);
+        return null;  // directory is accessible → data just paused (drilling stopped)
+    } catch (_) {
+        // Directory inaccessible — distinguish network vs folder
+        const host = _extractUncHost(getSettings().storePath);
+        if (!host) return 'folder';  // local path, folder issue
+        const reachable = await _checkHostReachable(host, 1500);
+        return reachable ? 'folder' : 'network';
+    }
 }
 
 async function _findLatestLst(storeDir) {
@@ -242,10 +253,7 @@ async function _poll() {
     if (!storeDir) return;
 
     const lstPath = await _findLatestLst(storeDir);
-    if (!lstPath) {
-        _lastIoError = true;
-        return;
-    }
+    if (!lstPath) return;
 
     // Reset size cache on file rotation (Shrt_1.lst → Shrt_2.lst)
     if (lstPath !== _lastLstPath) {
@@ -257,10 +265,8 @@ async function _poll() {
     let lstSize;
     try {
         lstSize = (await _withTimeout(fsp.stat(lstPath), IO_TIMEOUT)).size;
-        _lastIoError = false;
     } catch (e) {
         if (e.message === 'IO_TIMEOUT') console.warn('[dataSource] Таймаут stat LST:', lstPath);
-        _lastIoError = true;
         return;
     }
     if (lstSize === _lastLstSize) return;
@@ -322,7 +328,6 @@ function startPolling(onRecord, { onStale, onResume } = {}) {
     _lastLstPath    = null;
     _lastRecordTime = 0;
     _dataStale      = false;
-    _lastIoError    = false;
     _polling        = true;
 
     // Independent stale timer: fires every second regardless of I/O hangs in _poll
@@ -349,7 +354,6 @@ function stopPolling() {
     _lastLstPath    = null;
     _lastRecordTime = 0;
     _dataStale      = false;
-    _lastIoError    = false;
     _cachedLstPath  = null;
 }
 
