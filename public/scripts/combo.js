@@ -82,9 +82,19 @@
         });
     };
 
-    CC.prototype._open  = function () { this._buildList(); this._drop.classList.add('open'); this._wrap.classList.add('open'); };
+    CC.prototype._open  = function () {
+        if (this._wrap.classList.contains('cc-disabled')) return;
+        this._buildList(); this._drop.classList.add('open'); this._wrap.classList.add('open');
+    };
     CC.prototype._close = function () { this._drop.classList.remove('open'); this._wrap.classList.remove('open'); };
     CC.prototype._toggle = function () { if (this._drop.classList.contains('open')) this._close(); else this._open(); };
+
+    CC.prototype.setDisabled = function (disabled) {
+        this._sel.disabled = disabled;
+        this._wrap.classList.toggle('cc-disabled', disabled);
+        this._disp.tabIndex = disabled ? -1 : 0;
+        if (disabled) this._close();
+    };
 
     window.initCombo  = function (sel) { if (sel && !sel._cc) new CC(sel); };
     window.initCombos = function (root) {

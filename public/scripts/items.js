@@ -525,10 +525,27 @@ function _applyTypeToParamSelect(type) {
 
     var zoneTypes   = { digitalIndicator: true, hProgressIndicator: true, vProgressIndicator: true };
 
-    if (typeDef.usesGlobalTime) {
+    var headerInput = _addModal.querySelector('#ni_headerText');
+
+    function _setSelectDisabled(disabled) {
+        if (select._cc) select._cc.setDisabled(disabled);
+        else select.disabled = disabled;
+    }
+
+    if (typeDef.fixedParamId != null) {
+        if (paramRow) paramRow.style.display = '';
+        select.value = String(typeDef.fixedParamId);
+        _setSelectDisabled(true);
+        numericRows.forEach(function (r) { r.style.display = 'none'; });
+        if (headerInput && typeDef.fixedHeader) {
+            headerInput.value    = typeDef.fixedHeader;
+            headerInput.disabled = true;
+        }
+    } else if (typeDef.usesGlobalTime) {
         if (paramRow) paramRow.style.display = 'none';
-        select.value    = '';
-        select.disabled = true;
+        select.value = '';
+        _setSelectDisabled(true);
+        if (headerInput) headerInput.disabled = false;
         numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else if (!typeDef.isNumeric) {
         if (paramRow) paramRow.style.display = '';
@@ -537,14 +554,16 @@ function _applyTypeToParamSelect(type) {
             var dtOpt = Array.from(select.options).find(function (o) { return o.dataset.type === prefer; })
                      || Array.from(select.options).find(function (o) { return o.dataset.type === 'time'; });
             if (dtOpt) select.value = dtOpt.value;
-            select.disabled = true;
+            _setSelectDisabled(true);
         } else {
-            select.disabled = false;
+            _setSelectDisabled(false);
         }
+        if (headerInput) headerInput.disabled = false;
         numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else {
         if (paramRow) paramRow.style.display = '';
-        select.disabled = false;
+        _setSelectDisabled(false);
+        if (headerInput) headerInput.disabled = false;
         numericRows.forEach(function (r) { r.style.display = ''; });
     }
 

@@ -13,8 +13,14 @@ var _indicatorTypes = {
         setValue: function (el, val, zc) {
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
-            v.textContent = _formatValue(el, val);
             var c = zc || el.dataset.valueColor;
+            if (val == null) {
+                v.textContent      = '—';
+                v.style.color      = c;
+                v.style.textShadow = '0 0 10px ' + c;
+                return;
+            }
+            v.textContent = _formatValue(el, val);
             v.style.color      = c;
             v.style.textShadow = '0 0 10px ' + c;
         },
@@ -40,13 +46,15 @@ var _indicatorTypes = {
     timeIndicator: {
         cardId: '#typeTime',
         isNumeric: false,
-        usesGlobalTime: true,
+        fixedParamId: 52,
+        fixedHeader: 'Время сбора данных',
         defaultSize: {},
         defaultValueSize: 40,
         setValue: function (el, epochSeconds) {
-            el._lastEpoch = epochSeconds;
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
+            if (epochSeconds == null) { v.textContent = '--:--:--'; return; }
+            el._lastEpoch = epochSeconds;
             var tz = _settings && _settings.timezone || '';
             var d  = new Date(epochSeconds * 1000);
             if (tz) {
@@ -86,9 +94,10 @@ var _indicatorTypes = {
         defaultSize: {},
         defaultValueSize: 28,
         setValue: function (el, epochSeconds) {
-            el._lastEpoch = epochSeconds;
             var v = el.querySelector('.indicatorValue');
             if (!v) return;
+            if (epochSeconds == null) { v.textContent = 'дд.мм.гг'; return; }
+            el._lastEpoch = epochSeconds;
             var tz = _settings && _settings.timezone || '';
             var d  = new Date(epochSeconds * 1000);
             if (tz) {
@@ -128,6 +137,7 @@ var _indicatorTypes = {
         defaultValueSize: 30,
         setValue: function (el, val) {
             var t = el.querySelector('.gaugeValueText');
+            if (val == null) { if (t) t.textContent = '—'; return; }
             if (t) t.textContent = _formatValue(el, val);
             _updateGaugeSvg(el, val);
         },
@@ -236,6 +246,7 @@ var _indicatorTypes = {
         defaultValueSize: 28,
         setValue: function (el, val) {
             var t = el.querySelector('.tankValueText');
+            if (val == null) { if (t) t.textContent = '—'; return; }
             if (t) t.textContent = _formatValue(el, val);
             _updateTankSvg(el, val);
         },
@@ -341,6 +352,7 @@ var _indicatorTypes = {
         defaultValueSize: 24,
         setValue: function (el, val, zc) {
             var hv = el.querySelector('.hBarValue');
+            if (val == null) { if (hv) hv.textContent = '—'; return; }
             if (hv) {
                 hv.textContent = _formatValue(el, val);
                 var c = zc || el.dataset.valueColor;
@@ -421,6 +433,7 @@ var _indicatorTypes = {
         defaultValueSize: 26,
         setValue: function (el, val, zc) {
             var vv = el.querySelector('.vBarValue');
+            if (val == null) { if (vv) vv.textContent = '—'; return; }
             if (vv) {
                 vv.textContent = _formatValue(el, val);
                 var c = zc || el.dataset.valueColor;
@@ -562,6 +575,7 @@ var _indicatorTypes = {
         defaultValueSize: 28,
         setValue: function (el, val) {
             var t = el.querySelector('.manoValueText');
+            if (val == null) { if (t) t.textContent = '—'; return; }
             if (t) t.textContent = _formatValue(el, val);
             _updateManoSvg(el, val);
         },

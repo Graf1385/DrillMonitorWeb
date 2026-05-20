@@ -290,6 +290,11 @@ $.getJSON('/api/profiles/active', function (profile) {
     evtSource.addEventListener('run-state', function (e) {
         var data = JSON.parse(e.data);
         if (window._applyRunState) _applyRunState(data.running);
+        if (!data.running) {
+            document.querySelectorAll('.indicator').forEach(function (el) {
+                if (window.setIndicatorValue) setIndicatorValue(el, null);
+            });
+        }
     });
 
     evtSource.addEventListener('drill-data', function (e) {
@@ -300,7 +305,7 @@ $.getJSON('/api/profiles/active', function (profile) {
                 .forEach(function (el) { setIndicatorValue(el, params[id]); });
         });
         if (record.time) {
-            document.querySelectorAll('.timeIndicator, .dateIndicator')
+            document.querySelectorAll('.dateIndicator')
                 .forEach(function (el) { setIndicatorValue(el, record.time); });
         }
     });
