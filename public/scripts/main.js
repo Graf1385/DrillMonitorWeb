@@ -304,7 +304,8 @@ function _hideDataBanner() {
 
     evtSource.addEventListener('run-state', function (e) {
         var data = JSON.parse(e.data);
-        if (window._applyRunState) _applyRunState(data.running);
+        // Update button only on deliberate start/stop, not on stale-data events
+        if (window._applyRunState && (data.running || !data.reason)) _applyRunState(data.running);
         if (!data.running) {
             document.querySelectorAll('.indicator').forEach(function (el) {
                 if (window.setIndicatorValue) setIndicatorValue(el, null);
