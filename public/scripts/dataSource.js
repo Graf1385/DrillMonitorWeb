@@ -4,7 +4,7 @@
     var PLAY_ICON = '<polygon points="5,3 19,12 5,21" fill="currentColor" fill-opacity="0.18" stroke="currentColor"/>';
     var STOP_ICON = '<rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" fill-opacity="0.18" stroke="currentColor"/>';
 
-    function _applyRunState(running) {
+    var _applyRunState = window._applyRunState = function (running) {
         /* sidebar button */
         var sbBtn  = document.getElementById('dsRunButton');
         var sbIcon = document.getElementById('dsRunIcon');

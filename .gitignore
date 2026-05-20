@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+
+# Runtime data
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
+server/data/data-source-settings.json
+
+# OS
+Thumbs.db
+.DS_Store

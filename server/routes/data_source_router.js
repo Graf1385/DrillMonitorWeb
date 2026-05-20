@@ -31,12 +31,14 @@ router.post('/api/data-source/start', function (req, res) {
             params: Object.fromEntries(record.params),
         });
     });
+    sse.broadcast('run-state', { running: true });
     res.json({ ok: true, settings });
 });
 
 router.post('/api/data-source/stop', function (req, res) {
     dataSource.stopPolling();
     const settings = dataSource.setRunning(false);
+    sse.broadcast('run-state', { running: false });
     res.json({ ok: true, settings });
 });
 

@@ -287,6 +287,11 @@ $.getJSON('/api/profiles/active', function (profile) {
         if (window.profileSwitcherSetActive) profileSwitcherSetActive(profile.id);
     });
 
+    evtSource.addEventListener('run-state', function (e) {
+        var data = JSON.parse(e.data);
+        if (window._applyRunState) _applyRunState(data.running);
+    });
+
     evtSource.addEventListener('drill-data', function (e) {
         var record = JSON.parse(e.data);
         var params = record.params;
