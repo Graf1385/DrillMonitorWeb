@@ -68,7 +68,8 @@ let _polling        = false;
 let _lastAddr       = -1;
 let _lastLstSize    = -1;         // skip read when .lst size unchanged
 let _lastLstPath    = null;       // reset _lastLstSize on file rotation
-let _lastRecordTime = 0;          // ms timestamp of last successful record
+let _lastRecordTime  = 0;          // ms timestamp of last successful record
+let _pollingStartTime = 0;         // ms timestamp when polling started
 let _dataStale      = false;      // true after STALE_TIMEOUT without a record
 let _onRecord       = null;
 let _onStale        = null;       // called when data goes silent
@@ -328,15 +329,18 @@ function startPolling(onRecord, { onStale, onResume } = {}) {
     _lastAddr        = -1;
     _lastLstSize     = -1;
     _lastLstPath     = null;
-    _lastRecordTime  = 0;
-    _dataStale       = false;
-    _lastStaleReason = null;
-    _polling         = true;
+    _lastRecordTime   = 0;
+    _pollingStartTime = Date.now();
+    _dataStale        = false;
+    _lastStaleReason  = null;
+    _polling          = true;
 
     // Independent stale timer: fires every second regardless of I/O hangs in _poll
     _staleTimer = setInterval(async function () {
-        if (_dataStale || _lastRecordTime === 0) return;
-        if (Date.now() - _lastRecordTime > STALE_TIMEOUT) {
+        if (_dataStale) return;
+        const now      = Date.now();
+        const baseline = _lastRecordTime > 0 ? _lastRecordTime : _pollingStartTime;
+        if (now - baseline > STALE_TIMEOUT) {
             _dataStale = true;
             const reason = await _detectStaleReason();
             _lastStaleReason = reason;
@@ -356,10 +360,11 @@ function stopPolling() {
     _lastAddr        = -1;
     _lastLstSize     = -1;
     _lastLstPath     = null;
-    _lastRecordTime  = 0;
-    _dataStale       = false;
-    _lastStaleReason = null;
-    _cachedLstPath   = null;
+    _lastRecordTime   = 0;
+    _pollingStartTime = 0;
+    _dataStale        = false;
+    _lastStaleReason  = null;
+    _cachedLstPath    = null;
 }
 
 // Returns the current run state for newly connected SSE clients.
