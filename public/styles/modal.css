@@ -682,6 +682,11 @@ input[type=number]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
+#ws_timezone::-webkit-outer-spin-button,
+#ws_timezone::-webkit-inner-spin-button {
+    -webkit-appearance: auto;
+    margin: 0 2px;
+}
 
 .settingsSelect {
     width: 100%;

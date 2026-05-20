@@ -25,7 +25,8 @@ function initSchema(db) {
     try { db.exec('ALTER TABLE profiles ADD COLUMN ws_width        INTEGER NOT NULL DEFAULT 0'); } catch {}
     try { db.exec('ALTER TABLE profiles ADD COLUMN ws_height       INTEGER NOT NULL DEFAULT 0'); } catch {}
     try { db.exec('ALTER TABLE profiles ADD COLUMN sidebar_timeout INTEGER NOT NULL DEFAULT 20'); } catch {}
-    try { db.exec("ALTER TABLE profiles ADD COLUMN timezone TEXT NOT NULL DEFAULT ''"); } catch {}
+    try { db.exec("ALTER TABLE profiles ADD COLUMN timezone TEXT NOT NULL DEFAULT '0'"); } catch {}
+    db.exec("UPDATE profiles SET timezone = '0' WHERE timezone = '' OR timezone IS NULL");
 
     db.exec('UPDATE profiles SET cell_size = ROUND(cell_size * 20) WHERE cell_size < 10');
 

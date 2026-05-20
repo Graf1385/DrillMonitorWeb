@@ -7,8 +7,9 @@ const db   = require('./db/connection');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'data-source-settings.json');
 const DEFAULTS      = { storePath: '', running: false };
-const POLL_INTERVAL = 1000;  // ms between polls
-const IO_TIMEOUT    = 8000;  // ms — max wait for any single network I/O op
+const POLL_INTERVAL  = 1000;  // ms between polls
+const IO_TIMEOUT     = 8000;  // ms — max wait for any single network I/O op
+const STALE_TIMEOUT  = 5000;  // ms without a record before declaring data lost
 
 function _load() {
     try {
@@ -62,10 +63,17 @@ const LST_RECORD_SIZE = 21;
 let _paramSize     = null;       // Uint8Array[256]: index = param id, value = byte size
 let _paramIsLong   = null;       // Uint8Array[256]: 1 if type_id=5 (long/int32), else float
 let _watchedParams = new Set();  // param ids currently on screen (active profile)
-let _polling       = false;
-let _lastAddr      = -1;
-let _onRecord      = null;
-let _cachedLstPath = null;       // avoid readdirSync on every tick over the network
+let _polling        = false;
+let _lastAddr       = -1;
+let _lastLstSize    = -1;         // skip read when .lst size unchanged
+let _lastLstPath    = null;       // reset _lastLstSize on file rotation
+let _lastRecordTime = 0;          // ms timestamp of last successful record
+let _dataStale      = false;      // true after STALE_TIMEOUT without a record
+let _onRecord       = null;
+let _onStale        = null;       // called when data goes silent
+let _onResume       = null;       // called when data resumes after stale
+let _staleTimer     = null;       // setInterval handle for stale detection
+let _cachedLstPath  = null;       // avoid readdirSync on every tick over the network
 
 function _loadParamSizes() {
     _paramSize   = new Uint8Array(256);
@@ -127,12 +135,11 @@ async function _findLatestLst(storeDir) {
     return _cachedLstPath;
 }
 
-async function _readLastLstRecord(lstPath) {
+async function _readLastLstRecord(lstPath, size) {
+    if (size < LST_RECORD_SIZE) return null;
     let fd;
     try {
         fd = await _withTimeout(fsp.open(lstPath, 'r'), IO_TIMEOUT);
-        const { size } = await fd.stat();
-        if (size < LST_RECORD_SIZE) return null;
         const buf = Buffer.alloc(LST_RECORD_SIZE);
         await fd.read(buf, 0, LST_RECORD_SIZE, size - LST_RECORD_SIZE);
         return {
@@ -201,9 +208,28 @@ async function _poll() {
     const lstPath = await _findLatestLst(storeDir);
     if (!lstPath) return;
 
-    const lst = await _readLastLstRecord(lstPath);
-    if (!lst || lst.addr === _lastAddr) return;
+    // Reset size cache on file rotation (Shrt_1.lst → Shrt_2.lst)
+    if (lstPath !== _lastLstPath) {
+        _lastLstPath = lstPath;
+        _lastLstSize = -1;
+    }
 
+    // Cheap stat: skip everything if file size hasn't grown
+    let lstSize;
+    try {
+        lstSize = (await _withTimeout(fsp.stat(lstPath), IO_TIMEOUT)).size;
+    } catch (e) {
+        if (e.message === 'IO_TIMEOUT') console.warn('[dataSource] Таймаут stat LST:', lstPath);
+        return;
+    }
+    if (lstSize === _lastLstSize) return;
+
+    const lst = await _readLastLstRecord(lstPath, lstSize);
+    if (!lst) return;  // read failed — don't update size, retry next tick
+
+    _lastLstSize = lstSize;
+
+    if (lst.addr === _lastAddr) return;
     _lastAddr = lst.addr;
 
     const depPath = lstPath.replace(/\.lst$/i, '.dep');
@@ -215,6 +241,12 @@ async function _poll() {
         if (!_watchedParams.has(id)) continue;
         if (typeof val === 'string' && val === '') continue;
         filtered.set(id, val);
+    }
+
+    _lastRecordTime = Date.now();
+    if (_dataStale) {
+        _dataStale = false;
+        if (_onResume) _onResume();
     }
 
     _onRecord({ recNo: record.recNo, depth: lst.depth, time: lst.time, params: filtered });
@@ -230,27 +262,51 @@ async function _runLoop() {
         } catch (e) {
             console.error('[dataSource] Ошибка опроса:', e.message);
         }
+
         const elapsed = Date.now() - start;
         const wait    = Math.max(0, POLL_INTERVAL - elapsed);
         await new Promise(r => setTimeout(r, wait));
     }
 }
 
-function startPolling(onRecord) {
+function startPolling(onRecord, { onStale, onResume } = {}) {
     if (_polling) return;
     _loadParamSizes();
     refreshWatchedParams();
-    _onRecord  = onRecord;
-    _lastAddr  = -1;
-    _polling   = true;
+    _onRecord       = onRecord;
+    _onStale        = onStale  || null;
+    _onResume       = onResume || null;
+    _lastAddr       = -1;
+    _lastLstSize    = -1;
+    _lastLstPath    = null;
+    _lastRecordTime = 0;
+    _dataStale      = false;
+    _polling        = true;
+
+    // Independent stale timer: fires every second regardless of I/O hangs in _poll
+    _staleTimer = setInterval(function () {
+        if (_dataStale || _lastRecordTime === 0) return;
+        if (Date.now() - _lastRecordTime > STALE_TIMEOUT) {
+            _dataStale = true;
+            if (_onStale) _onStale();
+        }
+    }, 1000);
+
     _runLoop().catch(e => console.error('[dataSource] Фатальная ошибка цикла:', e));
 }
 
 function stopPolling() {
-    _polling       = false;
-    _onRecord      = null;
-    _lastAddr      = -1;
-    _cachedLstPath = null;
+    _polling        = false;
+    if (_staleTimer) { clearInterval(_staleTimer); _staleTimer = null; }
+    _onRecord       = null;
+    _onStale        = null;
+    _onResume       = null;
+    _lastAddr       = -1;
+    _lastLstSize    = -1;
+    _lastLstPath    = null;
+    _lastRecordTime = 0;
+    _dataStale      = false;
+    _cachedLstPath  = null;
 }
 
 module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath, startPolling, stopPolling, refreshWatchedParams };

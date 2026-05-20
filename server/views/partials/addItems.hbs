@@ -187,10 +187,15 @@
         <tr><td colspan="2" class="sectionLabel">Значение</td></tr>
         <tr id="ni_paramRow">
             <td>Параметр</td>
-            <td>
-                <select class="settingsSelect" id="ni_paramId" onchange="onParamChange(this)">
-                    <option value="">— не выбран —</option>
-                </select>
+            <td style="padding:2px 4px">
+                <div class="unitCombo">
+                    <input type="text" class="settingsInput" id="ni_paramId"
+                           placeholder="— не выбран —" autocomplete="off"
+                           oninput="openParamDropdown(this)"
+                           onfocus="openParamDropdown(this)"
+                           onblur="closeParamDropdown()">
+                    <div class="unitComboDropdown" id="ni_paramDropdown"></div>
+                </div>
             </td>
         </tr>
         <tr>

@@ -128,7 +128,7 @@ function _loadProfiles() {
                 opt.dataset.wsWidth         = p.ws_width  || 0;
                 opt.dataset.wsHeight        = p.ws_height || 0;
                 opt.dataset.sidebarTimeout  = p.sidebar_timeout != null ? p.sidebar_timeout : 20;
-                opt.dataset.timezone        = p.timezone || '';
+                opt.dataset.timezone        = p.timezone || '0';
                 select.appendChild(opt);
             });
             if (prevId) select.value = prevId;
@@ -161,7 +161,7 @@ function applyProfile(selectEl, silent) {
     _alarmDelay     = parseFloat(opt.dataset.alarmDelay) || 2;
     _sidebarTimeout = opt.dataset.sidebarTimeout !== undefined ? parseInt(opt.dataset.sidebarTimeout) : 20;
 
-    _timezone = opt.dataset.timezone || '';
+    _timezone = opt.dataset.timezone || '0';
     _settings.timezone = _timezone;
 
     _modal.querySelector('#ws_alarmSound').value           = _alarmSoundId;
@@ -195,7 +195,7 @@ function applyProfileFromSSE(profile) {
     _alarmVolume     = profile.alarm_volume    != null ? parseInt(profile.alarm_volume)    : 50;
     _alarmDelay      = profile.alarm_delay     != null ? parseFloat(profile.alarm_delay)   : 2;
     _sidebarTimeout  = profile.sidebar_timeout != null ? parseInt(profile.sidebar_timeout) : 20;
-    _timezone        = profile.timezone || '';
+    _timezone        = profile.timezone || '0';
     _settings.timezone = _timezone;
     _refreshTimeIndicators();
     _applyResolution(profile.ws_width || 0, profile.ws_height || 0);
@@ -326,7 +326,9 @@ function applyWorkSpaceSettings() {
     _alarmVolume    = parseInt(_modal.querySelector('#ws_alarmVolume').value) || 50;
     _alarmDelay     = parseFloat(_modal.querySelector('#ws_alarmDelay').value) || 2;
     _sidebarTimeout = Math.max(0, parseInt(_modal.querySelector('#ws_sidebarTimeout').value) || 0);
-    _timezone       = _modal.querySelector('#ws_timezone').value;
+    var _tzRaw  = _modal.querySelector('#ws_timezone').value;
+    var _tzNum  = parseInt(_tzRaw, 10);
+    _timezone        = (!isNaN(_tzNum) && _tzNum >= -12 && _tzNum <= 12) ? String(_tzNum) : '0';
     _settings.timezone = _timezone;
     _refreshTimeIndicators();
     if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);

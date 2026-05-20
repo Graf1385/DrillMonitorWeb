@@ -312,6 +312,9 @@ $.getJSON('/api/profiles/active', function (profile) {
 
     evtSource.onerror = function () {
         evtSource.close();
+        document.querySelectorAll('.indicator').forEach(function (el) {
+            if (window.setIndicatorValue) setIndicatorValue(el, null);
+        });
         if (!window._updateInProgress) {
             setTimeout(function () { window.location.reload(); }, 3000);
         }

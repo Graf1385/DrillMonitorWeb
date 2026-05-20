@@ -23,14 +23,20 @@ router.post('/api/data-source/check-path', function (req, res) {
 
 router.post('/api/data-source/start', function (req, res) {
     const settings = dataSource.setRunning(true);
-    dataSource.startPolling(function (record) {
-        sse.broadcast('drill-data', {
-            recNo:  record.recNo,
-            depth:  record.depth,
-            time:   record.time,
-            params: Object.fromEntries(record.params),
-        });
-    });
+    dataSource.startPolling(
+        function (record) {
+            sse.broadcast('drill-data', {
+                recNo:  record.recNo,
+                depth:  record.depth,
+                time:   record.time,
+                params: Object.fromEntries(record.params),
+            });
+        },
+        {
+            onStale:  () => sse.broadcast('run-state', { running: false }),
+            onResume: () => sse.broadcast('run-state', { running: true }),
+        }
+    );
     sse.broadcast('run-state', { running: true });
     res.json({ ok: true, settings });
 });

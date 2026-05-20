@@ -55,15 +55,15 @@ var _indicatorTypes = {
             if (!v) return;
             if (epochSeconds == null) { v.textContent = '--:--:--'; return; }
             el._lastEpoch = epochSeconds;
-            var tz = _settings && _settings.timezone || '';
-            var d  = new Date(epochSeconds * 1000);
-            if (tz) {
-                v.textContent = new Intl.DateTimeFormat('ru-RU', {
-                    timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-                }).format(d);
+            var _tzRaw = _settings && _settings.timezone;
+            var _tzOff = (_tzRaw !== '' && _tzRaw != null) ? parseInt(_tzRaw, 10) : NaN;
+            function _pad(n) { return n < 10 ? '0' + n : String(n); }
+            if (!isNaN(_tzOff)) {
+                var d = new Date((epochSeconds + _tzOff * 3600) * 1000);
+                v.textContent = _pad(d.getUTCHours()) + ':' + _pad(d.getUTCMinutes()) + ':' + _pad(d.getUTCSeconds());
             } else {
-                function pad(n) { return n < 10 ? '0' + n : String(n); }
-                v.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+                var d = new Date(epochSeconds * 1000);
+                v.textContent = _pad(d.getHours()) + ':' + _pad(d.getMinutes()) + ':' + _pad(d.getSeconds());
             }
         },
         create: function (el, cfg) {
@@ -98,15 +98,15 @@ var _indicatorTypes = {
             if (!v) return;
             if (epochSeconds == null) { v.textContent = 'дд.мм.гг'; return; }
             el._lastEpoch = epochSeconds;
-            var tz = _settings && _settings.timezone || '';
-            var d  = new Date(epochSeconds * 1000);
-            if (tz) {
-                v.textContent = new Intl.DateTimeFormat('ru-RU', {
-                    timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric'
-                }).format(d);
+            var _tzRaw = _settings && _settings.timezone;
+            var _tzOff = (_tzRaw !== '' && _tzRaw != null) ? parseInt(_tzRaw, 10) : NaN;
+            function _pad(n) { return n < 10 ? '0' + n : String(n); }
+            if (!isNaN(_tzOff)) {
+                var d = new Date((epochSeconds + _tzOff * 3600) * 1000);
+                v.textContent = _pad(d.getUTCDate()) + '.' + _pad(d.getUTCMonth() + 1) + '.' + d.getUTCFullYear();
             } else {
-                function pad(n) { return n < 10 ? '0' + n : String(n); }
-                v.textContent = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear();
+                var d = new Date(epochSeconds * 1000);
+                v.textContent = _pad(d.getDate()) + '.' + _pad(d.getMonth() + 1) + '.' + d.getFullYear();
             }
         },
         create: function (el, cfg) {

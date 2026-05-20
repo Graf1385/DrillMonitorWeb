@@ -11,8 +11,8 @@ var _activeType    = 'digitalIndicator';
 var _editingEl     = null;
 var _fontsPromise  = null;
 
-// Init combos for the 3 selects that are always in the DOM
-['#ni_headerFont', '#ni_paramId', '#ni_valueFont'].forEach(function (id) {
+// Init combos for the 2 selects that are always in the DOM
+['#ni_headerFont', '#ni_valueFont'].forEach(function (id) {
     initCombo(_addModal.querySelector(id));
 });
 
@@ -190,7 +190,8 @@ function _loadFonts() {
     return _fontsPromise;
 }
 
-var _availableUnits = [];
+var _availableUnits  = [];
+var _availableParams = [];
 
 function _loadUnits() {
     return $.getJSON('/api/units').then(function (units) {
@@ -199,6 +200,41 @@ function _loadUnits() {
         showError('Ошибка загрузки единиц измерения');
     });
 }
+
+window.openParamDropdown = function(input) {
+    var dropdown = _addModal.querySelector('#ni_paramDropdown');
+    if (!dropdown) return;
+    input.dataset.paramId = '';
+    var q = input.value.toLowerCase();
+    var filtered = _availableParams.filter(function (p) {
+        return q === '' || p.name.toLowerCase().indexOf(q) !== -1;
+    });
+    if (filtered.length === 0) { dropdown.classList.remove('open'); return; }
+    dropdown.innerHTML = filtered.map(function (p) {
+        return '<div class="unitComboOption" onmousedown="_selectParam(' + p.id + ')">' + p.name + '</div>';
+    }).join('');
+    dropdown.classList.add('open');
+};
+
+window._selectParam = function(id) {
+    var p = _availableParams.find(function(x) { return x.id === id; });
+    if (!p) return;
+    var input = _addModal.querySelector('#ni_paramId');
+    input.value = p.name;
+    input.dataset.paramId = String(p.id);
+    _addModal.querySelector('#ni_paramDropdown').classList.remove('open');
+    _toggleValueFields(true);
+    _addModal.querySelector('#ni_headerText').value = p.name;
+    _addModal.querySelector('#ni_format').value     = p.default_format || '';
+    _addModal.querySelector('#ni_units').value      = p.units || '';
+};
+
+window.closeParamDropdown = function() {
+    setTimeout(function () {
+        var dropdown = _addModal.querySelector('#ni_paramDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+    }, 150);
+};
 
 window.openUnitsDropdown = function(input) {
     var dropdown = _addModal.querySelector('#ni_unitsDropdown');
@@ -496,19 +532,16 @@ document.addEventListener('dblclick', function (e) {
 
 function _loadParameters(selectedId) {
     return $.getJSON('/api/parameters').then(function (params) {
-        var select = _addModal.querySelector('#ni_paramId');
-        select.innerHTML = '<option value="">— не выбран —</option>';
-        params.forEach(function (p) {
-            var opt = document.createElement('option');
-            opt.value        = p.id;
-            opt.textContent  = p.name;
-            opt.dataset.type          = p.type_name;
-            opt.dataset.defaultFormat = p.default_format || '';
-            opt.dataset.units         = p.units || '';
-            select.appendChild(opt);
-        });
+        _availableParams = params;
+        var input = _addModal.querySelector('#ni_paramId');
+        input.value = '';
+        input.dataset.paramId = '';
         if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
-            select.value = selectedId;
+            var found = params.find(function(p) { return p.id === parseInt(selectedId); });
+            if (found) {
+                input.value = found.name;
+                input.dataset.paramId = String(found.id);
+            }
         }
     }, function () {
         showError('Ошибка загрузки параметров');
@@ -517,25 +550,38 @@ function _loadParameters(selectedId) {
 
 function _applyTypeToParamSelect(type) {
     var typeDef     = _indicatorTypes[type] || _indicatorTypes.digitalIndicator;
-    var select      = _addModal.querySelector('#ni_paramId');
+    var input       = _addModal.querySelector('#ni_paramId');
     var paramRow    = _addModal.querySelector('#ni_paramRow');
     var numericRows = _addModal.querySelectorAll('.numericOnlyRow');
     var zoneRows    = _addModal.querySelectorAll('.zoneColorRow');
     var tickerRows  = _addModal.querySelectorAll('.tickerOnlyRow');
 
     var zoneTypes   = { digitalIndicator: true, hProgressIndicator: true, vProgressIndicator: true };
-
     var headerInput = _addModal.querySelector('#ni_headerText');
 
-    function _setSelectDisabled(disabled) {
-        if (select._cc) select._cc.setDisabled(disabled);
-        else select.disabled = disabled;
+    function _setParamInputDisabled(disabled) {
+        input.disabled = disabled;
+        if (disabled) {
+            var drop = _addModal.querySelector('#ni_paramDropdown');
+            if (drop) drop.classList.remove('open');
+        }
+    }
+
+    function _setParamById(id) {
+        var p = _availableParams.find(function(x) { return x.id === id; });
+        if (p) { input.value = p.name; input.dataset.paramId = String(p.id); }
+    }
+
+    function _setParamByType(preferType) {
+        var p = _availableParams.find(function(x) { return x.type_name === preferType; })
+             || _availableParams.find(function(x) { return x.type_name === 'time'; });
+        if (p) { input.value = p.name; input.dataset.paramId = String(p.id); }
     }
 
     if (typeDef.fixedParamId != null) {
         if (paramRow) paramRow.style.display = '';
-        select.value = String(typeDef.fixedParamId);
-        _setSelectDisabled(true);
+        _setParamById(typeDef.fixedParamId);
+        _setParamInputDisabled(true);
         numericRows.forEach(function (r) { r.style.display = 'none'; });
         if (headerInput && typeDef.fixedHeader) {
             headerInput.value    = typeDef.fixedHeader;
@@ -543,26 +589,24 @@ function _applyTypeToParamSelect(type) {
         }
     } else if (typeDef.usesGlobalTime) {
         if (paramRow) paramRow.style.display = 'none';
-        select.value = '';
-        _setSelectDisabled(true);
+        input.value = '';
+        input.dataset.paramId = '';
+        _setParamInputDisabled(true);
         if (headerInput) headerInput.disabled = false;
         numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else if (!typeDef.isNumeric) {
         if (paramRow) paramRow.style.display = '';
         if (typeDef.lockParam !== false) {
-            var prefer = typeDef.preferredParamType || 'time';
-            var dtOpt = Array.from(select.options).find(function (o) { return o.dataset.type === prefer; })
-                     || Array.from(select.options).find(function (o) { return o.dataset.type === 'time'; });
-            if (dtOpt) select.value = dtOpt.value;
-            _setSelectDisabled(true);
+            _setParamByType(typeDef.preferredParamType || 'time');
+            _setParamInputDisabled(true);
         } else {
-            _setSelectDisabled(false);
+            _setParamInputDisabled(false);
         }
         if (headerInput) headerInput.disabled = false;
         numericRows.forEach(function (r) { r.style.display = 'none'; });
     } else {
         if (paramRow) paramRow.style.display = '';
-        _setSelectDisabled(false);
+        _setParamInputDisabled(false);
         if (headerInput) headerInput.disabled = false;
         numericRows.forEach(function (r) { r.style.display = ''; });
     }
@@ -638,15 +682,6 @@ function _openEditModal(indicator) {
     _toggleValueFields(!!(d.paramId));
 }
 
-function onParamChange(selectEl) {
-    var hasParam = !!(selectEl.value);
-    _toggleValueFields(hasParam);
-    if (!hasParam) return;
-    var opt = selectEl.options[selectEl.selectedIndex];
-    _addModal.querySelector('#ni_headerText').value = opt.textContent;
-    _addModal.querySelector('#ni_format').value     = opt.dataset.defaultFormat || '';
-    _addModal.querySelector('#ni_units').value      = opt.dataset.units || '';
-}
 
 function _toggleValueFields(enabled) {
     ['#ni_format', '#ni_rangeMin', '#ni_rangeMax',
@@ -730,12 +765,11 @@ function _readConfig() {
     function nullable(val) { var n = parseFloat(val); return isNaN(n) ? null : n; }
     var wRaw = parseInt(_addModal.querySelector('#ni_width').value);
     var hRaw = parseInt(_addModal.querySelector('#ni_height').value);
-    var paramSelect = _addModal.querySelector('#ni_paramId');
-    var paramRaw    = paramSelect.value;
-    var paramOpt    = paramSelect.options[paramSelect.selectedIndex];
+    var paramInput = _addModal.querySelector('#ni_paramId');
+    var paramRaw   = paramInput.dataset.paramId || '';
     return {
         paramId:     paramRaw !== '' ? parseInt(paramRaw) : null,
-        paramName:   paramRaw !== '' && paramOpt ? paramOpt.textContent.trim() : '',
+        paramName:   paramRaw !== '' ? paramInput.value.trim() : '',
         width:       isNaN(wRaw) ? null : Math.min(2000, Math.max(40, wRaw)),
         height:      isNaN(hRaw) ? null : Math.min(2000, Math.max(40, hRaw)),
         headerText:  _addModal.querySelector('#ni_headerText').value || 'Заголовок',
