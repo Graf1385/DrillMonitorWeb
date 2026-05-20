@@ -4,8 +4,9 @@ const fs       = require('fs');
 const { exec } = require('child_process');
 const path     = require('path');
 const router   = express.Router();
-const db       = require('../db');
-const sse      = require('../sse');
+const db         = require('../db');
+const sse        = require('../sse');
+const dataSource = require('../dataSource');
 const pkg      = require('../../package.json');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
@@ -345,6 +346,12 @@ router.get('/api/events', (req, res) => {
     res.flushHeaders();
 
     res.write(':\n\n'); // initial ping
+
+    // Send current run-state immediately so reconnecting clients restore banner/clear state
+    const state = dataSource.getRunState();
+    if (!state.running) {
+        res.write(`event: run-state\ndata: ${JSON.stringify(state)}\n\n`);
+    }
 
     sse.addClient(res);
     req.on('close', () => sse.removeClient(res));

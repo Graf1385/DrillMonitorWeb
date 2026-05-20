@@ -74,6 +74,7 @@ let _onRecord       = null;
 let _onStale        = null;       // called when data goes silent
 let _onResume       = null;       // called when data resumes after stale
 let _staleTimer     = null;       // setInterval handle for stale detection
+let _lastStaleReason = null;      // last detected stale reason, for reconnecting SSE clients
 let _cachedLstPath  = null;       // avoid readdirSync on every tick over the network
 
 function _loadParamSizes() {
@@ -293,6 +294,7 @@ async function _poll() {
     _lastRecordTime = Date.now();
     if (_dataStale) {
         _dataStale = false;
+        _lastStaleReason = null;
         if (_onResume) _onResume();
     }
 
@@ -323,12 +325,13 @@ function startPolling(onRecord, { onStale, onResume } = {}) {
     _onRecord       = onRecord;
     _onStale        = onStale  || null;
     _onResume       = onResume || null;
-    _lastAddr       = -1;
-    _lastLstSize    = -1;
-    _lastLstPath    = null;
-    _lastRecordTime = 0;
-    _dataStale      = false;
-    _polling        = true;
+    _lastAddr        = -1;
+    _lastLstSize     = -1;
+    _lastLstPath     = null;
+    _lastRecordTime  = 0;
+    _dataStale       = false;
+    _lastStaleReason = null;
+    _polling         = true;
 
     // Independent stale timer: fires every second regardless of I/O hangs in _poll
     _staleTimer = setInterval(async function () {
@@ -336,6 +339,7 @@ function startPolling(onRecord, { onStale, onResume } = {}) {
         if (Date.now() - _lastRecordTime > STALE_TIMEOUT) {
             _dataStale = true;
             const reason = await _detectStaleReason();
+            _lastStaleReason = reason;
             if (_onStale) _onStale(reason);
         }
     }, 1000);
@@ -349,12 +353,20 @@ function stopPolling() {
     _onRecord       = null;
     _onStale        = null;
     _onResume       = null;
-    _lastAddr       = -1;
-    _lastLstSize    = -1;
-    _lastLstPath    = null;
-    _lastRecordTime = 0;
-    _dataStale      = false;
-    _cachedLstPath  = null;
+    _lastAddr        = -1;
+    _lastLstSize     = -1;
+    _lastLstPath     = null;
+    _lastRecordTime  = 0;
+    _dataStale       = false;
+    _lastStaleReason = null;
+    _cachedLstPath   = null;
 }
 
-module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath, startPolling, stopPolling, refreshWatchedParams };
+// Returns the current run state for newly connected SSE clients.
+function getRunState() {
+    if (!_polling)   return { running: false, reason: null };
+    if (_dataStale)  return { running: false, reason: _lastStaleReason };
+    return { running: true };
+}
+
+module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath, startPolling, stopPolling, refreshWatchedParams, getRunState };
