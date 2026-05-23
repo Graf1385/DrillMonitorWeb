@@ -244,6 +244,12 @@ function _runCmd(cmd, opts) {
     });
 }
 
+function _spawnDetached(cmd, args, opts) {
+    const { spawn } = require('child_process');
+    const child = spawn(cmd, args, Object.assign({ detached: true, stdio: 'ignore', env: process.env }, opts));
+    child.unref();
+}
+
 router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
     if (_updateInProgress) {
         return res.status(409).json({ error: 'Обновление уже выполняется' });
@@ -253,11 +259,14 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
     try {
         const token = process.env.GITHUB_TOKEN;
         const fetchCmd = token
-            ? 'git -c http.extraHeader="Authorization: token ' + token + '" fetch origin'
-            : 'git fetch origin';
+            ? 'git -c http.extraHeader="Authorization: token ' + token + '" fetch --tags origin'
+            : 'git fetch --tags origin';
 
-        await _runCmd(fetchCmd,                                     { cwd: ROOT_DIR, timeout: 30000  });
-        await _runCmd('git reset --hard origin/main',               { cwd: ROOT_DIR, timeout: 15000  });
+        await _runCmd(fetchCmd, { cwd: ROOT_DIR, timeout: 30000 });
+
+        // Reset to release tag; fall back to origin/main if tag unknown
+        const tag = (_updateCache && _updateCache.latest) ? ('v' + _updateCache.latest) : 'origin/main';
+        await _runCmd('git reset --hard ' + tag,                    { cwd: ROOT_DIR, timeout: 15000  });
         await _runCmd('npm install --omit=dev --no-fund --no-audit', { cwd: ROOT_DIR, timeout: 120000 });
 
         _updateCache   = null;
@@ -267,7 +276,8 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
         setTimeout(function () {
             exec('pm2 restart DrillMonitor', function (err) {
                 if (err) {
-                    console.error('[update] pm2 restart failed:', err.message);
+                    console.error('[update] pm2 restart failed, spawning self:', err.message);
+                    _spawnDetached(process.execPath, [path.join(ROOT_DIR, 'app.js')], { cwd: ROOT_DIR });
                     process.exit(0);
                 }
             });
