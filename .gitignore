@@ -14,3 +14,4 @@ server/data/data-source-settings.json
 # OS
 Thumbs.db
 .DS_Store
+.env
