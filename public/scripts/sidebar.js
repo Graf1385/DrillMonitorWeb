@@ -114,6 +114,12 @@ function _setAuthenticated() {
     localStorage.setItem(_AUTH_KEY, JSON.stringify({ ts: Date.now() }));
 }
 
+function showLoginModal() {
+    localStorage.removeItem(_AUTH_KEY);
+    document.querySelector('#login_password').value = '';
+    document.querySelector('#loginModal').showModal();
+}
+
 function submitLogin() {
     var name     = document.querySelector('#login_name').value.trim();
     var password = document.querySelector('#login_password').value;

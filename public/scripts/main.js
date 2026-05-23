@@ -119,6 +119,11 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
             .fail(function (xhr) {
                 window._updateInProgress = false;
                 _overlay.classList.remove('visible');
+                if (xhr.status === 401) {
+                    if (typeof showLoginModal === 'function') showLoginModal();
+                    showError('Сессия истекла — войдите снова');
+                    return;
+                }
                 var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка обновления';
                 showError(msg);
             });
