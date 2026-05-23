@@ -140,7 +140,7 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
                 } else {
                     if (_badge) _badge.classList.remove('visible');
                     _banner.classList.remove('visible');
-                    if (manual) showError('Версия актуальна: ' + (data.current || '—'));
+                    if (manual) showSuccess('Версия актуальна: ' + (data.current || '—'));
                 }
             })
             .fail(function () {

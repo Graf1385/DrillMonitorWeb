@@ -46,10 +46,13 @@ function _semverGt(a, b) {
 }
 
 function _fetchLatestRelease(cb) {
+    var token = process.env.GITHUB_TOKEN;
+    var hdrs  = { 'User-Agent': 'DrillMonitorWeb/' + pkg.version };
+    if (token) hdrs['Authorization'] = 'token ' + token;
     var options = {
         hostname: 'api.github.com',
         path:     '/repos/' + GITHUB_REPO + '/releases/latest',
-        headers:  { 'User-Agent': 'DrillMonitorWeb/' + pkg.version }
+        headers:  hdrs
     };
     var req = https.get(options, function (res) {
         var raw = '';
@@ -241,83 +244,21 @@ function _runCmd(cmd, opts) {
     });
 }
 
-function _getTarballUrl(token) {
-    return new Promise(function (resolve, reject) {
-        var opts = {
-            hostname: 'api.github.com',
-            path:     '/repos/' + GITHUB_REPO + '/releases/latest',
-            headers:  { 'Authorization': 'token ' + token, 'User-Agent': 'DrillMonitorWeb/' + pkg.version }
-        };
-        https.get(opts, function (res) {
-            var raw = '';
-            res.on('data', function (c) { raw += c; });
-            res.on('end', function () {
-                try {
-                    var data = JSON.parse(raw);
-                    if (!data.tarball_url) return reject(new Error('tarball_url не найден'));
-                    resolve(data.tarball_url);
-                } catch (e) { reject(e); }
-            });
-        }).on('error', reject);
-    });
-}
-
-function _downloadFile(url, dest, token, hops) {
-    return new Promise(function (resolve, reject) {
-        if ((hops || 0) > 5) return reject(new Error('Слишком много редиректов'));
-        var p    = new URL(url);
-        var hdrs = { 'User-Agent': 'DrillMonitorWeb/' + pkg.version };
-        if (token) hdrs['Authorization'] = 'token ' + token;
-        https.get({ hostname: p.hostname, path: p.pathname + p.search, headers: hdrs }, function (res) {
-            if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307) {
-                res.resume();
-                return _downloadFile(res.headers.location, dest, null, (hops || 0) + 1)
-                    .then(resolve).catch(reject);
-            }
-            if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode));
-            var file = fs.createWriteStream(dest);
-            res.pipe(file);
-            file.on('finish', function () { file.close(resolve); });
-            file.on('error', reject);
-            res.on('error', reject);
-        }).on('error', reject);
-    });
-}
-
 router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
     if (_updateInProgress) {
         return res.status(409).json({ error: 'Обновление уже выполняется' });
     }
     _updateInProgress = true;
 
-    const token = process.env.GITHUB_TOKEN;
-    if (!token) {
-        _updateInProgress = false;
-        return res.status(500).json({ error: 'GITHUB_TOKEN не настроен' });
-    }
-
-    const WORK_DIR = '/tmp/drillmonitor-update';
-    const TARBALL  = '/tmp/drillmonitor-update.tar.gz';
-
     try {
-        const tarballUrl = await _getTarballUrl(token);
-        await _downloadFile(tarballUrl, TARBALL, token, 0);
+        const token = process.env.GITHUB_TOKEN;
+        const fetchCmd = token
+            ? 'git -c http.extraHeader="Authorization: token ' + token + '" fetch origin'
+            : 'git fetch origin';
 
-        await _runCmd('rm -rf ' + WORK_DIR + ' && mkdir -p ' + WORK_DIR, { timeout: 10000 });
-        await _runCmd('tar xzf ' + TARBALL + ' -C ' + WORK_DIR + ' --strip-components=1', { timeout: 30000 });
-
-        await _runCmd(
-            'rsync -a --delete' +
-            ' --exclude=".git/"' +
-            ' --exclude=".env"' +
-            ' --exclude="node_modules/"' +
-            ' --exclude="server/data/"' +
-            ' ' + WORK_DIR + '/ ' + ROOT_DIR + '/',
-            { timeout: 30000 }
-        );
-
+        await _runCmd(fetchCmd,                                     { cwd: ROOT_DIR, timeout: 30000  });
+        await _runCmd('git reset --hard origin/main',               { cwd: ROOT_DIR, timeout: 15000  });
         await _runCmd('npm install --omit=dev --no-fund --no-audit', { cwd: ROOT_DIR, timeout: 120000 });
-        await _runCmd('rm -rf ' + WORK_DIR + ' ' + TARBALL, { timeout: 10000 });
 
         _updateCache   = null;
         _updateCacheAt = 0;
@@ -335,7 +276,6 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
     } catch (e) {
         _updateInProgress = false;
         console.error('[update] apply error:', e.message);
-        exec('rm -rf ' + WORK_DIR + ' ' + TARBALL);
         res.status(500).json({ error: e.message });
     }
 });
