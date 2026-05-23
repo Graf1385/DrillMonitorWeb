@@ -5,6 +5,7 @@ const sse         = require('../sse');
 const multer      = require('multer');
 const logger      = require('../logger');
 const dataSource  = require('../dataSource');
+const auth        = require('../auth');
 
 const _upload = multer({
     storage: multer.memoryStorage(),
@@ -19,11 +20,20 @@ router.post('/api/auth/login', (req, res) => {
     const { name, password } = req.body;
     if (db.verifyUser(name, password)) {
         logger.log('Вход в систему: пользователь "' + name + '"');
+        const token = auth.createSession();
+        res.setHeader('Set-Cookie', auth.sessionCookie(token));
         res.json({ ok: true });
     } else {
         logger.log('Неудачная попытка входа: пользователь "' + (name || '?') + '"');
         res.status(401).json({ ok: false });
     }
+});
+
+router.post('/api/auth/logout', (req, res) => {
+    const token = auth._getToken(req);
+    if (token) auth.destroySession(token);
+    res.setHeader('Set-Cookie', auth.clearCookie());
+    res.json({ ok: true });
 });
 
 router.post('/api/profiles', (req, res) => {

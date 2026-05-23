@@ -8,6 +8,7 @@ const db         = require('../db');
 const sse        = require('../sse');
 const dataSource = require('../dataSource');
 const pkg      = require('../../package.json');
+const auth     = require('../auth');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
 
@@ -283,7 +284,7 @@ function _downloadFile(url, dest, token, hops) {
     });
 }
 
-router.post('/api/update/apply', async (req, res) => {
+router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
     if (_updateInProgress) {
         return res.status(409).json({ error: 'Обновление уже выполняется' });
     }
