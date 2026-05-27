@@ -259,7 +259,7 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
     try {
         const token = process.env.GITHUB_TOKEN;
         const fetchCmd = token
-            ? 'git -c http.extraHeader="Authorization: token ' + token + '" fetch --tags origin'
+            ? 'git fetch --tags https://x-access-token:' + token + '@github.com/' + GITHUB_REPO
             : 'git fetch --tags origin';
 
         await _runCmd(fetchCmd, { cwd: ROOT_DIR, timeout: 30000 });
@@ -274,11 +274,15 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
         res.json({ ok: true });
 
         setTimeout(function () {
-            exec('pm2 restart DrillMonitor', function (err) {
+            exec('sudo /sbin/reboot', function (err) {
                 if (err) {
-                    console.error('[update] pm2 restart failed, spawning self:', err.message);
-                    _spawnDetached(process.execPath, [path.join(ROOT_DIR, 'app.js')], { cwd: ROOT_DIR });
-                    process.exit(0);
+                    console.error('[update] reboot failed, trying pm2:', err.message);
+                    exec('pm2 restart DrillMonitor', function (err2) {
+                        if (err2) {
+                            _spawnDetached(process.execPath, [path.join(ROOT_DIR, 'app.js')], { cwd: ROOT_DIR });
+                            process.exit(0);
+                        }
+                    });
                 }
             });
         }, 800);
