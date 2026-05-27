@@ -616,6 +616,17 @@ function initSchema(db) {
             file BLOB    NOT NULL
         )
     `);
+
+    // ── Sessions ──────────────────────────────────────────────────────────────
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS sessions (
+            token      TEXT    PRIMARY KEY,
+            expires_at INTEGER NOT NULL
+        )
+    `);
+
+    db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());
 }
 
 module.exports = { initSchema };

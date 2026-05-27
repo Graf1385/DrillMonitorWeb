@@ -9,6 +9,7 @@ const LogRepository       = require('./LogRepository');
 const FontRepository      = require('./FontRepository');
 const AlarmSoundRepository = require('./AlarmSoundRepository');
 const UserRepository      = require('./UserRepository');
+const SessionRepository   = require('./SessionRepository');
 
 initSchema(db);
 
@@ -21,6 +22,7 @@ const logs       = new LogRepository(db);
 const fonts      = new FontRepository(db);
 const sounds     = new AlarmSoundRepository(db);
 const users      = new UserRepository(db);
+const sessions   = new SessionRepository(db);
 
 module.exports = {
     // profiles
@@ -79,4 +81,10 @@ module.exports = {
     getUser:            (name) => users.getUser(name),
     verifyUser:         (name, password) => users.verifyUser(name, password),
     updateUserPassword: (name, newPassword) => users.updateUserPassword(name, newPassword),
+
+    // sessions
+    createSession:   (token, expiresAt) => sessions.create(token, expiresAt),
+    getSession:      (token) => sessions.get(token),
+    deleteSession:   (token) => sessions.delete(token),
+    purgeExpiredSessions: () => sessions.purgeExpired(),
 };

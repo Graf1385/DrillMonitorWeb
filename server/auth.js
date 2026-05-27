@@ -1,18 +1,20 @@
 const crypto = require('crypto');
+const db     = require('./db');
 
 const COOKIE_NAME = 'drillsid';
 const SESSION_TTL = 24 * 60 * 60 * 1000;
 
-const _sessions = new Map(); // token → expiry ms
+setInterval(function () { db.purgeExpiredSessions(); }, 60 * 60 * 1000);
 
 function createSession() {
-    const token = crypto.randomBytes(32).toString('hex');
-    _sessions.set(token, Date.now() + SESSION_TTL);
+    const token     = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + SESSION_TTL;
+    db.createSession(token, expiresAt);
     return token;
 }
 
 function destroySession(token) {
-    _sessions.delete(token);
+    db.deleteSession(token);
 }
 
 function _getToken(req) {
@@ -24,9 +26,9 @@ function _getToken(req) {
 function isAuthenticated(req) {
     const token = _getToken(req);
     if (!token) return false;
-    const exp = _sessions.get(token);
-    if (!exp) return false;
-    if (Date.now() > exp) { _sessions.delete(token); return false; }
+    const row = db.getSession(token);
+    if (!row) return false;
+    if (Date.now() > row.expires_at) { db.deleteSession(token); return false; }
     return true;
 }
 
