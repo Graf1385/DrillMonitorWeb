@@ -257,6 +257,9 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
 
         await _runCmd(fetchCmd, { cwd: ROOT_DIR, timeout: 30000 });
 
+        // Fix ownership of scripts dir if it was deployed as root (prevents git reset --hard failure)
+        await _runCmd('sudo /opt/drillmonitor/scripts/set-network.sh fix-ownership', { cwd: ROOT_DIR, timeout: 5000 }).catch(() => {});
+
         // Reset to release tag; fall back to origin/main if tag unknown
         const tag = (_updateCache && _updateCache.latest) ? ('v' + _updateCache.latest) : 'origin/main';
         await _runCmd('git reset --hard ' + tag,                    { cwd: ROOT_DIR, timeout: 15000  });
