@@ -30,10 +30,8 @@ setInterval(function () {
 
 // ── Update checker ────────────────────────────────────────────────────────────
 
-const GITHUB_REPO  = 'Graf1385/DrillMonitorWeb';
-const UPDATE_TTL   = 60 * 60 * 1000; // 1 hour cache
-let _updateCache   = null;
-let _updateCacheAt = 0;
+const GITHUB_REPO = 'Graf1385/DrillMonitorWeb';
+let _updateCache  = null;
 
 function _semverGt(a, b) {
     var ap = a.split('.').map(Number);
@@ -213,16 +211,11 @@ router.get('/api/update/check', function (req, res) {
     if (_isRateLimited(req.ip || 'unknown', 20, 60 * 1000)) {
         return res.status(429).json({ error: 'Слишком много запросов' });
     }
-    var now = Date.now();
-    if (_updateCache && (now - _updateCacheAt) < UPDATE_TTL) {
-        return res.json(_updateCache);
-    }
     _fetchLatestRelease(function (err, result) {
         if (err) {
             return res.status(503).json({ error: 'GitHub недоступен' });
         }
-        _updateCache   = result;
-        _updateCacheAt = Date.now();
+        _updateCache = result;
         res.json(result);
     });
 });
@@ -269,8 +262,7 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
         await _runCmd('git reset --hard ' + tag,                    { cwd: ROOT_DIR, timeout: 15000  });
         await _runCmd('npm install --omit=dev --no-fund --no-audit', { cwd: ROOT_DIR, timeout: 120000 });
 
-        _updateCache   = null;
-        _updateCacheAt = 0;
+        _updateCache = null;
         res.json({ ok: true });
 
         setTimeout(function () {
