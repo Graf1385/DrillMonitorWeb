@@ -1,5 +1,15 @@
 <dialog class="settingsModal" id="networkSettingsModal">
-    <h1>Сетевые настройки</h1>
+    <h1>Настройки</h1>
+
+    <h2>Источник данных</h2>
+    <table class="settingsTable">
+        <tr>
+            <td>Каталог PetroServices</td>
+            <td><input id="dsStorePath" class="settingsInput" type="text" placeholder="/path/to/store"></td>
+        </tr>
+    </table>
+
+    <h2>Сетевые настройки</h2>
     <table class="settingsTable">
         <tr><th>Параметр</th><th>Значение</th></tr>
         <tr>
@@ -45,6 +55,7 @@
     </p>
     <p id="netStatus" class="modalMessage"></p>
     <footer>
+        <button class="modalButton" style="grid-column:1" onclick="dsCheckPath()">Проверить путь</button>
         <button class="modalButton okBtn" onclick="applyNetworkSettings()">Применить</button>
         <button class="modalButton cancelBtn" onclick="closeNetworkSettings()">Отмена</button>
     </footer>

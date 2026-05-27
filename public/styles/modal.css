@@ -514,6 +514,17 @@ dialog[open] {
     text-transform: uppercase;
 }
 
+.settingsModal h2 {
+    margin: 8px 12px 0;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8b949e;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
 .settingsModal footer {
     display: grid;
     grid-template-columns: repeat(4, auto);
