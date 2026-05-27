@@ -1,0 +1,52 @@
+<dialog class="settingsModal" id="networkSettingsModal">
+    <h1>Сетевые настройки</h1>
+    <table class="settingsTable">
+        <tr><th>Параметр</th><th>Значение</th></tr>
+        <tr>
+            <td>Режим</td>
+            <td>
+                <select class="settingsSelect" id="netMode" onchange="netModeChanged()">
+                    <option value="dhcp">DHCP (авто)</option>
+                    <option value="static">Статический IP</option>
+                </select>
+            </td>
+        </tr>
+        <tr id="netRow_address" style="display:none">
+            <td>IP-адрес</td>
+            <td><input type="text" class="settingsInput" id="netAddress" placeholder="192.168.1.100"></td>
+        </tr>
+        <tr id="netRow_prefix" style="display:none">
+            <td>Маска подсети</td>
+            <td>
+                <select class="settingsSelect" id="netPrefix">
+                    <option value="8">/8 — 255.0.0.0</option>
+                    <option value="16">/16 — 255.255.0.0</option>
+                    <option value="24" selected>/24 — 255.255.255.0</option>
+                    <option value="25">/25 — 255.255.255.128</option>
+                    <option value="26">/26 — 255.255.255.192</option>
+                    <option value="27">/27 — 255.255.255.224</option>
+                    <option value="28">/28 — 255.255.255.240</option>
+                    <option value="29">/29 — 255.255.255.248</option>
+                    <option value="30">/30 — 255.255.255.252</option>
+                </select>
+            </td>
+        </tr>
+        <tr id="netRow_gateway" style="display:none">
+            <td>Шлюз</td>
+            <td><input type="text" class="settingsInput" id="netGateway" placeholder="192.168.1.1"></td>
+        </tr>
+        <tr id="netRow_dns" style="display:none">
+            <td>DNS</td>
+            <td><input type="text" class="settingsInput" id="netDns" placeholder="8.8.8.8"></td>
+        </tr>
+    </table>
+    <p id="netWarning" class="modalMessage" style="color:#e57373;display:none">
+        Внимание: изменение IP-адреса разорвёт текущее соединение.
+    </p>
+    <p id="netStatus" class="modalMessage"></p>
+    <footer>
+        <button class="modalButton okBtn" onclick="applyNetworkSettings()">Применить</button>
+        <button class="modalButton cancelBtn" onclick="closeNetworkSettings()">Отмена</button>
+    </footer>
+</dialog>
+<script src="networkSettings.js"></script>

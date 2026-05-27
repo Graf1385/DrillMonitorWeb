@@ -6,6 +6,7 @@ const multer      = require('multer');
 const logger      = require('../logger');
 const dataSource  = require('../dataSource');
 const auth        = require('../auth');
+const { execFileSync } = require('child_process');
 
 const _upload = multer({
     storage: multer.memoryStorage(),
@@ -282,6 +283,34 @@ router.delete('/api/profiles/:id', (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ── Network settings ──────────────────────────────────────────────────────────
+
+router.post('/api/network', auth.requireAuth, function(req, res) {
+    try {
+        var mode = String(req.body.mode || '');
+        if (mode === 'dhcp') {
+            execFileSync('sudo', ['/opt/drillmonitor/scripts/set-network.sh', 'dhcp'], { timeout: 15000 });
+        } else if (mode === 'static') {
+            var address = String(req.body.address || '');
+            var prefix  = parseInt(req.body.prefix, 10);
+            var gateway = String(req.body.gateway || '');
+            var dns     = String(req.body.dns || '8.8.8.8');
+            var ipRe = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipRe.test(address)) return res.status(400).json({ error: 'Неверный IP-адрес' });
+            if (!ipRe.test(gateway)) return res.status(400).json({ error: 'Неверный адрес шлюза' });
+            if (isNaN(prefix) || prefix < 1 || prefix > 32) return res.status(400).json({ error: 'Неверная маска' });
+            execFileSync('sudo', ['/opt/drillmonitor/scripts/set-network.sh', 'static', address + '/' + prefix, gateway, dns], { timeout: 15000 });
+        } else {
+            return res.status(400).json({ error: 'Неверный режим' });
+        }
+        logger.log('Сетевые настройки изменены: ' + mode);
+        res.json({ ok: true });
+    } catch(e) {
+        console.error('[network] apply error:', e.message);
+        res.status(500).json({ error: 'Ошибка применения сетевых настроек' });
     }
 });
 
