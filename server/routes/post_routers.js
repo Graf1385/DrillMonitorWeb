@@ -8,6 +8,22 @@ const dataSource  = require('../dataSource');
 const auth        = require('../auth');
 const { execFileSync, exec } = require('child_process');
 
+// ── Login rate limiter ────────────────────────────────────────────────────────
+const _loginAttempts = new Map();
+setInterval(function () {
+    const now = Date.now();
+    for (const [k, v] of _loginAttempts) if (now > v.reset) _loginAttempts.delete(k);
+}, 5 * 60 * 1000);
+
+function _loginRateLimited(ip) {
+    const now   = Date.now();
+    let   entry = _loginAttempts.get(ip);
+    if (!entry || now > entry.reset) entry = { count: 0, reset: now + 15 * 60 * 1000 };
+    entry.count++;
+    _loginAttempts.set(ip, entry);
+    return entry.count > 10;
+}
+
 const _upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 },
@@ -18,6 +34,9 @@ const _upload = multer({
 });
 
 router.post('/api/auth/login', (req, res) => {
+    if (_loginRateLimited(req.ip || 'unknown')) {
+        return res.status(429).json({ ok: false, error: 'Слишком много попыток. Подождите 15 минут.' });
+    }
     const { name, password } = req.body;
     if (db.verifyUser(name, password)) {
         logger.log('Вход в систему: пользователь "' + name + '"');
@@ -178,7 +197,7 @@ router.put('/api/units/:id', (req, res) => {
     }
 });
 
-router.delete('/api/units/:id', (req, res) => {
+router.delete('/api/units/:id', auth.requireAuth, (req, res) => {
     try {
         const result = db.deleteUnit(parseInt(req.params.id));
         if (result.changes === 0) return res.status(404).json({ error: 'Единица не найдена' });
@@ -226,7 +245,7 @@ router.put('/api/parameters/:id', (req, res) => {
     }
 });
 
-router.delete('/api/parameters/:id', (req, res) => {
+router.delete('/api/parameters/:id', auth.requireAuth, (req, res) => {
     try {
         const result = db.deleteParameter(parseInt(req.params.id));
         if (result.changes === 0) return res.status(404).json({ error: 'Параметр не найден' });
@@ -249,7 +268,7 @@ router.post('/api/logs', (req, res) => {
     }
 });
 
-router.delete('/api/logs', (req, res) => {
+router.delete('/api/logs', auth.requireAuth, (req, res) => {
     try {
         db.clearLogs();
         res.status(200).json({ ok: true });
@@ -259,7 +278,7 @@ router.delete('/api/logs', (req, res) => {
     }
 });
 
-router.delete('/api/alarm-sounds/:id', (req, res) => {
+router.delete('/api/alarm-sounds/:id', auth.requireAuth, (req, res) => {
     try {
         const result = db.deleteAlarmSound(parseInt(req.params.id));
         if (result.changes === 0) return res.status(404).json({ error: 'Звук не найден' });
@@ -271,7 +290,7 @@ router.delete('/api/alarm-sounds/:id', (req, res) => {
     }
 });
 
-router.delete('/api/profiles/:id', (req, res) => {
+router.delete('/api/profiles/:id', auth.requireAuth, (req, res) => {
     try {
         const profile = db.getProfile(parseInt(req.params.id));
         const result = db.deleteProfile(parseInt(req.params.id));

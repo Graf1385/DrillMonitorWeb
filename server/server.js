@@ -18,6 +18,7 @@ _app.engine('hbs', _hbs.engine);
 _app.set('view engine', 'hbs');
 _app.set('views', './server/views');
 
+_app.disable('x-powered-by');
 _app.use(_express.json());
 _app.use(_express.urlencoded({ extended : false}))
 _app.use(_express.static('./public/scripts'));
@@ -52,4 +53,4 @@ process.on('SIGINT',  () => { streamManager.stopAll(); process.exit(0); });
 module.exports = {
     Start : Start
 }
-///Проверка обновления версия 1.1.1
+///Проверка обновления версия 1.1.2

@@ -39,7 +39,10 @@ function clearLogs() {
             document.querySelector('#logBody').innerHTML =
                 '<p class="alarmOverviewEmpty">Логов нет</p>';
         },
-        error: function () { showError('Ошибка очистки логов'); }
+        error: function (xhr) {
+            if (xhr.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return; }
+            showError('Ошибка очистки логов');
+        }
     });
 }
 

@@ -18,7 +18,10 @@
         var url     = running ? '/api/data-source/stop' : '/api/data-source/start';
         $.ajax({ url: url, method: 'POST' })
             .done(function (r) { _applyRunState(r.settings.running); })
-            .fail(function (xhr) { showError((xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка'); });
+            .fail(function (xhr) {
+                if (xhr.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return; }
+                showError((xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка');
+            });
     };
 
     $(document).ready(function () {

@@ -135,8 +135,9 @@ function submitLogin() {
             sideBar.classList.add('open');
             _restartCollapseTimer();
         },
-        error: function() {
-            showError('Неверный логин или пароль');
+        error: function(xhr) {
+            var msg = xhr.responseJSON && xhr.responseJSON.error;
+            showError(msg || 'Неверный логин или пароль');
         }
     });
 }

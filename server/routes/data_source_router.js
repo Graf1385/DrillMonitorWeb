@@ -4,12 +4,13 @@ const express    = require('express');
 const router     = express.Router();
 const dataSource = require('../dataSource');
 const sse        = require('../sse');
+const auth       = require('../auth');
 
 router.get('/api/data-source/settings', function (req, res) {
     res.json(dataSource.getSettings());
 });
 
-router.post('/api/data-source/settings', function (req, res) {
+router.post('/api/data-source/settings', auth.requireAuth, function (req, res) {
     try {
         res.json({ ok: true, settings: dataSource.saveSettings(req.body) });
     } catch (e) {
@@ -21,7 +22,7 @@ router.post('/api/data-source/check-path', function (req, res) {
     res.json(dataSource.checkPath(req.body && req.body.storePath));
 });
 
-router.post('/api/data-source/start', function (req, res) {
+router.post('/api/data-source/start', auth.requireAuth, function (req, res) {
     const settings = dataSource.setRunning(true);
     dataSource.startPolling(
         function (record) {
@@ -41,7 +42,7 @@ router.post('/api/data-source/start', function (req, res) {
     res.json({ ok: true, settings });
 });
 
-router.post('/api/data-source/stop', function (req, res) {
+router.post('/api/data-source/stop', auth.requireAuth, function (req, res) {
     dataSource.stopPolling();
     const settings = dataSource.setRunning(false);
     sse.broadcast('run-state', { running: false });
