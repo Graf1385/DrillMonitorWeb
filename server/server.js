@@ -53,4 +53,4 @@ process.on('SIGINT',  () => { streamManager.stopAll(); process.exit(0); });
 module.exports = {
     Start : Start
 }
-///Проверка обновления версия 1.1.2
+///Проверка обновления версия 1.1.3
