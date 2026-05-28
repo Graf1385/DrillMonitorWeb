@@ -2,6 +2,9 @@
 set -euo pipefail
 CON="Wired connection 1"
 case "$1" in
+    fix-ownership)
+        chown -R drillmonitor:drillmonitor /opt/drillmonitor/scripts
+        ;;
     dhcp)
         nmcli con mod "$CON" ipv4.method auto ipv4.addresses "" ipv4.gateway "" ipv4.dns ""
         nmcli con up "$CON"
