@@ -1,22 +1,30 @@
-var _loaderOverlay = document.querySelector('#loaderOverlay');
+var _loaderOverlay = null;
 var _loaderCount   = 0;
 
+function _getLoaderOverlay() {
+    if (!_loaderOverlay) _loaderOverlay = document.getElementById('loaderOverlay');
+    return _loaderOverlay;
+}
+
 $(document).ajaxSend(function () {
-    if (_loaderCount === 0) _loaderOverlay.classList.add('active');
+    var el = _getLoaderOverlay();
+    if (_loaderCount === 0 && el) el.classList.add('active');
     _loaderCount++;
 });
-
 $(document).ajaxComplete(function () {
+    var el = _getLoaderOverlay();
     _loaderCount = Math.max(0, _loaderCount - 1);
-    if (_loaderCount === 0) _loaderOverlay.classList.remove('active');
+    if (_loaderCount === 0 && el) el.classList.remove('active');
 });
 
 function showLoader() {
-    if (_loaderCount === 0) _loaderOverlay.classList.add('active');
+    var el = _getLoaderOverlay();
+    if (_loaderCount === 0 && el) el.classList.add('active');
     _loaderCount++;
 }
 
 function hideLoader() {
+    var el = _getLoaderOverlay();
     _loaderCount = Math.max(0, _loaderCount - 1);
-    if (_loaderCount === 0) _loaderOverlay.classList.remove('active');
+    if (_loaderCount === 0 && el) el.classList.remove('active');
 }

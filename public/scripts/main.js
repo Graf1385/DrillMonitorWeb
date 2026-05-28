@@ -131,7 +131,7 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 
     function _check(manual) {
         if (_btn) _btn.classList.add('checking');
-        $.getJSON('/api/update/check')
+        $.ajax({ url: '/api/update/check', dataType: 'json', global: false, timeout: 10000 })
             .done(function (data) {
                 if (data.hasUpdate) {
                     if (_badge) _badge.classList.add('visible');

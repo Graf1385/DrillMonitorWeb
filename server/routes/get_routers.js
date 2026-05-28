@@ -44,6 +44,7 @@ function _semverGt(a, b) {
 }
 
 function _fetchLatestRelease(cb) {
+    var done  = false;
     var token = process.env.GITHUB_TOKEN;
     var hdrs  = { 'User-Agent': 'DrillMonitorWeb/' + pkg.version };
     if (token) hdrs['Authorization'] = 'token ' + token;
@@ -52,10 +53,16 @@ function _fetchLatestRelease(cb) {
         path:     '/repos/' + GITHUB_REPO + '/releases/latest',
         headers:  hdrs
     };
+    var deadline = setTimeout(function () {
+        if (!done) { done = true; try { req.destroy(); } catch (e) {} cb(new Error('timeout')); }
+    }, 8000);
     var req = https.get(options, function (res) {
         var raw = '';
         res.on('data', function (c) { raw += c; });
         res.on('end', function () {
+            clearTimeout(deadline);
+            if (done) return;
+            done = true;
             try {
                 var data    = JSON.parse(raw);
                 var tag     = (data.tag_name || '').replace(/^v/, '');
@@ -69,8 +76,10 @@ function _fetchLatestRelease(cb) {
             } catch (e) { cb(e); }
         });
     });
-    req.setTimeout(6000, function () { req.destroy(); });
-    req.on('error', cb);
+    req.on('error', function (e) {
+        clearTimeout(deadline);
+        if (!done) { done = true; cb(e); }
+    });
 }
 
 router.get('/', (req, res) =>{
