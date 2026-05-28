@@ -10,10 +10,17 @@ function showNetworkSettings() {
         return r.ok ? r.json() : {};
     }).catch(function() { return {}; });
 
-    Promise.all([loadNet, loadDs]).then(function(results) {
+    var loadPush = fetch('/api/push/settings').then(function(r) {
+        return r.ok ? r.json() : {};
+    }).catch(function() { return {}; });
+
+    Promise.all([loadNet, loadDs, loadPush]).then(function(results) {
         var d = results[0];
         var s = results[1];
+        var p = results[2];
         if (!d) return;
+
+        document.getElementById('pushApiKey').value = (p && p.apiKey) ? p.apiKey : '';
 
         document.getElementById('netMode').value = d.mode;
         document.getElementById('netAddress').value = d.address;
@@ -108,4 +115,44 @@ function dsCheckPath() {
 
 function closeNetworkSettings() {
     document.getElementById('networkSettingsModal').close();
+}
+
+function generateApiKey() {
+    fetch('/api/push/settings/generate', { method: 'POST' })
+        .then(function(r) {
+            if (r.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return null; }
+            if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || r.status); });
+            return r.json();
+        })
+        .then(function(d) {
+            if (!d) return;
+            document.getElementById('pushApiKey').value = d.apiKey;
+            showSuccess('API-ключ сгенерирован');
+        })
+        .catch(function(e) { showError('Ошибка: ' + e.message); });
+}
+
+function copyApiKey() {
+    var el  = document.getElementById('pushApiKey');
+    var key = el ? el.value : '';
+    if (!key) { showError('API-ключ не установлен'); return; }
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(key)
+            .then(function()  { showSuccess('Ключ скопирован'); })
+            .catch(function() { _fallbackCopy(key); });
+    } else {
+        _fallbackCopy(key);
+    }
+}
+
+function _fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity  = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showSuccess('Ключ скопирован'); }
+    catch (e) { showError('Не удалось скопировать'); }
+    document.body.removeChild(ta);
 }

@@ -14,6 +14,19 @@
         </tr>
     </table>
 
+    <h2>BCS Loader — Push API</h2>
+    <table class="settingsTable">
+        <tr>
+            <td>API-ключ</td>
+            <td style="display:flex;gap:6px;align-items:center">
+                <input id="pushApiKey" class="settingsInput" type="text" readonly
+                       placeholder="не установлен" style="flex:1;font-family:monospace;font-size:12px">
+                <button class="modalButton" onclick="copyApiKey()" title="Копировать в буфер">⎘</button>
+                <button class="modalButton" onclick="generateApiKey()">Сгенерировать</button>
+            </td>
+        </tr>
+    </table>
+
     <h2>Сетевые настройки</h2>
     <table class="settingsTable">
         <tr><th>Параметр</th><th>Значение</th></tr>
