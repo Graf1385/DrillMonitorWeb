@@ -80,8 +80,8 @@ function applyNetworkSettings() {
         return r.json();
     }).then(function(d) {
         if (!d) return;
-        hideLoader();
-        showSuccess('Настройки применены');
+        document.querySelector('#loaderOverlay .loader-text').textContent = 'Перезагрузка...';
+        showSuccess('Настройки применены. Устройство перезагружается...');
     }).catch(function(e) {
         hideLoader();
         showError('Ошибка: ' + e.message);

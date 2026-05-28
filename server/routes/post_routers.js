@@ -6,7 +6,7 @@ const multer      = require('multer');
 const logger      = require('../logger');
 const dataSource  = require('../dataSource');
 const auth        = require('../auth');
-const { execFileSync } = require('child_process');
+const { execFileSync, exec } = require('child_process');
 
 const _upload = multer({
     storage: multer.memoryStorage(),
@@ -308,9 +308,12 @@ router.post('/api/network', auth.requireAuth, function(req, res) {
         }
         logger.log('Сетевые настройки изменены: ' + mode);
         res.json({ ok: true });
+        setTimeout(function () {
+            exec('sudo /opt/drillmonitor/scripts/set-network.sh reboot');
+        }, 800);
     } catch(e) {
         console.error('[network] apply error:', e.message);
-        res.status(500).json({ error: 'Ошибка применения сетевых настроек' });
+        res.status(500).json({ error: e.message || 'Ошибка применения сетевых настроек' });
     }
 });
 

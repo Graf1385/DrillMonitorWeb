@@ -13,6 +13,9 @@ case "$1" in
         nmcli con mod "$CON" ipv4.method manual ipv4.addresses "$2" ipv4.gateway "$3" ipv4.dns "$4"
         nmcli con up "$CON"
         ;;
+    reboot)
+        /sbin/reboot
+        ;;
     *)
         exit 1
         ;;
