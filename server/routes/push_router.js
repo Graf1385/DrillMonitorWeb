@@ -22,9 +22,8 @@ setInterval(function () {
 }, 60 * 1000);
 
 function _requireApiKey(req, res, next) {
-    const key = dataSource.getApiKey();
-    if (!key) return res.status(403).json({ error: 'API-ключ не настроен — сгенерируйте его в настройках' });
-    if (req.headers['x-api-key'] !== key) return res.status(401).json({ error: 'Неверный API-ключ' });
+    if (req.headers['x-api-key'] !== dataSource.getApiKey())
+        return res.status(401).json({ error: 'Неверный API-ключ' });
     next();
 }
 
@@ -46,44 +45,21 @@ function _startPush() {
     sse.broadcast('run-state', { running: true });
 }
 
-// ── Admin endpoints (session auth) ────────────────────────────────────────────
-
+// Returns API key for the settings UI (read-only, session auth)
 router.get('/api/push/settings', auth.requireAuth, function (req, res) {
-    const key = dataSource.getApiKey();
-    res.json({ apiKey: key || null, active: dataSource.isPushMode() });
+    res.json({ apiKey: dataSource.getApiKey() });
 });
 
-router.post('/api/push/settings/generate', auth.requireAuth, function (req, res) {
-    const key = dataSource.generateApiKey();
-    res.json({ ok: true, apiKey: key });
-});
-
-router.post('/api/push/deactivate', auth.requireAuth, function (req, res) {
-    dataSource.stopPushMode();
-    sse.broadcast('run-state', { running: false });
-    res.json({ ok: true });
-});
-
-// ── BCS_Loader endpoints (API key auth) ───────────────────────────────────────
-
-// Receive drill data record from BCS_Loader.
-// Auto-activates push mode on first call if not already active.
+// Receive drill data record from BCS_Loader — auto-activates push mode on first call
 router.post('/api/push/data', _requireApiKey, function (req, res) {
-    if (_isRateLimited(req.ip || 'unknown')) {
+    if (_isRateLimited(req.ip || 'unknown'))
         return res.status(429).json({ error: 'Слишком много запросов' });
-    }
 
-    if (!dataSource.isPushMode()) {
-        if (dataSource.isPolling()) {
-            return res.status(409).json({ error: 'Сервер в режиме опроса файлов. Остановите опрос через интерфейс.' });
-        }
-        _startPush();
-    }
+    if (!dataSource.isPushMode()) _startPush();
 
     const body = req.body;
-    if (!body || typeof body.params !== 'object') {
+    if (!body || typeof body.params !== 'object')
         return res.status(400).json({ error: 'Неверный формат пакета' });
-    }
 
     const params = new Map(
         Object.entries(body.params).map(([k, v]) => [parseInt(k, 10), v])
@@ -101,12 +77,7 @@ router.post('/api/push/data', _requireApiKey, function (req, res) {
 router.post('/api/push/state', _requireApiKey, function (req, res) {
     const running = !!req.body.running;
     if (running) {
-        if (!dataSource.isPushMode()) {
-            if (dataSource.isPolling()) {
-                return res.status(409).json({ error: 'Сервер в режиме опроса файлов' });
-            }
-            _startPush();
-        }
+        if (!dataSource.isPushMode()) _startPush();
     } else {
         dataSource.stopPushMode();
         sse.broadcast('run-state', { running: false, reason: req.body.reason || null });

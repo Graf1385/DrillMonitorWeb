@@ -6,18 +6,13 @@ function showNetworkSettings() {
         if (r.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return null; }
         return r.json();
     });
-    var loadDs = fetch('/api/data-source/settings').then(function(r) {
-        return r.ok ? r.json() : {};
-    }).catch(function() { return {}; });
-
     var loadPush = fetch('/api/push/settings').then(function(r) {
         return r.ok ? r.json() : {};
     }).catch(function() { return {}; });
 
-    Promise.all([loadNet, loadDs, loadPush]).then(function(results) {
+    Promise.all([loadNet, loadPush]).then(function(results) {
         var d = results[0];
-        var s = results[1];
-        var p = results[2];
+        var p = results[1];
         if (!d) return;
 
         document.getElementById('pushApiKey').value = (p && p.apiKey) ? p.apiKey : '';
@@ -32,8 +27,6 @@ function showNetworkSettings() {
         document.getElementById('netDns').value = d.dns;
         _netOrigAddress = d.address;
         _netOrigMode = d.mode;
-
-        document.getElementById('dsStorePath').value = s.storePath || '';
 
         netModeChanged();
         document.getElementById('networkSettingsModal').showModal();
@@ -50,12 +43,11 @@ function netModeChanged() {
 }
 
 function applyNetworkSettings() {
-    var mode      = document.getElementById('netMode').value;
-    var address   = document.getElementById('netAddress').value.trim();
-    var prefix    = document.getElementById('netPrefix').value;
-    var gateway   = document.getElementById('netGateway').value.trim();
-    var dns       = document.getElementById('netDns').value.trim();
-    var storePath = document.getElementById('dsStorePath').value.trim();
+    var mode    = document.getElementById('netMode').value;
+    var address = document.getElementById('netAddress').value.trim();
+    var prefix  = document.getElementById('netPrefix').value;
+    var gateway = document.getElementById('netGateway').value.trim();
+    var dns     = document.getElementById('netDns').value.trim();
 
     if (mode === 'static' && address !== _netOrigAddress) {
         showError('Внимание: изменение IP-адреса разорвёт текущее соединение');
@@ -64,23 +56,17 @@ function applyNetworkSettings() {
     closeNetworkSettings();
     showLoader();
 
-    fetch('/api/data-source/settings', {
+    var body = { mode: mode };
+    if (mode === 'static') {
+        body.address = address;
+        body.prefix  = prefix;
+        body.gateway = gateway;
+        body.dns     = dns || '8.8.8.8';
+    }
+    fetch('/api/network', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storePath: storePath })
-    }).then(function() {
-        var body = { mode: mode };
-        if (mode === 'static') {
-            body.address = address;
-            body.prefix  = prefix;
-            body.gateway = gateway;
-            body.dns     = dns || '8.8.8.8';
-        }
-        return fetch('/api/network', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
+        body: JSON.stringify(body)
     }).then(function(r) {
         if (r.status === 401) { hideLoader(); if (typeof showLoginModal === 'function') showLoginModal(); return null; }
         if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || r.status); });
@@ -95,41 +81,8 @@ function applyNetworkSettings() {
     });
 }
 
-function dsCheckPath() {
-    var val = document.getElementById('dsStorePath').value.trim();
-    fetch('/api/data-source/check-path', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storePath: val })
-    }).then(function(r) { return r.json(); })
-    .then(function(r) {
-        if (r.ok) {
-            showSuccess(r.message || 'Путь найден');
-        } else {
-            showError(r.message || 'Путь не найден');
-        }
-    }).catch(function() {
-        showError('Ошибка проверки пути');
-    });
-}
-
 function closeNetworkSettings() {
     document.getElementById('networkSettingsModal').close();
-}
-
-function generateApiKey() {
-    fetch('/api/push/settings/generate', { method: 'POST' })
-        .then(function(r) {
-            if (r.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return null; }
-            if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || r.status); });
-            return r.json();
-        })
-        .then(function(d) {
-            if (!d) return;
-            document.getElementById('pushApiKey').value = d.apiKey;
-            showSuccess('API-ключ сгенерирован');
-        })
-        .catch(function(e) { showError('Ошибка: ' + e.message); });
 }
 
 function copyApiKey() {
