@@ -28,12 +28,10 @@ function showNetworkSettings() {
 
         document.getElementById('dsStorePath').value = s.storePath || '';
 
-        document.getElementById('netStatus').textContent = '';
-        document.getElementById('netWarning').style.display = 'none';
         netModeChanged();
         document.getElementById('networkSettingsModal').showModal();
     }).catch(function() {
-        alert('Не удалось загрузить настройки');
+        showError('Не удалось загрузить настройки');
     });
 }
 
@@ -53,13 +51,11 @@ function applyNetworkSettings() {
     var storePath = document.getElementById('dsStorePath').value.trim();
 
     if (mode === 'static' && address !== _netOrigAddress) {
-        document.getElementById('netWarning').style.display = '';
+        showError('Внимание: изменение IP-адреса разорвёт текущее соединение');
     }
 
-    var statusEl = document.getElementById('netStatus');
-    var okBtn    = document.querySelector('#networkSettingsModal .okBtn');
-    statusEl.textContent = 'Применяется...';
-    okBtn.disabled = true;
+    closeNetworkSettings();
+    showLoader();
 
     fetch('/api/data-source/settings', {
         method: 'POST',
@@ -79,33 +75,34 @@ function applyNetworkSettings() {
             body: JSON.stringify(body)
         });
     }).then(function(r) {
-        if (r.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); okBtn.disabled = false; return null; }
+        if (r.status === 401) { hideLoader(); if (typeof showLoginModal === 'function') showLoginModal(); return null; }
         if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || r.status); });
         return r.json();
     }).then(function(d) {
         if (!d) return;
-        statusEl.textContent = 'Настройки применены';
-        okBtn.disabled = false;
-        setTimeout(function() { closeNetworkSettings(); }, 1500);
+        hideLoader();
+        showSuccess('Настройки применены');
     }).catch(function(e) {
-        statusEl.textContent = 'Ошибка: ' + e.message;
-        okBtn.disabled = false;
+        hideLoader();
+        showError('Ошибка: ' + e.message);
     });
 }
 
 function dsCheckPath() {
     var val = document.getElementById('dsStorePath').value.trim();
-    var statusEl = document.getElementById('netStatus');
-    statusEl.textContent = 'Проверяется...';
     fetch('/api/data-source/check-path', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storePath: val })
     }).then(function(r) { return r.json(); })
     .then(function(r) {
-        statusEl.textContent = r.message || (r.ok ? 'Путь найден' : 'Путь не найден');
+        if (r.ok) {
+            showSuccess(r.message || 'Путь найден');
+        } else {
+            showError(r.message || 'Путь не найден');
+        }
     }).catch(function() {
-        statusEl.textContent = 'Ошибка проверки пути';
+        showError('Ошибка проверки пути');
     });
 }
 

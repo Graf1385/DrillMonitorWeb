@@ -7,6 +7,11 @@
             <td>Каталог PetroServices</td>
             <td><input id="dsStorePath" class="settingsInput" type="text" placeholder="/path/to/store"></td>
         </tr>
+        <tr>
+            <td colspan="2" style="padding:4px 6px">
+                <button class="modalButton" style="width:100%;height:32px;font-size:13px" onclick="dsCheckPath()">Проверить путь</button>
+            </td>
+        </tr>
     </table>
 
     <h2>Сетевые настройки</h2>
@@ -50,12 +55,7 @@
             <td><input type="text" class="settingsInput" id="netDns" placeholder="8.8.8.8"></td>
         </tr>
     </table>
-    <p id="netWarning" class="modalMessage" style="color:#e57373;display:none">
-        Внимание: изменение IP-адреса разорвёт текущее соединение.
-    </p>
-    <p id="netStatus" class="modalMessage"></p>
     <footer>
-        <button class="modalButton" style="grid-column:1" onclick="dsCheckPath()">Проверить путь</button>
         <button class="modalButton okBtn" onclick="applyNetworkSettings()">Применить</button>
         <button class="modalButton cancelBtn" onclick="closeNetworkSettings()">Отмена</button>
     </footer>
