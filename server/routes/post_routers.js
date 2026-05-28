@@ -4,7 +4,6 @@ const db          = require('../db');
 const sse         = require('../sse');
 const multer      = require('multer');
 const logger      = require('../logger');
-const dataSource  = require('../dataSource');
 const auth        = require('../auth');
 const { execFileSync, exec } = require('child_process');
 
@@ -106,7 +105,6 @@ router.post('/api/profiles/:id/select', (req, res) => {
         if (!profile) return res.status(404).json({ error: 'Профиль не найден' });
         logger.log('Активирован профиль "' + profile.name + '" (id=' + profile.id + ')');
         sse.broadcast('profile-selected', profile);
-        dataSource.refreshWatchedParams();
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
@@ -125,7 +123,6 @@ router.post('/api/profiles/:id/indicators', (req, res) => {
         const profile = db.getProfile(profileId);
         logger.log('Сохранены индикаторы профиля "' + (profile ? profile.name : profileId) + '" (' + list.length + ' шт.)');
         sse.broadcast('workspace-saved', profile);
-        dataSource.refreshWatchedParams();
         res.status(200).json({ ok: true });
     } catch (error) {
         console.error(error);
