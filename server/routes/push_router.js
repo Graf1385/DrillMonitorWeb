@@ -4,6 +4,21 @@ const express    = require('express');
 const router     = express.Router();
 const dataSource = require('../dataSource');
 const sse        = require('../sse');
+const db         = require('../db');
+
+// Param IDs whose value should be overridden with the authoritative LST depth.
+// Populated at startup from the DB by matching known depth-parameter names.
+const _DEPTH_NAMES = ['глубина забоя', 'глубина долота'];
+let _depthParamIds = [];
+(function () {
+    try {
+        const rows = db.getParameters();
+        rows.forEach(function (p) {
+            if (p.name && _DEPTH_NAMES.indexOf(p.name.toLowerCase()) !== -1)
+                _depthParamIds.push(p.id);
+        });
+    } catch (_) {}
+})();
 
 // Rate limiter: max 5 push/data requests per second per IP
 const _rlMap = new Map();
@@ -52,6 +67,11 @@ router.post('/api/push/data', function (req, res) {
     const params = new Map(
         Object.entries(body.params).map(([k, v]) => [parseInt(k, 10), v])
     );
+    // Override depth params with authoritative LST depth from the file header
+    const lstDepth = Number(body.depth);
+    if (!isNaN(lstDepth) && lstDepth > 0)
+        _depthParamIds.forEach(function (id) { params.set(id, lstDepth); });
+
     dataSource.receivePushRecord({
         recNo:  Number(body.recNo)  || 0,
         depth:  Number(body.depth)  || 0,
