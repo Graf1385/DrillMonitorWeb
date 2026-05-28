@@ -1,10 +1,11 @@
 'use strict';
 
-const fs   = require('fs');
-const fsp  = require('fs').promises;
-const path = require('path');
-const net  = require('net');
-const db   = require('./db/connection');
+const fs     = require('fs');
+const fsp    = require('fs').promises;
+const path   = require('path');
+const net    = require('net');
+const crypto = require('crypto');
+const db     = require('./db/connection');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'data-source-settings.json');
 const DEFAULTS      = { storePath: '', running: false };
@@ -29,6 +30,18 @@ function saveSettings(body) {
     const updated = Object.assign(current, { storePath: String(body.storePath || '') });
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf8');
     return updated;
+}
+
+function getApiKey() {
+    return _load().apiKey || '';
+}
+
+function generateApiKey() {
+    const key     = crypto.randomBytes(32).toString('hex');
+    const current = _load();
+    current.apiKey = key;
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(current, null, 2), 'utf8');
+    return key;
 }
 
 function setRunning(state) {
@@ -367,11 +380,71 @@ function stopPolling() {
     _cachedLstPath    = null;
 }
 
+// ── Push mode (BCS_Loader sends data instead of polling files) ─────────────────
+
+let _pushMode        = false;
+let _pushLastTime    = 0;
+let _pushDataStale   = false;
+let _pushStaleReason = null;
+let _pushStaleTimer  = null;
+
+function startPushMode(onRecord, { onStale, onResume } = {}) {
+    if (_pushMode || _polling) return;
+    _pushMode        = true;
+    _pushLastTime    = Date.now();
+    _pushDataStale   = false;
+    _pushStaleReason = null;
+    _onRecord        = onRecord || null;
+    _onStale         = onStale  || null;
+    _onResume        = onResume || null;
+
+    _pushStaleTimer = setInterval(function () {
+        if (!_pushMode || _pushDataStale) return;
+        if (Date.now() - _pushLastTime > STALE_TIMEOUT) {
+            _pushDataStale   = true;
+            _pushStaleReason = 'network';
+            if (_onStale) _onStale('network');
+        }
+    }, 1000);
+}
+
+function stopPushMode() {
+    _pushMode        = false;
+    _pushDataStale   = false;
+    _pushStaleReason = null;
+    _pushLastTime    = 0;
+    if (_pushStaleTimer) { clearInterval(_pushStaleTimer); _pushStaleTimer = null; }
+    _onRecord = _onStale = _onResume = null;
+}
+
+function receivePushRecord(record) {
+    if (!_pushMode) return;
+    _pushLastTime = Date.now();
+    if (_pushDataStale) {
+        _pushDataStale   = false;
+        _pushStaleReason = null;
+        if (_onResume) _onResume();
+    }
+    if (_onRecord) _onRecord(record);
+}
+
+function isPolling()  { return _polling;   }
+function isPushMode() { return _pushMode;  }
+
 // Returns the current run state for newly connected SSE clients.
 function getRunState() {
-    if (!_polling)   return { running: false, reason: null };
-    if (_dataStale)  return { running: false, reason: _lastStaleReason };
+    if (_pushMode) {
+        if (_pushDataStale) return { running: false, reason: _pushStaleReason };
+        return { running: true };
+    }
+    if (!_polling)  return { running: false, reason: null };
+    if (_dataStale) return { running: false, reason: _lastStaleReason };
     return { running: true };
 }
 
-module.exports = { getSettings, saveSettings, checkPath, setRunning, getEffectivePath, startPolling, stopPolling, refreshWatchedParams, getRunState };
+module.exports = {
+    getSettings, saveSettings, checkPath, setRunning, getEffectivePath,
+    startPolling, stopPolling, refreshWatchedParams, getRunState,
+    getApiKey, generateApiKey,
+    startPushMode, stopPushMode, receivePushRecord, isPolling, isPushMode,
+};

@@ -4,6 +4,7 @@ const _get_router    = require("./routes/get_routers");
 const _post_router   = require("./routes/post_routers");
 const _stream_router    = require("./routes/streams_router");
 const _datasrc_router   = require("./routes/data_source_router");
+const _push_router      = require("./routes/push_router");
 const streamManager  = require("./streams/StreamManager");
 const logger         = require("./logger");
 const db             = require("./db");
@@ -30,6 +31,7 @@ _app.use(_get_router);
 _app.use(_post_router);
 _app.use(_stream_router);
 _app.use(_datasrc_router);
+_app.use(_push_router);
 
 function Start(port){
 
