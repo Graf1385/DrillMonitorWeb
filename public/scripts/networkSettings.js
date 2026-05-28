@@ -2,20 +2,11 @@ var _netOrigAddress = '';
 var _netOrigMode = '';
 
 function showNetworkSettings() {
-    var loadNet = fetch('/api/network').then(function(r) {
+    fetch('/api/network').then(function(r) {
         if (r.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return null; }
         return r.json();
-    });
-    var loadPush = fetch('/api/push/settings').then(function(r) {
-        return r.ok ? r.json() : {};
-    }).catch(function() { return {}; });
-
-    Promise.all([loadNet, loadPush]).then(function(results) {
-        var d = results[0];
-        var p = results[1];
+    }).then(function(d) {
         if (!d) return;
-
-        document.getElementById('pushApiKey').value = (p && p.apiKey) ? p.apiKey : '';
 
         document.getElementById('netMode').value = d.mode;
         document.getElementById('netAddress').value = d.address;
@@ -83,29 +74,4 @@ function applyNetworkSettings() {
 
 function closeNetworkSettings() {
     document.getElementById('networkSettingsModal').close();
-}
-
-function copyApiKey() {
-    var el  = document.getElementById('pushApiKey');
-    var key = el ? el.value : '';
-    if (!key) { showError('API-ключ не установлен'); return; }
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(key)
-            .then(function()  { showSuccess('Ключ скопирован'); })
-            .catch(function() { _fallbackCopy(key); });
-    } else {
-        _fallbackCopy(key);
-    }
-}
-
-function _fallbackCopy(text) {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity  = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); showSuccess('Ключ скопирован'); }
-    catch (e) { showError('Не удалось скопировать'); }
-    document.body.removeChild(ta);
 }

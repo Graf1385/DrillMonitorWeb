@@ -1,31 +1,8 @@
 'use strict';
 
-const fs     = require('fs');
-const path   = require('path');
-const crypto = require('crypto');
-
-const SETTINGS_FILE = path.join(__dirname, 'data', 'data-source-settings.json');
-const STALE_TIMEOUT = 5000;
-
-function _load() {
-    try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (_) { return {}; }
-}
-
-function _save(data) {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf8');
-}
-
-// Returns the API key, auto-generating one on first run.
-function getApiKey() {
-    const data = _load();
-    if (!data.apiKey) {
-        data.apiKey = crypto.randomBytes(32).toString('hex');
-        _save(data);
-    }
-    return data.apiKey;
-}
-
 // ── Push mode (BCS_Loader → HTTP → DrillMonitorWeb) ──────────────────────────
+
+const STALE_TIMEOUT = 5000;
 
 let _pushMode        = false;
 let _pushLastTime    = 0;
@@ -78,7 +55,6 @@ function receivePushRecord(record) {
 
 function isPushMode() { return _pushMode; }
 
-// Returns current run state for newly connected SSE clients.
 function getRunState() {
     if (_pushMode) {
         if (_pushDataStale) return { running: false, reason: _pushStaleReason };
@@ -88,6 +64,5 @@ function getRunState() {
 }
 
 module.exports = {
-    getApiKey,
     startPushMode, stopPushMode, receivePushRecord, isPushMode, getRunState,
 };

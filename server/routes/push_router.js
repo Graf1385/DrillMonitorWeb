@@ -4,7 +4,6 @@ const express    = require('express');
 const router     = express.Router();
 const dataSource = require('../dataSource');
 const sse        = require('../sse');
-const auth       = require('../auth');
 
 // Rate limiter: max 5 push/data requests per second per IP
 const _rlMap = new Map();
@@ -20,12 +19,6 @@ setInterval(function () {
     const now = Date.now();
     for (const [k, v] of _rlMap) if (now > v.reset) _rlMap.delete(k);
 }, 60 * 1000);
-
-function _requireApiKey(req, res, next) {
-    if (req.headers['x-api-key'] !== dataSource.getApiKey())
-        return res.status(401).json({ error: 'Неверный API-ключ' });
-    next();
-}
 
 function _startPush() {
     dataSource.startPushMode(
@@ -45,13 +38,8 @@ function _startPush() {
     sse.broadcast('run-state', { running: true });
 }
 
-// Returns API key for the settings UI (read-only, session auth)
-router.get('/api/push/settings', auth.requireAuth, function (req, res) {
-    res.json({ apiKey: dataSource.getApiKey() });
-});
-
 // Receive drill data record from BCS_Loader — auto-activates push mode on first call
-router.post('/api/push/data', _requireApiKey, function (req, res) {
+router.post('/api/push/data', function (req, res) {
     if (_isRateLimited(req.ip || 'unknown'))
         return res.status(429).json({ error: 'Слишком много запросов' });
 
@@ -74,7 +62,7 @@ router.post('/api/push/data', _requireApiKey, function (req, res) {
 });
 
 // Receive run-state notification from BCS_Loader (started / stopped)
-router.post('/api/push/state', _requireApiKey, function (req, res) {
+router.post('/api/push/state', function (req, res) {
     const running = !!req.body.running;
     if (running) {
         if (!dataSource.isPushMode()) _startPush();
