@@ -8,6 +8,10 @@ set -euo pipefail
 APP_DIR="/opt/drillmonitor"
 APP_USER="drillmonitor"
 SERVICE_NAME="drillmonitor"
+# Порт: явный $PORT > порт из существующего юнита (при обновлении) > 3000
+if [[ -z "${PORT:-}" && -f "/etc/systemd/system/${SERVICE_NAME}.service" ]]; then
+    PORT=$(grep -oP '^Environment=PORT=\K[0-9]+' "/etc/systemd/system/${SERVICE_NAME}.service" || true)
+fi
 PORT="${PORT:-3000}"
 NODE_VERSION="20"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -121,6 +125,12 @@ info "Создание systemd-сервиса '${SERVICE_NAME}'..."
 
 NODE_BIN=$(command -v node)
 
+# Порты ниже 1024 требуют CAP_NET_BIND_SERVICE для непривилегированного пользователя
+CAP_LINE=""
+if [[ "$PORT" -lt 1024 ]]; then
+    CAP_LINE="AmbientCapabilities=CAP_NET_BIND_SERVICE"
+fi
+
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
 [Unit]
 Description=DrillMonitorWeb — система мониторинга бурения
@@ -145,6 +155,7 @@ Environment=NODE_ENV=production
 
 # Ограничения безопасности
 NoNewPrivileges=yes
+${CAP_LINE}
 PrivateTmp=no
 ProtectSystem=full
 ReadWritePaths=${APP_DIR}/server/data /tmp/drillmonitor_hls
