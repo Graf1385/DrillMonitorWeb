@@ -29,6 +29,14 @@ command -v snap >/dev/null || apt-get install -y -qq snapd
 snap list chromium >/dev/null 2>&1 || snap install chromium
 echo "PKGS_OK"
 
+# Политика Chromium: отключаем всплывающее меню перевода страницы
+# (флага --disable-features=Translate недостаточно в новых версиях)
+mkdir -p /etc/chromium/policies/managed /etc/chromium-browser/policies/managed
+printf '%s\n' '{ "TranslateEnabled": false }' \
+    | tee /etc/chromium/policies/managed/kiosk.json \
+    > /etc/chromium-browser/policies/managed/kiosk.json
+echo "POLICY_OK"
+
 echo "=== 3. Автологин на tty1 ==="
 mkdir -p /etc/systemd/system/getty@tty1.service.d
 cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
@@ -54,7 +62,9 @@ openbox &
 # Chromium перезапускается сам, если упал или был закрыт
 while true; do
     chromium --kiosk --noerrdialogs --disable-infobars \
-        --disable-session-crashed-bubble --disable-features=TranslateUI \
+        --disable-session-crashed-bubble \
+        --disable-features=Translate,TranslateUI \
+        --no-first-run --no-default-browser-check --lang=ru \
         --overscroll-history-navigation=0 \
         --autoplay-policy=no-user-gesture-required \
         --check-for-update-interval=31536000 \
