@@ -118,7 +118,9 @@ ok "Права настроены"
 info "Подготовка временной директории HLS..."
 mkdir -p /tmp/drillmonitor_hls
 chown "${APP_USER}:${APP_USER}" /tmp/drillmonitor_hls
-ok "Временная директория /tmp/drillmonitor_hls создана"
+# /tmp очищается при перезагрузке — tmpfiles.d пересоздаёт каталог при загрузке
+echo "d /tmp/drillmonitor_hls 0775 ${APP_USER} ${APP_USER} -" > /etc/tmpfiles.d/${SERVICE_NAME}.conf
+ok "Временная директория /tmp/drillmonitor_hls создана (+ tmpfiles.d)"
 
 # ── 10. systemd-сервис ────────────────────────────────────────────────────────
 info "Создание systemd-сервиса '${SERVICE_NAME}'..."
@@ -158,7 +160,7 @@ NoNewPrivileges=yes
 ${CAP_LINE}
 PrivateTmp=no
 ProtectSystem=full
-ReadWritePaths=${APP_DIR}/server/data /tmp/drillmonitor_hls
+ReadWritePaths=${APP_DIR}/server/data -/tmp/drillmonitor_hls
 
 [Install]
 WantedBy=multi-user.target
