@@ -114,6 +114,23 @@ chmod -R 755 "$APP_DIR"
 chmod -R 775 "$APP_DIR/server/data" 2>/dev/null || true
 ok "Права настроены"
 
+# ── 8a. sudoers: сетевые настройки и синхронизация времени из веб-приложения ─
+# set-network.sh — смена IP/DHCP и reboot из UI; set-time.sh — подстройка
+# системных часов под время данных BCS_Loader (в сети буровой нет NTP).
+info "Настройка sudoers для '${APP_USER}'..."
+SUDOERS_FILE="/etc/sudoers.d/${SERVICE_NAME}"
+SUDOERS_TMP=$(mktemp)
+cat > "$SUDOERS_TMP" <<EOF
+${APP_USER} ALL=(root) NOPASSWD: ${APP_DIR}/scripts/set-network.sh, ${APP_DIR}/scripts/set-time.sh
+EOF
+if visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then
+    install -m 0440 -o root -g root "$SUDOERS_TMP" "$SUDOERS_FILE"
+    ok "sudoers установлен: ${SUDOERS_FILE}"
+else
+    warn "Некорректный файл sudoers — пропущено (проверьте вручную)"
+fi
+rm -f "$SUDOERS_TMP"
+
 # ── 9. Временная директория для HLS ──────────────────────────────────────────
 info "Подготовка временной директории HLS..."
 mkdir -p /tmp/drillmonitor_hls

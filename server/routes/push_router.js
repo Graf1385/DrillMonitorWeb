@@ -5,6 +5,7 @@ const router     = express.Router();
 const dataSource = require('../dataSource');
 const sse        = require('../sse');
 const db         = require('../db');
+const timeSync   = require('../timeSync');
 
 // Param IDs whose value should be overridden with the authoritative LST depth.
 // Populated at startup from the DB by matching known depth-parameter names.
@@ -74,12 +75,16 @@ router.post('/api/push/data', function (req, res) {
     if (!isNaN(lstDepth) && lstDepth > 0)
         _depthParamIds.forEach(function (id) { params.set(id, lstDepth); });
 
+    const recTime = Number(body.time) || 0;
     dataSource.receivePushRecord({
         recNo:  Number(body.recNo)  || 0,
         depth:  Number(body.depth)  || 0,
-        time:   Number(body.time)   || 0,
+        time:   recTime,
         params,
     });
+    // BCS_Loader — единственный источник времени в изолированной сети:
+    // подстраиваем системные часы под время сбора данных (см. server/timeSync.js)
+    if (recTime > 0) timeSync.consider(recTime);
     res.json({ ok: true });
 });
 
