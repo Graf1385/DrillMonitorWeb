@@ -4,7 +4,9 @@ const _get_router    = require("./routes/get_routers");
 const _post_router   = require("./routes/post_routers");
 const _stream_router    = require("./routes/streams_router");
 const _push_router      = require("./routes/push_router");
+const _serial_router    = require("./routes/serial_router");
 const streamManager  = require("./streams/StreamManager");
+const serialSource   = require("./serialSource");
 const logger         = require("./logger");
 const db             = require("./db");
 const _exphbs        = require('express-handlebars');
@@ -30,12 +32,15 @@ _app.use(_get_router);
 _app.use(_post_router);
 _app.use(_stream_router);
 _app.use(_push_router);
+_app.use(_serial_router);
 
 function Start(port){
     const srv = _app.listen(port, ()=>{
         console.log("The server is already running...");
         console.log("http://localhost:" + port);
         logger.log('Сервер запущен на порту ' + port);
+        // Приём данных по RS-485 (если порт настроен и доступен)
+        serialSource.start();
     });
     // Ошибки listen (EADDRINUSE и т.п.) приходят асинхронным событием —
     // try/catch их не ловит, без обработчика процесс падает необработанно
@@ -45,8 +50,8 @@ function Start(port){
     });
 }
 
-process.on('SIGTERM', () => { streamManager.stopAll(); process.exit(0); });
-process.on('SIGINT',  () => { streamManager.stopAll(); process.exit(0); });
+process.on('SIGTERM', () => { serialSource.stop(); streamManager.stopAll(); process.exit(0); });
+process.on('SIGINT',  () => { serialSource.stop(); streamManager.stopAll(); process.exit(0); });
 
 module.exports = {
     Start : Start

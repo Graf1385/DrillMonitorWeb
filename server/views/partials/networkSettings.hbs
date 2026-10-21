@@ -42,6 +42,36 @@
             <td><input type="text" class="settingsInput" id="netDns" placeholder="8.8.8.8"></td>
         </tr>
     </table>
+    <h2>Приём данных по RS-485</h2>
+    <table class="settingsTable">
+        <tr><th>Параметр</th><th>Значение</th></tr>
+        <tr>
+            <td>Приём по RS-485</td>
+            <td>
+                <select class="settingsSelect" id="serEnabled">
+                    <option value="1">Включён</option>
+                    <option value="0">Выключен</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td>Порт</td>
+            <td><select class="settingsSelect" id="serPort"></select></td>
+        </tr>
+        <tr>
+            <td>Скорость, бод</td>
+            <td><select class="settingsSelect" id="serBaud"></select></td>
+        </tr>
+        <tr>
+            <td>Состояние</td>
+            <td id="serStatus">—</td>
+        </tr>
+    </table>
+    <div class="pmFooterRow">
+        <button class="modalButton" onclick="applySerialSettings()">Применить RS-485</button>
+        <span style="font-size:12px;opacity:.7">Перезагрузка не требуется. Скорость должна совпадать с BCS_DrillerMonitorLoader.</span>
+    </div>
+
     <footer>
         <button class="modalButton okBtn" onclick="applyNetworkSettings()">Применить</button>
         <button class="modalButton cancelBtn" onclick="closeNetworkSettings()">Отмена</button>
