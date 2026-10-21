@@ -22,7 +22,8 @@ const ingest   = require('./ingest');
 const logger   = require('./logger');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'serial-settings.json');
-const DEFAULTS      = { enabled: true, port: '/dev/ttyCH343', baud: 115200 };
+// 57600 бод — запас по дальности для линии RS-485 от 100 м (монитор стоит далеко от ПК)
+const DEFAULTS      = { enabled: true, port: '/dev/ttyCH343', baud: 57600 };
 const BAUD_RATES    = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
 const RETRY_MS      = 10000;
 
