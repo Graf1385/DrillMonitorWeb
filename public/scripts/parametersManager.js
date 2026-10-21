@@ -28,6 +28,8 @@ class ParametersManager {
             window.parametersManager._renderParamsTable(paramsResp[0]);
             window.parametersManager._renderUnitsTable(unitsResp[0]);
             document.querySelector('#parametersModal').showModal();
+        }).fail(function() {
+            showError('Ошибка загрузки параметров');
         });
     }
 
@@ -109,26 +111,33 @@ class ParametersManager {
         var rows  = Array.from(document.querySelectorAll('#parametersTableBody tr[data-param-id]'));
         if (rows.length === 0) { modal.close(); return; }
 
-        var valid = true;
-        var saves = rows.map(function(row) {
+        // Сначала валидируем ВСЕ строки, потом отправляем — иначе часть строк
+        // успевала сохраниться до обнаружения ошибки в следующей
+        var payloads = [];
+        for (var i = 0; i < rows.length; i++) {
+            var row    = rows[i];
             var id     = parseInt(row.dataset.paramId);
             var nameEl = row.querySelector('.pm-nameInput');
             var typeEl = row.querySelector('.pm-typeSelect');
             var unitEl = row.querySelector('.pm-unitSelect');
             var name   = nameEl ? nameEl.value.trim() : '';
-            if (!name) { showError('Параметр #' + id + ': название не может быть пустым'); valid = false; return null; }
-            var typeId = typeEl ? parseInt(typeEl.value) : null;
-            var unitId = unitEl ? (unitEl.value || null) : null;
+            if (!name) { showError('Параметр #' + id + ': название не может быть пустым'); return; }
+            payloads.push({
+                id: id,
+                name: name,
+                typeId: typeEl ? parseInt(typeEl.value) : null,
+                unitId: unitEl ? (unitEl.value || null) : null,
+            });
+        }
+        var saves = payloads.map(function(p) {
             return $.ajax({
-                url:         '/api/parameters/' + id,
+                url:         '/api/parameters/' + p.id,
                 method:      'PUT',
                 contentType: 'application/json',
-                data:        JSON.stringify({ name: name, typeId: typeId, unitId: unitId }),
-                error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка сохранения #' + id); }
+                data:        JSON.stringify({ name: p.name, typeId: p.typeId, unitId: p.unitId }),
+                error: function(xhr) { showError(xhr.responseJSON ? xhr.responseJSON.error : 'Ошибка сохранения #' + p.id); }
             });
-        }).filter(Boolean);
-
-        if (!valid) return;
+        });
         this._dirty = {};
         if (saves.length === 0) { modal.close(); return; }
         $.when.apply($, saves).always(function() { modal.close(); });

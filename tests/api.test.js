@@ -8,7 +8,7 @@ const BASE = 'http://localhost:3000';
 
 // ── HTTP helper ───────────────────────────────────────────────────────────────
 
-function req(method, urlPath, body, isForm) {
+function req(method, urlPath, body, isForm, cookie) {
     return new Promise((resolve, reject) => {
         const bodyStr = body
             ? (isForm ? qs.stringify(body) : JSON.stringify(body))
@@ -23,20 +23,32 @@ function req(method, urlPath, body, isForm) {
                     ? 'application/x-www-form-urlencoded'
                     : 'application/json',
                 ...(bodyStr ? { 'Content-Length': Buffer.byteLength(bodyStr) } : {}),
+                ...(cookie ? { 'Cookie': cookie } : {}),
             },
         };
         const request = http.request(options, res => {
             let raw = '';
             res.on('data', c => { raw += c; });
             res.on('end', () => {
-                try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
-                catch { resolve({ status: res.statusCode, body: raw }); }
+                try { resolve({ status: res.statusCode, headers: res.headers, body: JSON.parse(raw) }); }
+                catch { resolve({ status: res.statusCode, headers: res.headers, body: raw }); }
             });
         });
         request.on('error', reject);
         if (bodyStr) request.write(bodyStr);
         request.end();
     });
+}
+
+// Session cookie for protected routes. Requires ADMIN_PASSWORD of the running
+// server; without it the authenticated tests are skipped.
+let _adminCookie = null;
+async function adminCookie() {
+    if (_adminCookie || !process.env.ADMIN_PASSWORD) return _adminCookie;
+    const r = await req('POST', '/api/auth/login',
+        { name: 'admin', password: process.env.ADMIN_PASSWORD }, true);
+    if (r.status === 200) _adminCookie = (r.headers['set-cookie'] || [''])[0].split(';')[0];
+    return _adminCookie;
 }
 
 // ── Health ────────────────────────────────────────────────────────────────────
@@ -87,7 +99,7 @@ describe('Profile CRUD + timezone persistence', () => {
     });
 
     after(async () => {
-        if (testProfileId) await req('DELETE', '/api/profiles/' + testProfileId);
+        if (testProfileId) await req('DELETE', '/api/profiles/' + testProfileId, null, false, await adminCookie());
     });
 
     test('PUT /api/profiles/:id saves timezone and returns ok:true', async () => {
@@ -170,12 +182,23 @@ describe('POST /api/auth/login', () => {
 // ── Protection: default profile cannot be deleted ─────────────────────────────
 
 describe('DELETE /api/profiles/:id — default profile protection', () => {
-    test('deleting default profile returns 403', async () => {
+    test('without a session returns 401', async () => {
         const profiles = await req('GET', '/api/profiles');
         const def = profiles.body.find(p => p.is_default === 1);
         const r = await req('DELETE', '/api/profiles/' + def.id);
-        assert.equal(r.status, 403);
+        assert.equal(r.status, 401);
     });
+
+    test('with a session returns 403',
+        { skip: !process.env.ADMIN_PASSWORD && 'ADMIN_PASSWORD not set' },
+        async () => {
+            const cookie = await adminCookie();
+            assert.ok(cookie, 'admin login failed');
+            const profiles = await req('GET', '/api/profiles');
+            const def = profiles.body.find(p => p.is_default === 1);
+            const r = await req('DELETE', '/api/profiles/' + def.id, null, false, cookie);
+            assert.equal(r.status, 403);
+        });
 });
 
 // ── Parameters ────────────────────────────────────────────────────────────────

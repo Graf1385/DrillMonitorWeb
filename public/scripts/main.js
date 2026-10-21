@@ -87,7 +87,7 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         var attempts = 0;
         var timer = setInterval(function () {
             attempts++;
-            $.ajax({ url: '/api/health', method: 'GET', timeout: 2000 })
+            $.ajax({ url: '/api/health', method: 'GET', timeout: 2000, global: false })
                 .done(function () {
                     clearInterval(timer);
                     window._updateInProgress = false;
@@ -254,13 +254,22 @@ function _restoreIndicators(indicators) {
     });
 }
 
+var _loadSeq = 0;
+
 function _loadIndicatorsForProfile(profileId) {
+    // Токен против гонки: при быстром переключении профилей поздний ответ
+    // старого профиля не должен затирать индикаторы нового
+    var seq = ++_loadSeq;
     $.when(
         $.getJSON('/api/profiles/' + profileId + '/indicators'),
         _loadFonts()
     ).then(function(indicatorsResp) {
+        if (seq !== _loadSeq) return;
         _restoreIndicators(indicatorsResp[0]);
-    }).fail(function () { showError('Ошибка загрузки индикаторов'); });
+    }).fail(function () {
+        if (seq !== _loadSeq) return;
+        showError('Ошибка загрузки индикаторов');
+    });
 }
 
 // Apply active profile from DB on page load

@@ -23,6 +23,10 @@ class ProfileRepository {
 
     selectProfile(id) {
         return this.db.transaction(() => {
+            // Не деактивируем остальные профили, если целевого не существует
+            if (!this.db.prepare('SELECT 1 FROM profiles WHERE id = ?').get(id)) {
+                return undefined;
+            }
             this.db.prepare('UPDATE profiles SET is_active = 0').run();
             this.db.prepare('UPDATE profiles SET is_active = 1 WHERE id = ?').run(id);
             return this.db.prepare('SELECT * FROM profiles WHERE id = ?').get(id);
@@ -31,6 +35,10 @@ class ProfileRepository {
 
     updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight, sidebarTimeout, timezone) {
         return this.db.transaction(() => {
+            // Не трогаем is_active остальных профилей, если целевого не существует
+            if (!this.db.prepare('SELECT 1 FROM profiles WHERE id = ?').get(id)) {
+                return { changes: 0 };
+            }
             this.db.prepare('UPDATE profiles SET is_active = 0').run();
             return this.db.prepare(`
                 UPDATE profiles
@@ -44,9 +52,20 @@ class ProfileRepository {
     }
 
     deleteProfile(id) {
-        return this.db.prepare(
-            'DELETE FROM profiles WHERE id = ? AND is_default = 0'
-        ).run(id);
+        return this.db.transaction(() => {
+            const result = this.db.prepare(
+                'DELETE FROM profiles WHERE id = ? AND is_default = 0'
+            ).run(id);
+            // Удалили активный профиль — активируем стандартный,
+            // иначе киоск остаётся без рабочего пространства
+            if (result.changes > 0) {
+                const active = this.db.prepare('SELECT COUNT(*) AS c FROM profiles WHERE is_active = 1').get();
+                if (active.c === 0) {
+                    this.db.prepare('UPDATE profiles SET is_active = 1 WHERE is_default = 1').run();
+                }
+            }
+            return result;
+        })();
     }
 }
 

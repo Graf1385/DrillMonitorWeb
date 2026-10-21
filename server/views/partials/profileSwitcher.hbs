@@ -31,11 +31,17 @@
     }
 
     function selectProfile(id) {
+        var prevActive = (_profiles.find(function(p){ return p.is_active; }) || {}).id;
         var p = _profiles.find(function(p){ return p.id == id; });
         if (p) _label.textContent = p.name;
         _profiles.forEach(function(p){ p.is_active = p.id == id ? 1 : 0; });
         renderList();
-        $.ajax({ url: '/api/profiles/' + id + '/select', type: 'POST' });
+        $.ajax({ url: '/api/profiles/' + id + '/select', type: 'POST' })
+            .fail(function () {
+                // Сервер профиль не переключил — откатываем подсветку
+                showError('Не удалось переключить профиль');
+                if (prevActive != null) window.profileSwitcherSetActive(prevActive);
+            });
     }
 
     function closeDropdown() {
@@ -64,6 +70,8 @@
         var active = profiles.find(function(p){ return p.is_active; }) || profiles[0];
         if (active) _label.textContent = active.name;
         renderList();
+    }).fail(function () {
+        showError('Ошибка загрузки списка профилей');
     });
 })();
 </script>

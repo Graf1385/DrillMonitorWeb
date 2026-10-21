@@ -6,11 +6,17 @@ const streamManager = require('../streams/StreamManager');
 
 const STREAM_KEY_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 
+const MAX_STREAMS = 8;
+
 router.post('/api/streams/start', (req, res) => {
     try {
         const { streamKey, rtspUrl, host, port, username, password, channel, substream } = req.body;
         if (!streamKey || !STREAM_KEY_RE.test(streamKey)) return res.status(400).json({ error: 'Invalid streamKey' });
+        if (!streamManager.isActive(streamKey) && streamManager.count() >= MAX_STREAMS) {
+            return res.status(429).json({ error: 'Достигнут лимит одновременных трансляций (' + MAX_STREAMS + ')' });
+        }
         const url = streamManager.buildRtspUrl({ rtspUrl, host, port, username, password, channel, substream });
+        if (!/^rtsps?:\/\//i.test(url)) return res.status(400).json({ error: 'Разрешены только rtsp:// адреса' });
         streamManager.start(streamKey, url);
         res.json({ ok: true, hlsUrl: `/api/streams/${streamKey}/index.m3u8` });
     } catch (e) {

@@ -41,7 +41,18 @@ class StreamManager {
         ], { stdio: ['ignore', 'ignore', 'pipe'] });
 
         proc.stderr.on('data', d => process.stderr.write(`[Stream ${streamKey}] ${d}`));
-        proc.on('exit', () => this._streams.delete(streamKey));
+        // Удаляем запись только если она всё ещё принадлежит этому процессу —
+        // иначе exit старого ffmpeg при рестарте стёр бы запись нового
+        proc.on('exit', () => {
+            const cur = this._streams.get(streamKey);
+            if (cur && cur.process === proc) this._streams.delete(streamKey);
+        });
+        // Без обработчика 'error' отсутствие ffmpeg роняет весь процесс
+        proc.on('error', err => {
+            console.error(`[Stream ${streamKey}] spawn error: ${err.message}`);
+            const cur = this._streams.get(streamKey);
+            if (cur && cur.process === proc) this._streams.delete(streamKey);
+        });
 
         this._streams.set(streamKey, { process: proc, hlsDir });
         return hlsDir;
@@ -53,6 +64,8 @@ class StreamManager {
         try { s.process.kill('SIGTERM'); } catch {}
         this._streams.delete(streamKey);
         setTimeout(() => {
+            // Стрим успели перезапустить — каталог снова используется
+            if (this._streams.has(streamKey)) return;
             try { fs.rmSync(s.hlsDir, { recursive: true, force: true }); } catch {}
         }, 5000);
     }
@@ -68,6 +81,10 @@ class StreamManager {
 
     isActive(streamKey) {
         return this._streams.has(streamKey);
+    }
+
+    count() {
+        return this._streams.size;
     }
 }
 

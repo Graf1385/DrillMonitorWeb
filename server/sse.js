@@ -15,4 +15,12 @@ function broadcast(event, data) {
     });
 }
 
+// Heartbeat: запись в полуоткрытое соединение рано или поздно вызовет
+// close/error и клиент удалится — иначе мёртвые res копятся бесконечно
+setInterval(() => {
+    _clients.forEach(res => {
+        try { res.write(':\n\n'); } catch (e) { _clients.delete(res); }
+    });
+}, 30000);
+
 module.exports = { addClient, removeClient, broadcast };

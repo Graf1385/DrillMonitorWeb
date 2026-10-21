@@ -1,7 +1,7 @@
 const express  = require('express');
 const https    = require('https');
 const fs       = require('fs');
-const { exec, execFileSync } = require('child_process');
+const { exec, execFile, execFileSync } = require('child_process');
 const path     = require('path');
 const router   = express.Router();
 const db         = require('../db');
@@ -246,6 +246,16 @@ function _runCmd(cmd, opts) {
     });
 }
 
+// Запуск без shell — аргументы не интерпретируются, инъекция невозможна
+function _runFile(cmd, args, opts) {
+    return new Promise(function (resolve, reject) {
+        execFile(cmd, args, opts, function (err, stdout, stderr) {
+            if (err) reject(new Error(stderr || err.message));
+            else resolve(stdout.trim());
+        });
+    });
+}
+
 function _spawnDetached(cmd, args, opts) {
     const { spawn } = require('child_process');
     const child = spawn(cmd, args, Object.assign({ detached: true, stdio: 'ignore', env: process.env }, opts));
@@ -260,25 +270,28 @@ router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
 
     try {
         const token = process.env.GITHUB_TOKEN;
-        const fetchCmd = token
-            ? 'git fetch --tags https://x-access-token:' + token + '@github.com/' + GITHUB_REPO
-            : 'git fetch --tags origin';
+        const fetchArgs = token
+            ? ['fetch', '--tags', 'https://x-access-token:' + token + '@github.com/' + GITHUB_REPO]
+            : ['fetch', '--tags', 'origin'];
 
-        await _runCmd(fetchCmd, { cwd: ROOT_DIR, timeout: 30000 });
+        await _runFile('git', fetchArgs, { cwd: ROOT_DIR, timeout: 30000 });
 
         // Fix ownership of scripts dir if it was deployed as root (prevents git reset --hard failure)
         await _runCmd('sudo /opt/drillmonitor/scripts/set-network.sh fix-ownership', { cwd: ROOT_DIR, timeout: 5000 }).catch(() => {});
 
-        // Reset to release tag; fall back to origin/main if tag unknown
-        const tag = (_updateCache && _updateCache.latest) ? ('v' + _updateCache.latest) : 'origin/main';
-        await _runCmd('git reset --hard ' + tag,                    { cwd: ROOT_DIR, timeout: 15000  });
-        await _runCmd('npm install --omit=dev --no-fund --no-audit', { cwd: ROOT_DIR, timeout: 120000 });
+        // Reset to release tag; fall back to origin/main if tag unknown.
+        // Тег приходит из внешнего API — принимаем только строгий semver
+        const tag = (_updateCache && /^\d+\.\d+\.\d+$/.test(_updateCache.latest || ''))
+            ? ('v' + _updateCache.latest) : 'origin/main';
+        await _runFile('git', ['reset', '--hard', tag], { cwd: ROOT_DIR, timeout: 15000 });
+        await _runFile('npm', ['install', '--omit=dev', '--no-fund', '--no-audit'], { cwd: ROOT_DIR, timeout: 120000 });
 
         _updateCache = null;
         res.json({ ok: true });
 
         setTimeout(function () {
-            exec('sudo /sbin/reboot', function (err) {
+            // set-network.sh reboot — единственный разрешённый в sudoers путь к reboot
+            exec('sudo /opt/drillmonitor/scripts/set-network.sh reboot', function (err) {
                 if (err) {
                     console.error('[update] reboot failed, trying pm2:', err.message);
                     exec('pm2 restart DrillMonitor', function (err2) {

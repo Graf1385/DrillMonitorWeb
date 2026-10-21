@@ -32,19 +32,17 @@ _app.use(_stream_router);
 _app.use(_push_router);
 
 function Start(port){
-
-    try {
-        _app.listen(port, ()=>{
-            console.log("The server is already running...");
-            console.log("http://localhost:" + port);
-            logger.log('Сервер запущен на порту ' + port);
-        });    
-        
-    } catch (error) {
-        console.log(error);
-    }
-  
-        
+    const srv = _app.listen(port, ()=>{
+        console.log("The server is already running...");
+        console.log("http://localhost:" + port);
+        logger.log('Сервер запущен на порту ' + port);
+    });
+    // Ошибки listen (EADDRINUSE и т.п.) приходят асинхронным событием —
+    // try/catch их не ловит, без обработчика процесс падает необработанно
+    srv.on('error', (err) => {
+        console.error('Не удалось запустить сервер:', err.message);
+        process.exit(1);
+    });
 }
 
 process.on('SIGTERM', () => { streamManager.stopAll(); process.exit(0); });

@@ -21,6 +21,11 @@ function hideSaveBtn() {
     saveBtn.classList.remove('visible');
 }
 
+function _escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function showIndicatorList() {
     var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
     var body = document.querySelector('#indicatorListBody');
@@ -36,10 +41,10 @@ function showIndicatorList() {
             var header = d.headerText || '';
             var format = d.format     || '';
             return '<tr>' +
-                '<td class="il-id">'    + (d.paramId || '—') + '</td>' +
-                '<td class="il-pname">' + paramName           + '</td>' +
-                '<td>'                  + header              + '</td>' +
-                '<td>'                  + format              + '</td>' +
+                '<td class="il-id">'    + _escHtml(d.paramId || '—') + '</td>' +
+                '<td class="il-pname">' + _escHtml(paramName)        + '</td>' +
+                '<td>'                  + _escHtml(header)           + '</td>' +
+                '<td>'                  + _escHtml(format)           + '</td>' +
                 '<td class="il-del"><button class="il-delBtn" onclick="deleteIndicatorFromList(' + i + ')">Удалить</button></td>' +
             '</tr>';
         });
@@ -66,6 +71,9 @@ function showIndicatorList() {
             body.querySelectorAll('tr.il-selected').forEach(function(r) {
                 if (r !== row) r.classList.remove('il-selected');
             });
+            // Модалка живёт в top layer и перекрывает обычный fixed-div меню —
+            // закрываем её, иначе меню невидимо
+            document.querySelector('#indicatorListModal').close();
             window.showIndicatorCtxMenu(indicator, e.clientX, e.clientY);
         });
         tbody.addEventListener('dblclick', function(e) {
@@ -83,7 +91,10 @@ function showIndicatorList() {
 window.deleteIndicatorFromList = function(index) {
     var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
     if (indicators[index]) {
-        indicators[index].remove();
+        // removeIndicatorElement останавливает видеопоток и снимает обсерверы —
+        // простой .remove() оставлял ffmpeg-процесс на сервере навсегда
+        if (window.removeIndicatorElement) window.removeIndicatorElement(indicators[index]);
+        else indicators[index].remove();
         showSaveBtn();
         showIndicatorList();
     }
@@ -119,6 +130,15 @@ function showLoginModal() {
     document.querySelector('#login_password').value = '';
     document.querySelector('#loginModal').showModal();
 }
+
+// Сессия на сервере истекла (или её не было) — любой 401 от API
+// открывает окно входа вместо молчаливого отказа
+$(document).ajaxError(function (e, xhr, settings) {
+    if (xhr.status === 401 && settings.url !== '/api/auth/login') {
+        var modal = document.querySelector('#loginModal');
+        if (modal && !modal.open) showLoginModal();
+    }
+});
 
 function submitLogin() {
     var name     = document.querySelector('#login_name').value.trim();

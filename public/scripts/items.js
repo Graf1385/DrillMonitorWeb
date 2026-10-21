@@ -96,6 +96,7 @@ function _addAlarmLogEntry(el, val, event) {
         url:         '/api/logs',
         method:      'POST',
         contentType: 'application/json',
+        global:      false, // фоновый запрос — не показывать полноэкранный лоадер
         data:        JSON.stringify({ message: '[Сигнализация] ' + eventLabel + ': ' + name + ' = ' + valStr })
     });
     document.dispatchEvent(new CustomEvent('alarmLogUpdate'));
@@ -204,15 +205,24 @@ function _loadUnits() {
 window.openParamDropdown = function(input) {
     var dropdown = _addModal.querySelector('#ni_paramDropdown');
     if (!dropdown) return;
-    input.dataset.paramId = '';
+    // Сбрасываем привязку только если текст больше не совпадает с выбранным
+    // параметром — сброс по onfocus молча терял param_id при редактировании
+    var boundId = parseInt(input.dataset.paramId, 10);
+    var bound   = _availableParams.find(function (p) { return p.id === boundId; });
+    if (!bound || bound.name !== input.value) input.dataset.paramId = '';
     var q = input.value.toLowerCase();
     var filtered = _availableParams.filter(function (p) {
         return q === '' || p.name.toLowerCase().indexOf(q) !== -1;
     });
     if (filtered.length === 0) { dropdown.classList.remove('open'); return; }
-    dropdown.innerHTML = filtered.map(function (p) {
-        return '<div class="unitComboOption" onmousedown="_selectParam(' + p.id + ')">' + p.name + '</div>';
-    }).join('');
+    dropdown.innerHTML = '';
+    filtered.forEach(function (p) {
+        var opt = document.createElement('div');
+        opt.className   = 'unitComboOption';
+        opt.textContent = p.name;
+        opt.addEventListener('mousedown', function () { _selectParam(p.id); });
+        dropdown.appendChild(opt);
+    });
     dropdown.classList.add('open');
 };
 
@@ -244,11 +254,17 @@ window.openUnitsDropdown = function(input) {
         return q === '' || u.symbol.toLowerCase().indexOf(q) !== -1 || u.name.toLowerCase().indexOf(q) !== -1;
     });
     if (filtered.length === 0) { dropdown.classList.remove('open'); return; }
-    dropdown.innerHTML = filtered.map(function (u) {
-        var sym = u.symbol.replace(/'/g, '\\\'');
-        return '<div class="unitComboOption" onmousedown="selectUnit(\'' + sym + '\')">' +
-               '<b>' + u.symbol + '</b> — ' + u.name + '</div>';
-    }).join('');
+    dropdown.innerHTML = '';
+    filtered.forEach(function (u) {
+        var opt = document.createElement('div');
+        opt.className = 'unitComboOption';
+        var b = document.createElement('b');
+        b.textContent = u.symbol;
+        opt.appendChild(b);
+        opt.appendChild(document.createTextNode(' — ' + u.name));
+        opt.addEventListener('mousedown', function () { selectUnit(u.symbol); });
+        dropdown.appendChild(opt);
+    });
     dropdown.classList.add('open');
 };
 
@@ -382,14 +398,21 @@ function ctxDeleteIndicator() {
     document.querySelector('#deleteConfirmModal').showModal();
 }
 
+// Полное удаление индикатора с освобождением ресурсов (видео-поток,
+// обсерверы). Используется и из контекстного меню, и из списка индикаторов.
+window.removeIndicatorElement = function (el) {
+    if (!el) return;
+    if (el.classList.contains('videoIndicator')) _stopVideoStream(el);
+    if (el._tickerObserver) el._tickerObserver.disconnect();
+    if (el._alarmObserver)  el._alarmObserver.disconnect();
+    if (el._alarmOverlay)   el._alarmOverlay.remove();
+    el.remove();
+};
+
 function confirmDeleteIndicator() {
     document.querySelector('#deleteConfirmModal').close();
     if (!_deleteTarget) return;
-    if (_deleteTarget.classList.contains('videoIndicator')) _stopVideoStream(_deleteTarget);
-    if (_deleteTarget._tickerObserver) _deleteTarget._tickerObserver.disconnect();
-    if (_deleteTarget._alarmObserver)  _deleteTarget._alarmObserver.disconnect();
-    if (_deleteTarget._alarmOverlay)   _deleteTarget._alarmOverlay.remove();
-    _deleteTarget.remove();
+    window.removeIndicatorElement(_deleteTarget);
     _deleteTarget = null;
     showSaveBtn();
 }
@@ -806,8 +829,17 @@ function setIndicatorValue(el, val) {
         return;
     }
 
+    // Обрыв данных (null) не превращаем в 0: показываем «нет данных»
+    // и не меняем состояние тревоги — иначе каждый обрыв связи давал
+    // ложную сирену на индикаторах с alarmMin > rangeMin
+    if (val == null || isNaN(+val)) {
+        el._currentValue = null;
+        if (typeDef.setValue) typeDef.setValue(el, null);
+        return;
+    }
+
     var r = _parseRange(el.dataset);
-    el._currentValue = Math.max(r.min, Math.min(r.max, isNaN(+val) ? r.min : +val));
+    el._currentValue = Math.max(r.min, Math.min(r.max, +val));
     var zc = _getZoneColor(el, el._currentValue);
 
     if (typeDef.setValue) typeDef.setValue(el, el._currentValue, zc);
@@ -832,7 +864,9 @@ function _addIndicator(type, config, left, top) {
 
     var el = document.createElement('div');
     el.className = 'indicator ' + type;
-    el.id        = 'item_' + Date.now();
+    // Date.now() один на все элементы, созданные в одну миллисекунду
+    // (восстановление профиля) — добавляем сквозной счётчик
+    el.id        = 'item_' + Date.now() + '_' + (window._itemIdSeq = (window._itemIdSeq || 0) + 1);
     el.style.left        = left + 'px';
     el.style.top         = top  + 'px';
     el.style.borderColor = cfg.valueColor;

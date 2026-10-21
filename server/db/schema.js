@@ -26,9 +26,18 @@ function initSchema(db) {
     try { db.exec('ALTER TABLE profiles ADD COLUMN ws_height       INTEGER NOT NULL DEFAULT 0'); } catch {}
     try { db.exec('ALTER TABLE profiles ADD COLUMN sidebar_timeout INTEGER NOT NULL DEFAULT 20'); } catch {}
     try { db.exec("ALTER TABLE profiles ADD COLUMN timezone TEXT NOT NULL DEFAULT '0'"); } catch {}
-    db.exec("UPDATE profiles SET timezone = '0' WHERE timezone = '' OR timezone IS NULL");
 
-    db.exec('UPDATE profiles SET cell_size = ROUND(cell_size * 20) WHERE cell_size < 10');
+    // Одноразовые миграции (user_version). Повторный прогон испортил бы данные:
+    // cell_size < 10 умножился бы ещё раз, а timezone = '' («локальное время
+    // браузера») молча превращался в '0' (UTC) при каждом рестарте.
+    const _schemaVer = db.pragma('user_version', { simple: true });
+    if (_schemaVer < 1) {
+        db.exec('UPDATE profiles SET cell_size = ROUND(cell_size * 20) WHERE cell_size < 10');
+    }
+    if (_schemaVer < 2) {
+        db.exec("UPDATE profiles SET timezone = '0' WHERE timezone IS NULL");
+        db.pragma('user_version = 2');
+    }
 
     db.prepare(`
         INSERT OR IGNORE INTO profiles (name, background, cell_size, is_default, is_active)

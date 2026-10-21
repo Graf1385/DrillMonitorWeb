@@ -93,7 +93,7 @@ function _applyVideoConfig(el, cfg) {
 function _buildVideoElement(cfg) {
     var el = document.createElement('div');
     el.className = 'indicator videoIndicator';
-    el.id        = 'item_' + Date.now();
+    el.id        = 'item_' + Date.now() + '_' + (window._itemIdSeq = (window._itemIdSeq || 0) + 1);
     el.style.borderColor = '#38bdf8';
     el.style.setProperty('--value-color', '#38bdf8');
     el.style.width  = (cfg.width  || 320) + 'px';
@@ -161,7 +161,11 @@ function _startVideoStream(el) {
             substream: d.streamSub === '1'
         }),
         success: function (resp) {
-            setTimeout(function () { _attachHls(el, resp.hlsUrl); }, 2000);
+            setTimeout(function () {
+                // Виджет могли удалить, пока ждали готовности потока
+                if (!document.body.contains(el)) return;
+                _attachHls(el, resp.hlsUrl);
+            }, 2000);
         },
         error: function () {
             if (overlay) { overlay.style.display = ''; overlay.textContent = 'Ошибка подключения'; }
@@ -209,10 +213,20 @@ function _stopVideoStream(el) {
     $.ajax({
         url: '/api/streams/stop', method: 'POST',
         contentType: 'application/json',
+        global: false,
         data: JSON.stringify({ streamKey: key })
     });
 }
 
 window.addEventListener('beforeunload', function () {
-    document.querySelectorAll('#workSpace .videoIndicator').forEach(_stopVideoStream);
+    // Обычный ajax браузер обрывает при выгрузке страницы — ffmpeg оставался
+    // работать на сервере; sendBeacon гарантированно доставляет запрос
+    document.querySelectorAll('#workSpace .videoIndicator').forEach(function (el) {
+        var payload = JSON.stringify({ streamKey: el.id });
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/streams/stop', new Blob([payload], { type: 'application/json' }));
+        } else {
+            _stopVideoStream(el);
+        }
+    });
 });

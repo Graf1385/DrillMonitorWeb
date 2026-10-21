@@ -65,7 +65,9 @@ router.post('/api/push/data', function (req, res) {
         return res.status(400).json({ error: 'Неверный формат пакета' });
 
     const params = new Map(
-        Object.entries(body.params).map(([k, v]) => [parseInt(k, 10), v])
+        Object.entries(body.params)
+            .map(([k, v]) => [parseInt(k, 10), v])
+            .filter(([k]) => Number.isInteger(k))
     );
     // Override depth params with authoritative LST depth from the file header
     const lstDepth = Number(body.depth);
@@ -83,12 +85,13 @@ router.post('/api/push/data', function (req, res) {
 
 // Receive run-state notification from BCS_Loader (started / stopped)
 router.post('/api/push/state', function (req, res) {
-    const running = !!req.body.running;
+    const body    = req.body || {};
+    const running = !!body.running;
     if (running) {
         if (!dataSource.isPushMode()) _startPush();
     } else {
         dataSource.stopPushMode();
-        sse.broadcast('run-state', { running: false, reason: req.body.reason || null });
+        sse.broadcast('run-state', { running: false, reason: body.reason || null });
     }
     res.json({ ok: true });
 });

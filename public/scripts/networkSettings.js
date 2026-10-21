@@ -4,6 +4,7 @@ var _netOrigMode = '';
 function showNetworkSettings() {
     fetch('/api/network').then(function(r) {
         if (r.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return null; }
+        if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || r.status); });
         return r.json();
     }).then(function(d) {
         if (!d) return;
@@ -40,8 +41,9 @@ function applyNetworkSettings() {
     var gateway = document.getElementById('netGateway').value.trim();
     var dns     = document.getElementById('netDns').value.trim();
 
-    if (mode === 'static' && address !== _netOrigAddress) {
-        showError('Внимание: изменение IP-адреса разорвёт текущее соединение');
+    if ((mode === 'static' && address !== _netOrigAddress) || mode !== _netOrigMode) {
+        if (!confirm('Сетевые настройки изменятся, устройство перезагрузится, ' +
+                     'текущее соединение будет разорвано. Продолжить?')) return;
     }
 
     closeNetworkSettings();
