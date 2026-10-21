@@ -9,6 +9,9 @@ module.exports = defineConfig({
     use: {
         baseURL:           'http://localhost:3000',
         headless:          true,
+        // Full Chromium in new-headless mode; avoids the separate
+        // chromium-headless-shell download.
+        channel:           'chromium',
         ignoreHTTPSErrors: true,
     },
     projects: [

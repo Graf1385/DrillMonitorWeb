@@ -28,6 +28,14 @@ async function closeSettingsModal(page) {
     await page.waitForSelector('#settings', { state: 'hidden' });
 }
 
+// Timezone model: _settings.timezone is a UTC offset in hours as a string
+// ('0', '3', '-5') or '' for the browser's local time. The settings modal
+// exposes it as a number input #ws_timezone (-12..12).
+const TZ_UTC    = '0';
+const TZ_MOSCOW = '3';
+const TZ_YEKB   = '5';
+const TZ_LOCAL  = '';
+
 // ── Page load ─────────────────────────────────────────────────────────────────
 
 test.describe('Page load', () => {
@@ -82,16 +90,24 @@ test.describe('Workspace settings modal', () => {
         await expect(page.locator('#settings')).not.toBeVisible();
     });
 
-    test('timezone select is present with expected options', async ({ page }) => {
+    test('UTC offset input is present and bounded to -12..12', async ({ page }) => {
         await openSettingsModal(page);
         const tz = page.locator('#ws_timezone');
         await expect(tz).toBeVisible();
+        await expect(tz).toHaveAttribute('type', 'number');
+        await expect(tz).toHaveAttribute('min', '-12');
+        await expect(tz).toHaveAttribute('max', '12');
+        // Populated from the active profile: a whole number of hours
+        expect(await tz.inputValue()).toMatch(/^-?\d{1,2}$/);
+    });
 
-        const options = await tz.locator('option').allTextContents();
-        expect(options).toContain('Локальный (браузер)');
-        expect(options.some(o => o.includes('Москва'))).toBeTruthy();
-        expect(options.some(o => o.includes('Екатеринбург'))).toBeTruthy();
-        expect(options.some(o => o.includes('UTC'))).toBeTruthy();
+    test('out-of-range UTC offset falls back to 0 on OK', async ({ page }) => {
+        await openSettingsModal(page);
+        await page.fill('#ws_timezone', '99');
+        await page.click('#settings .okBtn');
+        await page.waitForSelector('#settings', { state: 'hidden' });
+        const tz = await page.evaluate(() => _settings.timezone);
+        expect(tz).toBe(TZ_UTC);
     });
 
     test('profile select is populated', async ({ page }) => {
@@ -109,12 +125,12 @@ test.describe('Workspace settings modal', () => {
 // ── Timezone: save and reload persistence ─────────────────────────────────────
 
 test.describe('Timezone persistence', () => {
-    test('selected timezone is still set after save → reload', async ({ page }) => {
+    test('UTC offset is still set after save → reload', async ({ page }) => {
         await gotoWithAuth(page);
 
-        // Pick Yekaterinburg
+        // Pick UTC+5 (Yekaterinburg)
         await openSettingsModal(page);
-        await page.selectOption('#ws_timezone', 'Asia/Yekaterinburg');
+        await page.fill('#ws_timezone', TZ_YEKB);
         await page.click('#settings .okBtn');
         await page.waitForSelector('#settings', { state: 'hidden' });
 
@@ -134,10 +150,10 @@ test.describe('Timezone persistence', () => {
         await openSettingsModal(page);
 
         const value = await page.locator('#ws_timezone').inputValue();
-        expect(value).toBe('Asia/Yekaterinburg');
+        expect(value).toBe(TZ_YEKB);
 
-        // Cleanup
-        await page.selectOption('#ws_timezone', '');
+        // Cleanup: back to UTC
+        await page.fill('#ws_timezone', TZ_UTC);
         await page.click('#settings .okBtn');
         await page.evaluate(() => saveSettings());
         await page.waitForTimeout(800);
@@ -172,13 +188,27 @@ test.describe('Add indicator modal', () => {
         expect(display).not.toBe('none');
     });
 
-    test('_applyTypeToParamSelect: timeIndicator hides param row', async ({ page }) => {
-        const display = await page.evaluate(() => {
+    test('_applyTypeToParamSelect: timeIndicator pins param 52 and locks the inputs', async ({ page }) => {
+        // Parameters are fetched asynchronously when the modal opens
+        await page.waitForFunction(() => Array.isArray(_availableParams) && _availableParams.length > 0);
+        const result = await page.evaluate(() => {
             document.querySelector('#ni_settingsBody').style.display = '';
             _applyTypeToParamSelect('timeIndicator');
-            return document.querySelector('#ni_paramRow').style.display;
+            const input  = document.querySelector('#ni_paramId');
+            const header = document.querySelector('#ni_headerText');
+            return {
+                rowDisplay:     document.querySelector('#ni_paramRow').style.display,
+                paramId:        input.dataset.paramId,
+                paramDisabled:  input.disabled,
+                headerText:     header.value,
+                headerDisabled: header.disabled,
+            };
         });
-        expect(display).toBe('none');
+        expect(result.rowDisplay).not.toBe('none');
+        expect(result.paramId).toBe('52');
+        expect(result.paramDisabled).toBe(true);
+        expect(result.headerText).toBe('Время сбора данных');
+        expect(result.headerDisabled).toBe(true);
     });
 
     test('_applyTypeToParamSelect: dateIndicator hides param row', async ({ page }) => {
@@ -190,17 +220,21 @@ test.describe('Add indicator modal', () => {
         expect(display).toBe('none');
     });
 
-    test('_applyTypeToParamSelect: switching back to digitalIndicator re-shows param row', async ({ page }) => {
+    test('_applyTypeToParamSelect: switching back to digitalIndicator re-shows and unlocks param row', async ({ page }) => {
         const result = await page.evaluate(() => {
             document.querySelector('#ni_settingsBody').style.display = '';
-            _applyTypeToParamSelect('timeIndicator');
-            const after_time = document.querySelector('#ni_paramRow').style.display;
+            const row   = document.querySelector('#ni_paramRow');
+            const input = document.querySelector('#ni_paramId');
+            _applyTypeToParamSelect('dateIndicator');
+            const after_date = { display: row.style.display, disabled: input.disabled };
             _applyTypeToParamSelect('digitalIndicator');
-            const after_digital = document.querySelector('#ni_paramRow').style.display;
-            return { after_time, after_digital };
+            const after_digital = { display: row.style.display, disabled: input.disabled };
+            return { after_date, after_digital };
         });
-        expect(result.after_time).toBe('none');
-        expect(result.after_digital).not.toBe('none');
+        expect(result.after_date.display).toBe('none');
+        expect(result.after_date.disabled).toBe(true);
+        expect(result.after_digital.display).not.toBe('none');
+        expect(result.after_digital.disabled).toBe(false);
     });
 
     test('closes when clicking Отмена', async ({ page }) => {
@@ -217,7 +251,30 @@ test.describe('Time indicator — timezone rendering', () => {
         await page.waitForSelector('#wsCanvas');
     });
 
-    test('setValue formats time in UTC+3 (Moscow): epoch 12:00 UTC → 15:00', async ({ page }) => {
+    test('setValue formats time in UTC+3: epoch 12:00 UTC → 15:00', async ({ page }) => {
+        const result = await page.evaluate((tz) => {
+            const el = document.createElement('div');
+            el.className = 'indicator timeIndicator';
+            const val = document.createElement('div');
+            val.className = 'indicatorValue';
+            el.appendChild(val);
+            document.querySelector('#wsCanvas').appendChild(el);
+
+            const origTz = _settings.timezone;
+            _settings.timezone = tz;
+            // 2024-05-20 12:00:00 UTC
+            _indicatorTypes.timeIndicator.setValue(el, 1716206400);
+            _settings.timezone = origTz;
+
+            const text = val.textContent;
+            el.remove();
+            return text;
+        }, TZ_MOSCOW);
+
+        expect(result).toBe('15:00:00');
+    });
+
+    test('setValue formats time with a negative offset: epoch 02:00 UTC at UTC-5 → 21:00 previous day', async ({ page }) => {
         const result = await page.evaluate(() => {
             const el = document.createElement('div');
             el.className = 'indicator timeIndicator';
@@ -227,9 +284,9 @@ test.describe('Time indicator — timezone rendering', () => {
             document.querySelector('#wsCanvas').appendChild(el);
 
             const origTz = _settings.timezone;
-            _settings.timezone = 'Europe/Moscow';
-            // 2024-05-20 12:00:00 UTC
-            _indicatorTypes.timeIndicator.setValue(el, 1716206400);
+            _settings.timezone = '-5';
+            // 2024-05-20 02:00:00 UTC
+            _indicatorTypes.timeIndicator.setValue(el, 1716170400);
             _settings.timezone = origTz;
 
             const text = val.textContent;
@@ -237,11 +294,11 @@ test.describe('Time indicator — timezone rendering', () => {
             return text;
         });
 
-        expect(result).toBe('15:00:00');
+        expect(result).toBe('21:00:00');
     });
 
-    test('setValue formats date in UTC+3 (Moscow) correctly', async ({ page }) => {
-        const result = await page.evaluate(() => {
+    test('setValue formats date in UTC+3 correctly', async ({ page }) => {
+        const result = await page.evaluate((tz) => {
             const el = document.createElement('div');
             el.className = 'indicator dateIndicator';
             const val = document.createElement('div');
@@ -250,21 +307,21 @@ test.describe('Time indicator — timezone rendering', () => {
             document.querySelector('#wsCanvas').appendChild(el);
 
             const origTz = _settings.timezone;
-            _settings.timezone = 'Europe/Moscow';
-            // 2024-05-20 00:30:00 UTC → Moscow = 2024-05-20 03:30 (same date)
+            _settings.timezone = tz;
+            // 2024-05-20 00:30:00 UTC → UTC+3 = 2024-05-20 03:30 (same date)
             _indicatorTypes.dateIndicator.setValue(el, 1716165000);
             _settings.timezone = origTz;
 
             const text = val.textContent;
             el.remove();
             return text;
-        });
+        }, TZ_MOSCOW);
 
-        expect(result).toMatch(/20\.05\.2024/);
+        expect(result).toBe('20.05.2024');
     });
 
     test('setValue uses HH:MM:SS format when timezone is empty (local time)', async ({ page }) => {
-        const result = await page.evaluate(() => {
+        const result = await page.evaluate((tz) => {
             const el = document.createElement('div');
             el.className = 'indicator timeIndicator';
             const val = document.createElement('div');
@@ -273,16 +330,35 @@ test.describe('Time indicator — timezone rendering', () => {
             document.querySelector('#wsCanvas').appendChild(el);
 
             const origTz = _settings.timezone;
-            _settings.timezone = '';
+            _settings.timezone = tz;
             _indicatorTypes.timeIndicator.setValue(el, 1716206400);
             _settings.timezone = origTz;
 
             const text = val.textContent;
             el.remove();
             return text;
-        });
+        }, TZ_LOCAL);
 
         expect(result).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+    });
+
+    test('setValue(null) shows the "no data" placeholder', async ({ page }) => {
+        const result = await page.evaluate(() => {
+            const el = document.createElement('div');
+            el.className = 'indicator timeIndicator';
+            const val = document.createElement('div');
+            val.className = 'indicatorValue';
+            el.appendChild(val);
+            document.querySelector('#wsCanvas').appendChild(el);
+
+            setIndicatorValue(el, null);
+
+            const text = val.textContent;
+            el.remove();
+            return text;
+        });
+
+        expect(result).toBe('--:--:--');
     });
 
     test('_lastEpoch is stored after setValue for re-render capability', async ({ page }) => {
@@ -307,11 +383,11 @@ test.describe('Time indicator — timezone rendering', () => {
 // ── _refreshTimeIndicators ────────────────────────────────────────────────────
 
 test.describe('_refreshTimeIndicators', () => {
-    test('re-renders indicator with new timezone without new SSE data', async ({ page }) => {
+    test('re-renders indicator with new UTC offset without new SSE data', async ({ page }) => {
         await gotoWithAuth(page);
         await page.waitForSelector('#wsCanvas');
 
-        const result = await page.evaluate(() => {
+        const result = await page.evaluate(({ utc, moscow }) => {
             const el = document.createElement('div');
             el.className = 'indicator timeIndicator';
             const val = document.createElement('div');
@@ -319,20 +395,22 @@ test.describe('_refreshTimeIndicators', () => {
             el.appendChild(val);
             document.querySelector('#wsCanvas').appendChild(el);
 
+            const origTz = _settings.timezone;
+
             // First render in UTC
-            _settings.timezone = 'UTC';
+            _settings.timezone = utc;
             _indicatorTypes.timeIndicator.setValue(el, 1716206400);
             const before = val.textContent; // "12:00:00"
 
-            // Change timezone, no new SSE data — _refreshTimeIndicators re-renders
-            _settings.timezone = 'Europe/Moscow';
+            // Change offset, no new SSE data — _refreshTimeIndicators re-renders
+            _settings.timezone = moscow;
             _refreshTimeIndicators();
             const after = val.textContent; // should be "15:00:00"
 
             el.remove();
-            _settings.timezone = '';
+            _settings.timezone = origTz;
             return { before, after };
-        });
+        }, { utc: TZ_UTC, moscow: TZ_MOSCOW });
 
         expect(result.before).toBe('12:00:00');
         expect(result.after).toBe('15:00:00');
@@ -346,7 +424,7 @@ test.describe('drill-data SSE handler', () => {
         await gotoWithAuth(page);
         await page.waitForSelector('#wsCanvas');
 
-        const text = await page.evaluate(() => {
+        const text = await page.evaluate((tz) => {
             const el = document.createElement('div');
             el.className = 'indicator timeIndicator';
             el.dataset.paramId = '';
@@ -356,7 +434,8 @@ test.describe('drill-data SSE handler', () => {
             el.appendChild(val);
             document.querySelector('#wsCanvas').appendChild(el);
 
-            _settings.timezone = 'UTC'; // deterministic
+            const origTz = _settings.timezone;
+            _settings.timezone = tz; // deterministic
 
             // Replay what the drill-data SSE handler does in main.js
             const record = { params: {}, time: 1716206400 }; // 12:00:00 UTC
@@ -367,9 +446,9 @@ test.describe('drill-data SSE handler', () => {
 
             const result = val.textContent;
             el.remove();
-            _settings.timezone = '';
+            _settings.timezone = origTz;
             return result;
-        });
+        }, TZ_UTC);
 
         expect(text).toBe('12:00:00');
     });
