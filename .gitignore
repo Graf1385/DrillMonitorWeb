@@ -11,6 +11,12 @@ server/data/*.db-shm
 server/data/*.db-wal
 server/data/data-source-settings.json
 
+# Local server output redirects
+*.log
+*.err
+server_out.txt
+server_err.txt
+
 # OS
 Thumbs.db
 .DS_Store
