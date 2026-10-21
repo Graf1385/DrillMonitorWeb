@@ -266,4 +266,25 @@
   Проверка вручную:
     sudo -u drillmonitor sudo -n /opt/drillmonitor/scripts/set-time.sh $(date +%s)
 
+
+13. ПРЕОБРАЗОВАТЕЛЬ ИНТЕРФЕЙСОВ WCH CH343 (USB → UART)
+────────────────────────────────────────────────────────────────────────────────
+  Драйвер ставить не нужно: ядро Ubuntu 24.04 (6.8) распознаёт CH343
+  (VID:PID 1a86:55d3, «USB Single Serial») штатным модулем cdc_acm и создаёт
+  /dev/ttyACM<N>. Проверка:
+
+    lsusb | grep 1a86          # QinHeng Electronics USB Single Serial
+    dmesg | grep cdc_acm       # cdc_acm 2-4:1.0: ttyACM0: USB ACM device
+
+  Настройка (стабильное имя + доступ пользователей к порту):
+    sudo bash scripts/setup-serial.sh
+      → /dev/ttyCH343 (symlink на ttyACM<N>), группа dialout для
+        drillmonitor и bcs (список: переменная SERIAL_USERS)
+
+  Родной драйвер WCH (CH343SER_LINUX, модуль ch343, /dev/ttyCH343USB<N>)
+  нужен только для нестандартных скоростей или аппаратного RTS/CTS. Он
+  компилируется из исходников (gcc, make, linux-headers) — на сервере без
+  интернета заранее поставить build-essential или собрать модуль на другой
+  машине с тем же ядром. Windows-пакет CH343SER_EXE для сервера не подходит.
+
 ================================================================================
