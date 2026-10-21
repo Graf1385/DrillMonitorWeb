@@ -325,9 +325,11 @@ function _hideDataBanner() {
                 if (window.setIndicatorValue) setIndicatorValue(el, null);
             });
             if (data.reason) {
+                // 'network' — сервер не получает пакеты от Loader (TCP/IP или RS-485);
+                // любая другая причина приходит текстом от самого Loader
                 var msg = data.reason === 'network'
-                    ? 'Обрыв сетевого подключения'
-                    : 'Каталог с данными недоступен';
+                    ? 'Нет данных от BCS_DrillerMonitorLoader'
+                    : 'Передача остановлена: ' + data.reason;
                 _showDataBanner(msg);
             }
         } else {
