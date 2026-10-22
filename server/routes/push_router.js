@@ -35,4 +35,14 @@ router.post('/api/push/state', function (req, res) {
     res.json({ ok: true });
 });
 
+// Receive monitor configuration from BCS_Loader (profile + indicators).
+// Body: { config: { profile, indicators } }. Applies to DB and broadcasts over
+// SSE so the live kiosk redraws without a reboot. Same payload travels over
+// RS-485 as a {"config":…} frame (server/serialSource.js).
+router.post('/api/push/config', function (req, res) {
+    const err = ingest.ingestConfig(req.body && req.body.config);
+    if (err) return res.status(400).json({ error: err });
+    res.json({ ok: true });
+});
+
 module.exports = router;

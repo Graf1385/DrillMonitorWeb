@@ -18,6 +18,7 @@ const fs       = require('fs');
 const path     = require('path');
 const { execFile } = require('child_process');
 const { FrameParser } = require('./serialFrame');
+const { ConfigReassembler } = require('./configReassembler');
 const ingest   = require('./ingest');
 const logger   = require('./logger');
 
@@ -141,6 +142,9 @@ function _openPort() {
     });
 }
 
+// Сборщик конфигурации из частей {"cfgSeq":…} (большие конфиги по RS-485)
+const _cfgAsm = new ConfigReassembler();
+
 let _badLogged = 0;
 function _onFrameError(code, detail) {
     _stats.framesBad++;
@@ -155,12 +159,24 @@ function _onFrameError(code, detail) {
 function _onFrame(obj) {
     _stats.framesOk++;
     _stats.lastFrameAt = Date.now();
-    if (obj && typeof obj === 'object') {
-        if (obj.state && typeof obj.state === 'object') ingest.ingestState(obj.state);
-        else if (obj.params) {
-            const err = ingest.ingestRecord(obj);
-            if (err) _onFrameError('format', err);
+    if (!obj || typeof obj !== 'object') return;
+
+    if (obj.state && typeof obj.state === 'object') {
+        ingest.ingestState(obj.state);
+    } else if (obj.config && typeof obj.config === 'object') {
+        // Конфигурация целиком в одном кадре
+        const err = ingest.ingestConfig(obj.config);
+        if (err) _onFrameError('config', err);
+    } else if (obj.cfgSeq && typeof obj.cfgSeq === 'object') {
+        // Часть большой конфигурации — собираем и применяем, когда полна
+        const assembled = _cfgAsm.push(obj.cfgSeq);
+        if (assembled) {
+            const err = ingest.ingestConfig(assembled);
+            if (err) _onFrameError('config', err);
         }
+    } else if (obj.params) {
+        const err = ingest.ingestRecord(obj);
+        if (err) _onFrameError('format', err);
     }
 }
 
