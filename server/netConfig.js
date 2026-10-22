@@ -5,6 +5,11 @@
 // RS-485 (кадр {"net":…}, см. server/serialSource.js). Применение всегда
 // заканчивается перезагрузкой — другого способа гарантированно переподнять
 // киоск с новым адресом нет.
+//
+// Шлюза и DNS у табло нет: в интернет оно не ходит, обновления приходят с
+// BCS_DrillerMonitorLoader по RS-485 или TCP/IP. Задаётся только собственный
+// адрес, маршрут по умолчанию и серверы имён скрипт гасит (set-network.sh).
+// Ключи gateway/dns от старых версий Loader молча игнорируются.
 
 const { execFileSync, exec } = require('child_process');
 
@@ -19,7 +24,7 @@ function _validIp(s) {
 /// Текущие настройки соединения; бросает, если nmcli недоступен.
 function read() {
     const out = execFileSync('nmcli', [
-        '-t', '-f', 'ipv4.method,ipv4.addresses,ipv4.gateway,ipv4.dns',
+        '-t', '-f', 'ipv4.method,ipv4.addresses',
         'con', 'show', CONNECTION
     ], { timeout: 5000 }).toString().trim();
 
@@ -32,9 +37,7 @@ function read() {
     return {
         mode:    data['ipv4.method'] === 'manual' ? 'static' : 'dhcp',
         address: parts[0] || '',
-        prefix:  parts[1] || '24',
-        gateway: data['ipv4.gateway'] || '',
-        dns:     data['ipv4.dns'] || ''
+        prefix:  parts[1] || '24'
     };
 }
 
@@ -46,15 +49,11 @@ function validate(body) {
 
     const address = String(body.address || '');
     const prefix  = parseInt(body.prefix, 10);
-    const gateway = String(body.gateway || '');
-    const dns     = String(body.dns || '8.8.8.8');
 
-    if (!_validIp(address))                        throw new Error('Неверный IP-адрес');
-    if (!_validIp(gateway))                        throw new Error('Неверный адрес шлюза');
+    if (!_validIp(address))                         throw new Error('Неверный IP-адрес');
     if (isNaN(prefix) || prefix < 1 || prefix > 32) throw new Error('Неверная маска');
-    if (!dns.split(/[,\s]+/).filter(Boolean).every(_validIp)) throw new Error('Неверный адрес DNS');
 
-    return { mode: mode, address: address, prefix: prefix, gateway: gateway, dns: dns };
+    return { mode: mode, address: address, prefix: prefix };
 }
 
 /// Применяет настройки (без перезагрузки); бросает Error. Возвращает применённое.
@@ -63,7 +62,7 @@ function apply(body) {
     if (s.mode === 'dhcp') {
         execFileSync('sudo', [SCRIPT, 'dhcp'], { timeout: 15000 });
     } else {
-        execFileSync('sudo', [SCRIPT, 'static', s.address + '/' + s.prefix, s.gateway, s.dns], { timeout: 15000 });
+        execFileSync('sudo', [SCRIPT, 'static', s.address + '/' + s.prefix], { timeout: 15000 });
     }
     return s;
 }
@@ -73,11 +72,9 @@ function reboot(delayMs) {
     setTimeout(function () { exec('sudo ' + SCRIPT + ' reboot'); }, delayMs || 800);
 }
 
-/// Описание для журнала: «статический 10.10.10.250/24 шлюз 10.10.10.1» / «DHCP».
+/// Описание для журнала: «статический 10.10.10.250/24» или «DHCP».
 function describe(s) {
-    return s.mode === 'dhcp'
-        ? 'DHCP'
-        : 'статический ' + s.address + '/' + s.prefix + ' шлюз ' + s.gateway + ', DNS ' + s.dns;
+    return s.mode === 'dhcp' ? 'DHCP' : 'статический ' + s.address + '/' + s.prefix;
 }
 
 module.exports = { read, validate, apply, reboot, describe, CONNECTION };

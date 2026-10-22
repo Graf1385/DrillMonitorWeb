@@ -6,6 +6,7 @@ const multer      = require('multer');
 const logger      = require('../logger');
 const auth        = require('../auth');
 const netConfig   = require('../netConfig');
+const ingestAdmin = require('../ingestAdmin');
 
 // ── Login rate limiter ────────────────────────────────────────────────────────
 const _loginAttempts = new Map();
@@ -46,6 +47,14 @@ router.post('/api/auth/login', (req, res) => {
         logger.log('Неудачная попытка входа: пользователь "' + (name || '?') + '"');
         res.status(401).json({ ok: false });
     }
+});
+
+// Смена пароля для того, кто уже вошёл. Тот же раздел приходит и по RS-485
+// кадром {"auth":…} — там это единственный способ задать пароль с нуля.
+router.post('/api/auth/password', auth.requireAuth, (req, res) => {
+    const err = ingestAdmin.ingestAuth(req.body || {});
+    if (err) return res.status(400).json({ error: err });
+    res.json({ ok: true });
 });
 
 router.post('/api/auth/logout', (req, res) => {

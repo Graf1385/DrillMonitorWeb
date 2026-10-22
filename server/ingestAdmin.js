@@ -2,11 +2,12 @@
 
 // ── Настройка самого устройства из BCS_DrillerMonitorLoader ───────────────────
 //
-// Три раздела, которые на мониторе правятся через веб-интерфейс, а на буровой
-// доступны только по линии RS-485: сетевые настройки, приём по RS-485 и
-// справочники параметров/единиц. По TCP Loader пользуется обычным REST
-// (со входом в систему), по RS-485 — кадрами {"net":…}, {"serial":…}, {"refs":…},
-// которые приходят сюда из server/serialSource.js.
+// Разделы, которые на мониторе правятся через веб-интерфейс, а на буровой
+// доступны только по линии RS-485: сетевые настройки, приём по RS-485,
+// справочники параметров/единиц и пароль учётной записи. По TCP Loader
+// пользуется обычным REST (со входом в систему), по RS-485 — кадрами
+// {"net":…}, {"serial":…}, {"refs":…}, {"auth":…}, которые приходят сюда из
+// server/serialSource.js.
 //
 // Все функции возвращают null при успехе или текст ошибки — как ingestConfig.
 
@@ -34,8 +35,7 @@ function ingestNetwork(net) {
         const cur  = netConfig.read();
         const same = cur.mode === wanted.mode && (wanted.mode === 'dhcp' ||
             (cur.address === wanted.address &&
-             String(cur.prefix) === String(wanted.prefix) &&
-             cur.gateway === wanted.gateway));
+             String(cur.prefix) === String(wanted.prefix)));
         if (same) {
             _log('RS-485: сеть уже настроена как запрошено (' + netConfig.describe(wanted) + ')');
             return null;
@@ -77,6 +77,35 @@ function ingestSerial(ser) {
 
     serialSource.saveSettings({ enabled: enabled, port: port, baud: baud });
     _log('Настройки RS-485 изменены по RS-485: ' + port + ' @ ' + baud + ' бод');
+    return null;
+}
+
+// ── Учётная запись монитора ───────────────────────────────────────────────────
+//
+// Пароль admin создаётся случайным при первом запуске и больше нигде не виден,
+// поэтому без этого раздела Loader не может войти по TCP ни одним способом.
+// Задаётся он по той же линии RS-485: она физическая, и тот, кто до неё добрался,
+// и так может переписать мониторy сеть, справочники и всё рабочее поле.
+
+const MIN_PASSWORD = 4;
+
+function ingestAuth(a) {
+    if (!a || typeof a !== 'object') return 'Неверный формат учётной записи';
+
+    const name     = String(a.user || 'admin').trim();
+    const password = a.password == null ? '' : String(a.password);
+
+    if (!name)                          return 'Пустое имя пользователя';
+    if (password.length < MIN_PASSWORD) return 'Пароль короче ' + MIN_PASSWORD + ' символов';
+
+    try {
+        if (!db.getUser(name)) return 'На мониторе нет пользователя «' + name + '»';
+        db.updateUserPassword(name, password);
+    } catch (e) {
+        return 'Ошибка смены пароля: ' + (e.message || e);
+    }
+
+    _log('Пароль пользователя "' + name + '" задан из BCS_DrillerMonitorLoader');
     return null;
 }
 
@@ -162,4 +191,4 @@ function ingestRefs(refs) {
     return null;
 }
 
-module.exports = { ingestNetwork, ingestSerial, ingestRefs };
+module.exports = { ingestNetwork, ingestSerial, ingestRefs, ingestAuth };

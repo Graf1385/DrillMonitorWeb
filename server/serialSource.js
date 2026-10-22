@@ -164,6 +164,7 @@ function _dispatch(kind, data) {
         case 'refs':   return ingestAdmin.ingestRefs(data);
         case 'net':    return ingestAdmin.ingestNetwork(data);
         case 'serial': return ingestAdmin.ingestSerial(data);
+        case 'auth':   return ingestAdmin.ingestAuth(data);
         default:       return 'неизвестный раздел настройки: ' + kind;
     }
 }
@@ -218,6 +219,8 @@ function handleFrame(obj) {
         _apply('net', obj.net);         // сетевые настройки устройства
     } else if (obj.serial && typeof obj.serial === 'object') {
         _apply('serial', obj.serial);   // настройки приёма по RS-485
+    } else if (obj.auth && typeof obj.auth === 'object') {
+        _apply('auth', obj.auth);       // пароль учётной записи монитора
     } else if (obj.params) {
         const err = ingest.ingestRecord(obj);
         if (err) _onFrameError('format', err);

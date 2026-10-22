@@ -15,8 +15,6 @@ function showNetworkSettings() {
         for (var i = 0; i < pfxSel.options.length; i++) {
             if (pfxSel.options[i].value === String(d.prefix)) { pfxSel.selectedIndex = i; break; }
         }
-        document.getElementById('netGateway').value = d.gateway;
-        document.getElementById('netDns').value = d.dns;
         _netOrigAddress = d.address;
         _netOrigMode = d.mode;
 
@@ -30,7 +28,7 @@ function showNetworkSettings() {
 
 function netModeChanged() {
     var isStatic = document.getElementById('netMode').value === 'static';
-    ['address', 'prefix', 'gateway', 'dns'].forEach(function(f) {
+    ['address', 'prefix'].forEach(function(f) {
         document.getElementById('netRow_' + f).style.display = isStatic ? '' : 'none';
     });
 }
@@ -39,8 +37,6 @@ function applyNetworkSettings() {
     var mode    = document.getElementById('netMode').value;
     var address = document.getElementById('netAddress').value.trim();
     var prefix  = document.getElementById('netPrefix').value;
-    var gateway = document.getElementById('netGateway').value.trim();
-    var dns     = document.getElementById('netDns').value.trim();
 
     if ((mode === 'static' && address !== _netOrigAddress) || mode !== _netOrigMode) {
         if (!confirm('Сетевые настройки изменятся, устройство перезагрузится, ' +
@@ -54,8 +50,6 @@ function applyNetworkSettings() {
     if (mode === 'static') {
         body.address = address;
         body.prefix  = prefix;
-        body.gateway = gateway;
-        body.dns     = dns || '8.8.8.8';
     }
     fetch('/api/network', {
         method: 'POST',

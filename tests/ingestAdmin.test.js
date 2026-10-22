@@ -101,31 +101,53 @@ describe('ingestAdmin.ingestRefs', () => {
     });
 });
 
+describe('ingestAdmin.ingestAuth', () => {
+    test('задаёт пароль admin — без него Loader не войдёт по TCP', () => {
+        assert.equal(ingestAdmin.ingestAuth({ user: 'admin', password: 'lineSetPass' }), null);
+        assert.ok(db.verifyUser('admin', 'lineSetPass'), 'монитор принимает новый пароль');
+    });
+
+    test('без имени пользователя берётся admin', () => {
+        assert.equal(ingestAdmin.ingestAuth({ password: 'defaultUser1' }), null);
+        assert.ok(db.verifyUser('admin', 'defaultUser1'));
+    });
+
+    test('короткий пароль отклоняется, старый остаётся рабочим', () => {
+        ingestAdmin.ingestAuth({ password: 'прежний пароль' });
+        assert.match(ingestAdmin.ingestAuth({ password: '12' }), /короче/i);
+        assert.ok(db.verifyUser('admin', 'прежний пароль'));
+    });
+
+    test('неизвестный пользователь отклоняется', () => {
+        assert.match(ingestAdmin.ingestAuth({ user: 'driller', password: 'whatever' }), /нет пользователя/i);
+    });
+
+    test('не кадр — не пароль', () => {
+        assert.match(ingestAdmin.ingestAuth(null), /формат/i);
+    });
+});
+
 describe('netConfig.validate', () => {
     test('принимает DHCP без адресов', () => {
         assert.deepEqual(netConfig.validate({ mode: 'dhcp' }), { mode: 'dhcp' });
     });
 
     test('принимает корректный статический адрес', () => {
-        const s = netConfig.validate({ mode: 'static', address: '10.10.10.250', prefix: '24',
-                                       gateway: '10.10.10.1', dns: '8.8.8.8' });
-        assert.equal(s.address, '10.10.10.250');
-        assert.equal(s.prefix, 24);
+        const s = netConfig.validate({ mode: 'static', address: '10.10.10.250', prefix: '24' });
+        assert.deepEqual(s, { mode: 'static', address: '10.10.10.250', prefix: 24 });
     });
 
-    test('подставляет DNS по умолчанию', () => {
+    test('шлюз и DNS от старых версий Loader игнорируются, а не ломают кадр', () => {
         const s = netConfig.validate({ mode: 'static', address: '192.168.1.5', prefix: 24,
-                                       gateway: '192.168.1.1' });
-        assert.equal(s.dns, '8.8.8.8');
+                                       gateway: '192.168.1.1', dns: '8.8.8.8' });
+        assert.deepEqual(s, { mode: 'static', address: '192.168.1.5', prefix: 24 });
     });
 
     const bad = [
-        ['режим',   { mode: 'bridge' },                                                    /режим/i],
-        ['адрес',   { mode: 'static', address: '10.10.10', prefix: 24, gateway: '10.10.10.1' }, /IP-адрес/i],
-        ['октет',   { mode: 'static', address: '10.10.10.999', prefix: 24, gateway: '10.10.10.1' }, /IP-адрес/i],
-        ['шлюз',    { mode: 'static', address: '10.10.10.5', prefix: 24, gateway: 'шлюз' }, /шлюз/i],
-        ['маска',   { mode: 'static', address: '10.10.10.5', prefix: 99, gateway: '10.10.10.1' }, /маск/i],
-        ['DNS',     { mode: 'static', address: '10.10.10.5', prefix: 24, gateway: '10.10.10.1', dns: 'nope' }, /DNS/i],
+        ['режим',   { mode: 'bridge' },                                      /режим/i],
+        ['адрес',   { mode: 'static', address: '10.10.10',     prefix: 24 }, /IP-адрес/i],
+        ['октет',   { mode: 'static', address: '10.10.10.999', prefix: 24 }, /IP-адрес/i],
+        ['маска',   { mode: 'static', address: '10.10.10.5',   prefix: 99 }, /маск/i],
     ];
     bad.forEach(([what, body, re]) => {
         test('отклоняет: ' + what, () => {
