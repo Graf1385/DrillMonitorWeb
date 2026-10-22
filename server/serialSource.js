@@ -19,8 +19,9 @@ const path     = require('path');
 const { execFile } = require('child_process');
 const { FrameParser } = require('./serialFrame');
 const { ConfigReassembler } = require('./configReassembler');
-const ingest   = require('./ingest');
-const logger   = require('./logger');
+const ingest      = require('./ingest');
+const ingestAdmin = require('./ingestAdmin');
+const logger      = require('./logger');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'serial-settings.json');
 // 57600 бод — запас по дальности для линии RS-485 от 100 м (монитор стоит далеко от ПК)
@@ -92,8 +93,11 @@ function _scheduleRetry() {
 
 function _closeStream() {
     if (_stream) {
-        try { _stream.destroy(); } catch (_) {}
+        // Обработчики снимаем до destroy: иначе 'close' закрытого потока запустит
+        // ещё одно переоткрытие и на порту окажутся два читателя (дубли кадров).
+        const s = _stream;
         _stream = null;
+        try { s.removeAllListeners(); s.destroy(); } catch (_) {}
     }
     _open = false;
 }
@@ -114,7 +118,7 @@ function _openPort() {
             _setError('stty ' + port + ': ' + (stderr || err.message).trim());
             return _scheduleRetry();
         }
-        _parser = new FrameParser(_onFrame, _onFrameError);
+        _parser = new FrameParser(handleFrame, _onFrameError);
         try {
             _stream = fs.createReadStream(port, { highWaterMark: 4096 });
         } catch (e) {
@@ -142,8 +146,45 @@ function _openPort() {
     });
 }
 
-// Сборщик конфигурации из частей {"cfgSeq":…} (большие конфиги по RS-485)
+// Сборщик длинных посылок из частей {"cfgSeq":…} (конфиг, справочники)
 const _cfgAsm = new ConfigReassembler();
+
+// ── Применение настроек, пришедших по линии ──────────────────────────────────
+//
+// Loader повторяет каждый кадр настройки: линия односторонняя, подтверждений
+// нет. Применять одно и то же по три раза незачем — сравниваем посылку с
+// последней успешно применённой того же вида. После ошибки повтор принимается.
+
+const APPLY_DEDUPE_MS = 10000;
+let _lastApply = { kind: null, json: null, at: 0 };
+
+function _dispatch(kind, data) {
+    switch (kind) {
+        case 'config': return ingest.ingestConfig(data);
+        case 'refs':   return ingestAdmin.ingestRefs(data);
+        case 'net':    return ingestAdmin.ingestNetwork(data);
+        case 'serial': return ingestAdmin.ingestSerial(data);
+        default:       return 'неизвестный раздел настройки: ' + kind;
+    }
+}
+
+function _apply(kind, data) {
+    let json = null;
+    try { json = JSON.stringify(data); } catch (_) {}
+
+    if (json !== null && _lastApply.kind === kind && _lastApply.json === json &&
+        (Date.now() - _lastApply.at) < APPLY_DEDUPE_MS) {
+        return;   // повтор того же кадра
+    }
+
+    const err = _dispatch(kind, data);
+    if (err) {
+        _lastApply = { kind: null, json: null, at: 0 };
+        _onFrameError(kind, err);
+    } else {
+        _lastApply = { kind: kind, json: json, at: Date.now() };
+    }
+}
 
 let _badLogged = 0;
 function _onFrameError(code, detail) {
@@ -156,24 +197,27 @@ function _onFrameError(code, detail) {
     }
 }
 
-function _onFrame(obj) {
+// Разбор одного принятого кадра. Вынесено в экспорт: той же точкой пользуются
+// проверки приёма без физической линии (кадры из файла вместо порта).
+function handleFrame(obj) {
     _stats.framesOk++;
     _stats.lastFrameAt = Date.now();
     if (!obj || typeof obj !== 'object') return;
 
     if (obj.state && typeof obj.state === 'object') {
         ingest.ingestState(obj.state);
-    } else if (obj.config && typeof obj.config === 'object') {
-        // Конфигурация целиком в одном кадре
-        const err = ingest.ingestConfig(obj.config);
-        if (err) _onFrameError('config', err);
     } else if (obj.cfgSeq && typeof obj.cfgSeq === 'object') {
-        // Часть большой конфигурации — собираем и применяем, когда полна
-        const assembled = _cfgAsm.push(obj.cfgSeq);
-        if (assembled) {
-            const err = ingest.ingestConfig(assembled);
-            if (err) _onFrameError('config', err);
-        }
+        // Часть длинной посылки — собираем и применяем, когда полна
+        const done = _cfgAsm.push(obj.cfgSeq);
+        if (done) _apply(done.kind, done.data);
+    } else if (obj.config && typeof obj.config === 'object') {
+        _apply('config', obj.config);   // конфигурация целиком в одном кадре
+    } else if (obj.refs && typeof obj.refs === 'object') {
+        _apply('refs', obj.refs);       // справочники параметров и единиц
+    } else if (obj.net && typeof obj.net === 'object') {
+        _apply('net', obj.net);         // сетевые настройки устройства
+    } else if (obj.serial && typeof obj.serial === 'object') {
+        _apply('serial', obj.serial);   // настройки приёма по RS-485
     } else if (obj.params) {
         const err = ingest.ingestRecord(obj);
         if (err) _onFrameError('format', err);
@@ -229,4 +273,5 @@ function status() {
     };
 }
 
-module.exports = { start, stop, restart, status, getSettings, saveSettings, loadSettings, BAUD_RATES };
+module.exports = { start, stop, restart, status, getSettings, saveSettings, loadSettings,
+                   handleFrame, BAUD_RATES };

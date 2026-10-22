@@ -39,6 +39,7 @@ module.exports = {
     createUnit: (name, symbol) => units.createUnit(name, symbol),
     updateUnit: (id, name, symbol) => units.updateUnit(id, name, symbol),
     importUnits: (list) => units.importUnits(list),
+    upsertUnits: (list) => units.upsertUnits(list),
     deleteUnit:  (id) => units.deleteUnit(id),
 
     // parameters

@@ -1,14 +1,15 @@
 const express  = require('express');
 const https    = require('https');
 const fs       = require('fs');
-const { exec, execFile, execFileSync } = require('child_process');
+const { exec, execFile } = require('child_process');
 const path     = require('path');
 const router   = express.Router();
 const db         = require('../db');
 const sse        = require('../sse');
 const dataSource = require('../dataSource');
-const pkg      = require('../../package.json');
-const auth     = require('../auth');
+const pkg       = require('../../package.json');
+const auth      = require('../auth');
+const netConfig = require('../netConfig');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
 
@@ -333,24 +334,7 @@ router.get('/api/events', (req, res) => {
 
 router.get('/api/network', auth.requireAuth, function(req, res) {
     try {
-        var out = execFileSync('nmcli', [
-            '-t', '-f', 'ipv4.method,ipv4.addresses,ipv4.gateway,ipv4.dns',
-            'con', 'show', 'Wired connection 1'
-        ], { timeout: 5000 }).toString().trim();
-        var data = {};
-        out.split('\n').forEach(function(line) {
-            var idx = line.indexOf(':');
-            if (idx !== -1) data[line.slice(0, idx)] = line.slice(idx + 1);
-        });
-        var addr  = data['ipv4.addresses'] || '';
-        var parts = addr.split('/');
-        res.json({
-            mode:    data['ipv4.method'] === 'manual' ? 'static' : 'dhcp',
-            address: parts[0] || '',
-            prefix:  parts[1] || '24',
-            gateway: data['ipv4.gateway'] || '',
-            dns:     data['ipv4.dns'] || ''
-        });
+        res.json(netConfig.read());
     } catch(e) {
         res.status(500).json({ error: 'Ошибка чтения сетевых настроек' });
     }

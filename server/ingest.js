@@ -15,14 +15,20 @@ const logger     = require('./logger');
 // записи (LST). Список строится при старте по именам из справочника.
 const _DEPTH_NAMES = ['глубина забоя', 'глубина долота'];
 let _depthParamIds = [];
-(function () {
+
+// Справочник параметров можно править из Loader (server/ingestAdmin.js), поэтому
+// список перечитывается не только при старте.
+function refreshDepthParams() {
+    const ids = [];
     try {
         db.getParameters().forEach(function (p) {
-            if (p.name && _DEPTH_NAMES.indexOf(p.name.toLowerCase()) !== -1)
-                _depthParamIds.push(p.id);
+            if (p.name && _DEPTH_NAMES.indexOf(p.name.toLowerCase()) !== -1) ids.push(p.id);
         });
-    } catch (_) {}
-})();
+    } catch (_) { return _depthParamIds; }
+    _depthParamIds = ids;
+    return ids;
+}
+refreshDepthParams();
 
 function startPush() {
     dataSource.startPushMode(
@@ -176,4 +182,4 @@ function ingestState(body) {
     }
 }
 
-module.exports = { ingestRecord, ingestState, ingestConfig, startPush };
+module.exports = { ingestRecord, ingestState, ingestConfig, startPush, refreshDepthParams };
