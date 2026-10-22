@@ -55,116 +55,24 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
     window.showSuccess = _makeToast('successToast');
 })();
 
-// ── Update checker ────────────────────────────────────────────────────────────
+// ── Версия программы ──────────────────────────────────────────────────────────
+//
+// Проверять релизы на GitHub табло нечем: в интернет оно не ходит. Новая версия
+// приезжает из BCS_DrillerMonitorLoader — по RS-485 или TCP/IP, и устройство
+// перезагружается само. Кнопка показывает, что сейчас установлено.
 
 (function () {
-    var _banner      = document.getElementById('updateBanner');
-    var _bannerText  = document.getElementById('updateBannerText');
-    var _bannerLink  = document.getElementById('updateBannerLink');
-    var _bannerClose = document.getElementById('updateBannerClose');
-    var _bannerApply = document.getElementById('updateBannerApply');
-    var _badge       = document.getElementById('updateBadge');
-    var _btn         = document.getElementById('updateCheckButton');
-    var _dialog      = document.getElementById('updateConfirmDialog');
-    var _confirmText = document.getElementById('updateConfirmText');
-    var _confirmYes  = document.getElementById('updateConfirmYes');
-    var _confirmNo   = document.getElementById('updateConfirmNo');
-    var _overlay     = document.getElementById('updateProgressOverlay');
-    var _overlayText = document.getElementById('updateProgressText');
+    var _btn = document.getElementById('versionButton');
+    if (!_btn) return;
 
-    var _latestVersion = null;
-    window._updateInProgress = false;
-
-    function _showBanner(data) {
-        _latestVersion = data.latest;
-        _bannerText.textContent = 'Доступна версия ' + data.latest + '  (текущая ' + data.current + ')';
-        if (_bannerLink) _bannerLink.href = data.releaseUrl || 'https://github.com/Graf1385/DrillMonitorWeb/releases';
-        _banner.classList.add('visible');
-    }
-
-    function _pollUntilAlive() {
-        _overlayText.textContent = 'Перезапуск сервера…';
-        var attempts = 0;
-        var timer = setInterval(function () {
-            attempts++;
-            $.ajax({ url: '/api/health', method: 'GET', timeout: 2000, global: false })
-                .done(function () {
-                    clearInterval(timer);
-                    window._updateInProgress = false;
-                    _overlayText.textContent = 'Готово! Перезагрузка…';
-                    setTimeout(function () { window.location.reload(); }, 800);
-                })
-                .fail(function () {
-                    if (attempts > 90) {
-                        clearInterval(timer);
-                        window._updateInProgress = false;
-                        _overlay.classList.remove('visible');
-                        showError('Сервер не отвечает — обновите страницу вручную');
-                    }
-                });
-        }, 1000);
-    }
-
-    function _applyUpdate() {
-        _dialog.close();
-        _banner.classList.remove('visible');
-        window._updateInProgress = true;
-        _overlayText.textContent = 'Устанавливается обновление…';
-        _overlay.classList.add('visible');
-
-        $.ajax({ url: '/api/update/apply', method: 'POST', timeout: 180000 })
-            .done(function () {
-                setTimeout(_pollUntilAlive, 2500);
-            })
-            .fail(function (xhr) {
-                window._updateInProgress = false;
-                _overlay.classList.remove('visible');
-                if (xhr.status === 401) {
-                    if (typeof showLoginModal === 'function') showLoginModal();
-                    showError('Сессия истекла — войдите снова');
-                    return;
-                }
-                var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Ошибка обновления';
-                showError(msg);
-            });
-    }
-
-    function _check(manual) {
-        if (_btn) _btn.classList.add('checking');
-        $.ajax({ url: '/api/update/check', dataType: 'json', global: false, timeout: 10000 })
+    _btn.addEventListener('click', function () {
+        $.ajax({ url: '/api/health', dataType: 'json', global: false, timeout: 5000 })
             .done(function (data) {
-                if (data.hasUpdate) {
-                    if (_badge) _badge.classList.add('visible');
-                    var dismissed = localStorage.getItem('updateDismissed');
-                    if (manual || dismissed !== data.latest) _showBanner(data);
-                } else {
-                    if (_badge) _badge.classList.remove('visible');
-                    _banner.classList.remove('visible');
-                    if (manual) showSuccess('Версия актуальна: ' + (data.current || '—'));
-                }
+                showSuccess('Версия ' + (data.version || '—') +
+                            '. Обновления приходят из BCS_DrillerMonitorLoader.');
             })
-            .fail(function () {
-                if (manual) showError('Не удалось проверить обновления');
-            })
-            .always(function () { if (_btn) _btn.classList.remove('checking'); });
-    }
-
-    if (_bannerApply) _bannerApply.addEventListener('click', function () {
-        _confirmText.textContent = 'Обновить до версии ' + (_latestVersion || '?') + '? Сервер перезапустится автоматически.';
-        _dialog.showModal();
+            .fail(function () { showError('Не удалось прочитать версию программы'); });
     });
-
-    if (_confirmYes) _confirmYes.addEventListener('click', _applyUpdate);
-    if (_confirmNo)  _confirmNo.addEventListener('click', function () { _dialog.close(); });
-
-    if (_bannerClose) _bannerClose.addEventListener('click', function () {
-        if (_latestVersion) localStorage.setItem('updateDismissed', _latestVersion);
-        _banner.classList.remove('visible');
-    });
-
-    if (_btn) _btn.addEventListener('click', function () { _check(true); });
-
-    _check(false);
 })();
 
 function _restoreIndicators(indicators) {
@@ -355,8 +263,7 @@ function _hideDataBanner() {
         document.querySelectorAll('.indicator').forEach(function (el) {
             if (window.setIndicatorValue) setIndicatorValue(el, null);
         });
-        if (!window._updateInProgress) {
-            setTimeout(function () { window.location.reload(); }, 3000);
-        }
+        // Обновление перезагружает устройство — киоск поднимется этим же циклом
+        setTimeout(function () { window.location.reload(); }, 3000);
     };
 })();

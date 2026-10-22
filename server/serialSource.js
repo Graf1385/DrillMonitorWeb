@@ -21,6 +21,7 @@ const { FrameParser } = require('./serialFrame');
 const { ConfigReassembler } = require('./configReassembler');
 const ingest      = require('./ingest');
 const ingestAdmin = require('./ingestAdmin');
+const updatePackage = require('./updatePackage');
 const logger      = require('./logger');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'serial-settings.json');
@@ -165,6 +166,7 @@ function _dispatch(kind, data) {
         case 'net':    return ingestAdmin.ingestNetwork(data);
         case 'serial': return ingestAdmin.ingestSerial(data);
         case 'auth':   return ingestAdmin.ingestAuth(data);
+        case 'upd':    return updatePackage.ingestUpdate(data);
         default:       return 'неизвестный раздел настройки: ' + kind;
     }
 }
@@ -221,6 +223,8 @@ function handleFrame(obj) {
         _apply('serial', obj.serial);   // настройки приёма по RS-485
     } else if (obj.auth && typeof obj.auth === 'object') {
         _apply('auth', obj.auth);       // пароль учётной записи монитора
+    } else if (obj.upd && typeof obj.upd === 'object') {
+        _apply('upd', obj.upd);         // пакет обновления программы
     } else if (obj.params) {
         const err = ingest.ingestRecord(obj);
         if (err) _onFrameError('format', err);

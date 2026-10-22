@@ -1,8 +1,4 @@
 const express  = require('express');
-const https    = require('https');
-const fs       = require('fs');
-const { exec, execFile } = require('child_process');
-const path     = require('path');
 const router   = express.Router();
 const db         = require('../db');
 const sse        = require('../sse');
@@ -10,78 +6,6 @@ const dataSource = require('../dataSource');
 const pkg       = require('../../package.json');
 const auth      = require('../auth');
 const netConfig = require('../netConfig');
-
-const ROOT_DIR = path.join(__dirname, '..', '..');
-
-// ── Rate limiter ──────────────────────────────────────────────────────────────
-
-const _rlMap = new Map();
-function _isRateLimited(ip, max, windowMs) {
-    const now   = Date.now();
-    let   entry = _rlMap.get(ip);
-    if (!entry || now > entry.reset) entry = { count: 0, reset: now + windowMs };
-    entry.count++;
-    _rlMap.set(ip, entry);
-    return entry.count > max;
-}
-setInterval(function () {
-    const now = Date.now();
-    for (const [k, v] of _rlMap) if (now > v.reset) _rlMap.delete(k);
-}, 5 * 60 * 1000);
-
-// ── Update checker ────────────────────────────────────────────────────────────
-
-const GITHUB_REPO = 'Graf1385/DrillMonitorWeb';
-let _updateCache  = null;
-
-function _semverGt(a, b) {
-    var ap = a.split('.').map(Number);
-    var bp = b.split('.').map(Number);
-    for (var i = 0; i < 3; i++) {
-        if ((ap[i] || 0) > (bp[i] || 0)) return true;
-        if ((ap[i] || 0) < (bp[i] || 0)) return false;
-    }
-    return false;
-}
-
-function _fetchLatestRelease(cb) {
-    var done  = false;
-    var token = process.env.GITHUB_TOKEN;
-    var hdrs  = { 'User-Agent': 'DrillMonitorWeb/' + pkg.version };
-    if (token) hdrs['Authorization'] = 'token ' + token;
-    var options = {
-        hostname: 'api.github.com',
-        path:     '/repos/' + GITHUB_REPO + '/releases/latest',
-        headers:  hdrs
-    };
-    var deadline = setTimeout(function () {
-        if (!done) { done = true; try { req.destroy(); } catch (e) {} cb(new Error('timeout')); }
-    }, 8000);
-    var req = https.get(options, function (res) {
-        var raw = '';
-        res.on('data', function (c) { raw += c; });
-        res.on('end', function () {
-            clearTimeout(deadline);
-            if (done) return;
-            done = true;
-            try {
-                var data    = JSON.parse(raw);
-                var tag     = (data.tag_name || '').replace(/^v/, '');
-                var current = pkg.version;
-                cb(null, {
-                    current:    current,
-                    latest:     tag || null,
-                    hasUpdate:  !!(tag && _semverGt(tag, current)),
-                    releaseUrl: data.html_url || null
-                });
-            } catch (e) { cb(e); }
-        });
-    });
-    req.on('error', function (e) {
-        clearTimeout(deadline);
-        if (!done) { done = true; cb(e); }
-    });
-}
 
 router.get('/', (req, res) =>{
     res.render('index');
@@ -217,100 +141,13 @@ router.get('/api/alarm-sounds/:id/file', (req, res) => {
 });
 
 
-router.get('/api/update/check', function (req, res) {
-    if (_isRateLimited(req.ip || 'unknown', 20, 60 * 1000)) {
-        return res.status(429).json({ error: 'Слишком много запросов' });
-    }
-    _fetchLatestRelease(function (err, result) {
-        if (err) {
-            return res.status(503).json({ error: 'GitHub недоступен' });
-        }
-        _updateCache = result;
-        res.json(result);
-    });
-});
-
 router.get('/api/health', (req, res) => {
     res.json({ ok: true, version: pkg.version });
 });
 
-// ── Auto-updater ──────────────────────────────────────────────────────────────
-
-let _updateInProgress = false;
-
-function _runCmd(cmd, opts) {
-    return new Promise(function (resolve, reject) {
-        exec(cmd, opts, function (err, stdout, stderr) {
-            if (err) reject(new Error(stderr || err.message));
-            else resolve(stdout.trim());
-        });
-    });
-}
-
-// Запуск без shell — аргументы не интерпретируются, инъекция невозможна
-function _runFile(cmd, args, opts) {
-    return new Promise(function (resolve, reject) {
-        execFile(cmd, args, opts, function (err, stdout, stderr) {
-            if (err) reject(new Error(stderr || err.message));
-            else resolve(stdout.trim());
-        });
-    });
-}
-
-function _spawnDetached(cmd, args, opts) {
-    const { spawn } = require('child_process');
-    const child = spawn(cmd, args, Object.assign({ detached: true, stdio: 'ignore', env: process.env }, opts));
-    child.unref();
-}
-
-router.post('/api/update/apply', auth.requireAuth, async (req, res) => {
-    if (_updateInProgress) {
-        return res.status(409).json({ error: 'Обновление уже выполняется' });
-    }
-    _updateInProgress = true;
-
-    try {
-        const token = process.env.GITHUB_TOKEN;
-        const fetchArgs = token
-            ? ['fetch', '--tags', 'https://x-access-token:' + token + '@github.com/' + GITHUB_REPO]
-            : ['fetch', '--tags', 'origin'];
-
-        await _runFile('git', fetchArgs, { cwd: ROOT_DIR, timeout: 30000 });
-
-        // Fix ownership of scripts dir if it was deployed as root (prevents git reset --hard failure)
-        await _runCmd('sudo /opt/drillmonitor/scripts/set-network.sh fix-ownership', { cwd: ROOT_DIR, timeout: 5000 }).catch(() => {});
-
-        // Reset to release tag; fall back to origin/main if tag unknown.
-        // Тег приходит из внешнего API — принимаем только строгий semver
-        const tag = (_updateCache && /^\d+\.\d+\.\d+$/.test(_updateCache.latest || ''))
-            ? ('v' + _updateCache.latest) : 'origin/main';
-        await _runFile('git', ['reset', '--hard', tag], { cwd: ROOT_DIR, timeout: 15000 });
-        await _runFile('npm', ['install', '--omit=dev', '--no-fund', '--no-audit'], { cwd: ROOT_DIR, timeout: 120000 });
-
-        _updateCache = null;
-        res.json({ ok: true });
-
-        setTimeout(function () {
-            // set-network.sh reboot — единственный разрешённый в sudoers путь к reboot
-            exec('sudo /opt/drillmonitor/scripts/set-network.sh reboot', function (err) {
-                if (err) {
-                    console.error('[update] reboot failed, trying pm2:', err.message);
-                    exec('pm2 restart DrillMonitor', function (err2) {
-                        if (err2) {
-                            _spawnDetached(process.execPath, [path.join(ROOT_DIR, 'app.js')], { cwd: ROOT_DIR });
-                            process.exit(0);
-                        }
-                    });
-                }
-            });
-        }, 800);
-
-    } catch (e) {
-        _updateInProgress = false;
-        console.error('[update] apply error:', e.message);
-        res.status(500).json({ error: e.message });
-    }
-});
+// Самообновление с GitHub убрано: у табло нет ни шлюза, ни DNS. Новая версия
+// приезжает из BCS_DrillerMonitorLoader — POST /api/update/package по TCP/IP
+// или кадр {"upd":…} по RS-485, см. server/updatePackage.js.
 
 router.get('/api/events', (req, res) => {
     res.setHeader('Content-Type',  'text/event-stream');

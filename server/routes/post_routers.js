@@ -7,6 +7,7 @@ const logger      = require('../logger');
 const auth        = require('../auth');
 const netConfig   = require('../netConfig');
 const ingestAdmin = require('../ingestAdmin');
+const updatePackage = require('../updatePackage');
 
 // ── Login rate limiter ────────────────────────────────────────────────────────
 const _loginAttempts = new Map();
@@ -330,5 +331,22 @@ router.post('/api/network', auth.requireAuth, function(req, res) {
         res.status(500).json({ error: e.message || 'Ошибка применения сетевых настроек' });
     }
 });
+
+// ── Обновление программы ──────────────────────────────────────────────────────
+
+// Пакет приезжает телом запроса: архив tar.gz, имя и контрольная сумма — в
+// заголовках. То же самое приходит по RS-485 кадром {"upd":…} (serialSource.js).
+router.post('/api/update/package',
+    auth.requireAuth,
+    express.raw({ type: '*/*', limit: updatePackage.MAX_BYTES }),
+    function (req, res) {
+        const err = updatePackage.apply({
+            name:    req.get('x-update-name'),
+            sha256:  req.get('x-update-sha256'),
+            channel: 'TCP/IP'
+        }, req.body);
+        if (err) return res.status(400).json({ error: err });
+        res.json({ ok: true });
+    });
 
 module.exports = router;

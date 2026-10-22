@@ -202,11 +202,28 @@
 
 9. ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ
 ────────────────────────────────────────────────────────────────────────────────
-  cd /opt/drillmonitor
-  sudo systemctl stop drillmonitor
-  git pull
-  npm install --omit=dev
-  sudo systemctl start drillmonitor
+  Штатный путь — из BCS_DrillerMonitorLoader: «Обновление» на панели редактора.
+  В интернет табло не ходит (ни шлюза, ни DNS), поэтому пакет привозит Loader —
+  по RS-485 кадрами {"upd":…} или по TCP/IP запросом POST /api/update/package.
+  Монитор сверяет контрольную сумму, кладёт прежнюю версию в
+  /opt/drillmonitor/backup/before-<дата>.tgz, распаковывает архив поверх
+  установки и перезагружается. server/data с базой профилей не трогается.
+
+  Зависимости без интернета поставить нечем: пакет без node_modules, у которого
+  в package.json другие зависимости, монитор отклоняет — нужен полный пакет.
+
+  Откат:
+    cd /opt/drillmonitor
+    sudo systemctl stop drillmonitor
+    tar -xzf backup/before-<дата>.tgz
+    sudo systemctl start drillmonitor
+
+  Вручную, если Loader недоступен:
+    cd /opt/drillmonitor
+    sudo systemctl stop drillmonitor
+    git pull
+    npm install --omit=dev
+    sudo systemctl start drillmonitor
 
 
 10. БАЗА ДАННЫХ
