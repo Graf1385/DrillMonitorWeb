@@ -165,6 +165,12 @@ WorkingDirectory=${APP_DIR}
 ExecStart=${NODE_BIN} app.js
 Restart=on-failure
 RestartSec=5
+# Остановка должна быть быстрой: обновление и смена сети штатно перезагружают
+# устройство, и каждая лишняя секунда — это тёмный экран у бурильщика.
+# Сигнал шлём только главному процессу: с control-group systemd на этой машине
+# не замечает его завершения и ждёт таймаут целиком.
+KillMode=mixed
+TimeoutStopSec=15
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${SERVICE_NAME}

@@ -8,16 +8,19 @@ const auth        = require('../auth');
 const netConfig   = require('../netConfig');
 const ingestAdmin = require('../ingestAdmin');
 const updatePackage = require('../updatePackage');
+const mono        = require('../monotonic');
 
 // ── Login rate limiter ────────────────────────────────────────────────────────
+// Часы монотонные: системные подводит timeSync, а запрет входа на 15 минут,
+// растянутый прыжком часов, выглядел бы как «неверный пароль».
 const _loginAttempts = new Map();
 setInterval(function () {
-    const now = Date.now();
+    const now = mono.now();
     for (const [k, v] of _loginAttempts) if (now > v.reset) _loginAttempts.delete(k);
 }, 5 * 60 * 1000);
 
 function _loginRateLimited(ip) {
-    const now   = Date.now();
+    const now   = mono.now();
     let   entry = _loginAttempts.get(ip);
     if (!entry || now > entry.reset) entry = { count: 0, reset: now + 15 * 60 * 1000 };
     entry.count++;

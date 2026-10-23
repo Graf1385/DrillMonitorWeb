@@ -42,6 +42,13 @@ function Start(port){
         // Приём данных по RS-485 (если порт настроен и доступен)
         serialSource.start();
     });
+
+    // Loader шлёт записи с интервалом до 4 с, а node по умолчанию закрывает
+    // простаивающее соединение через 5 с. Соединение, закрытое ровно в момент
+    // отправки, приезжает в Loader как «ошибка отправки» на ровном месте —
+    // держим keep-alive заведомо дольше паузы между записями.
+    srv.keepAliveTimeout = 65000;
+    srv.headersTimeout   = 70000;
     // Ошибки listen (EADDRINUSE и т.п.) приходят асинхронным событием —
     // try/catch их не ловит, без обработчика процесс падает необработанно
     srv.on('error', (err) => {
@@ -50,8 +57,16 @@ function Start(port){
     });
 }
 
-process.on('SIGTERM', () => { serialSource.stop(); streamManager.stopAll(); process.exit(0); });
-process.on('SIGINT',  () => { serialSource.stop(); streamManager.stopAll(); process.exit(0); });
+// Остановка должна завершаться всегда: если уборка споткнётся, systemd ждёт
+// TimeoutStopSec (полторы минуты) и добивает процесс SIGKILL — столько же
+// лишнего времени киоск стоит тёмным после каждого обновления и смены сети.
+function _shutdown() {
+    try { serialSource.stop(); }   catch (e) { console.error('[stop] serial:', e.message); }
+    try { streamManager.stopAll(); } catch (e) { console.error('[stop] streams:', e.message); }
+    process.exit(0);
+}
+process.on('SIGTERM', _shutdown);
+process.on('SIGINT',  _shutdown);
 
 module.exports = {
     Start : Start

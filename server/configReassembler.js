@@ -15,12 +15,16 @@
 // иной n или k, протухание по таймауту — начинают сборку заново.
 
 const DEFAULT_TTL_MS = 15000;
+const mono = require('./monotonic');
 
 class ConfigReassembler {
     constructor(opts) {
         opts = opts || {};
         this._ttl = opts.ttlMs || DEFAULT_TTL_MS;
-        this._now = opts.now || Date.now;   // инъекция времени для тестов
+        // Монотонные часы: перевод системных (timeSync) посреди длинной
+        // посылки не должен выбрасывать уже собранные части — пакет
+        // обновления идёт минутами. Инъекция — для тестов.
+        this._now = opts.now || mono.now;
         this._cur = null;                   // { id, n, parts:[], count, at }
     }
 

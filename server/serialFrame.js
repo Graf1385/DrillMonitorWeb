@@ -57,7 +57,7 @@ function encode(obj) {
 }
 
 // Потоковый разборщик. onFrame(obj) — на каждый валидный кадр,
-// onError(code, detail) — 'crc' | 'json' | 'overflow'.
+// onError(code, detail) — 'crc' | 'json' | 'overflow' | 'truncated'.
 class FrameParser {
     constructor(onFrame, onError) {
         this._onFrame = onFrame;
@@ -76,6 +76,17 @@ class FrameParser {
 
             const etx = this._buf.indexOf(ETX, 1);
             if (etx < 0) {
+                // Внутри незакрытого кадра начался новый: STX в payload попасть
+                // не может (JSON экранирует управляющие байты), значит прошлый
+                // кадр оборван. Бросаем его сразу, не дожидаясь ETX: иначе его
+                // хвост войдёт в payload следующего кадра, тот не сойдётся по
+                // CRC, и обрыв будет выглядеть как помеха на линии.
+                const next = this._buf.indexOf(STX, 1);
+                if (next > 0) {
+                    this._fail('truncated', next);
+                    this._buf = this._buf.subarray(next);
+                    continue;
+                }
                 if (this._buf.length > MAX_PAYLOAD + 1) {           // кадр не закрывается — ресинк
                     this._fail('overflow', this._buf.length);
                     this._buf = this._buf.subarray(1);

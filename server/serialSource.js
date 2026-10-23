@@ -22,6 +22,7 @@ const { ConfigReassembler } = require('./configReassembler');
 const ingest      = require('./ingest');
 const ingestAdmin = require('./ingestAdmin');
 const updatePackage = require('./updatePackage');
+const mono        = require('./monotonic');
 const logger      = require('./logger');
 
 const SETTINGS_FILE = path.join(__dirname, 'data', 'serial-settings.json');
@@ -133,7 +134,11 @@ function _openPort() {
             _stats.openedAt = Date.now();
             _log('RS-485: порт ' + port + ' открыт, ' + _settings.baud + ' бод');
         });
-        _stream.on('data', function (chunk) { _parser.push(chunk); });
+        // Последняя страховка: разбор кадра не должен ронять сервер монитора
+        _stream.on('data', function (chunk) {
+            try { _parser.push(chunk); }
+            catch (e) { _onFrameError('parser', e && e.message ? e.message : String(e)); }
+        });
         _stream.on('error', function (e) {
             _setError('порт ' + port + ': ' + e.message);
             _closeStream();
@@ -157,7 +162,7 @@ const _cfgAsm = new ConfigReassembler();
 // последней успешно применённой того же вида. После ошибки повтор принимается.
 
 const APPLY_DEDUPE_MS = 10000;
-let _lastApply = { kind: null, json: null, at: 0 };
+let _lastApply = { kind: null, json: null, at: -Infinity };
 
 function _dispatch(kind, data) {
     switch (kind) {
@@ -175,17 +180,24 @@ function _apply(kind, data) {
     let json = null;
     try { json = JSON.stringify(data); } catch (_) {}
 
+    // Окно отсева считаем монотонными часами: перевод системных (timeSync)
+    // иначе либо пропустил бы повтор, либо держал отсев лишние минуты.
     if (json !== null && _lastApply.kind === kind && _lastApply.json === json &&
-        (Date.now() - _lastApply.at) < APPLY_DEDUPE_MS) {
+        (mono.now() - _lastApply.at) < APPLY_DEDUPE_MS) {
         return;   // повтор того же кадра
     }
 
-    const err = _dispatch(kind, data);
+    // Исключение отсюда всплыло бы в обработчик 'data' потока и уронило процесс:
+    // кадр с линии не должен иметь такой власти над табло.
+    let err;
+    try { err = _dispatch(kind, data); }
+    catch (e) { err = 'сбой применения: ' + (e && e.message ? e.message : e); }
+
     if (err) {
-        _lastApply = { kind: null, json: null, at: 0 };
+        _lastApply = { kind: null, json: null, at: -Infinity };
         _onFrameError(kind, err);
     } else {
-        _lastApply = { kind: kind, json: json, at: Date.now() };
+        _lastApply = { kind: kind, json: json, at: mono.now() };
     }
 }
 
@@ -226,7 +238,9 @@ function handleFrame(obj) {
     } else if (obj.upd && typeof obj.upd === 'object') {
         _apply('upd', obj.upd);         // пакет обновления программы
     } else if (obj.params) {
-        const err = ingest.ingestRecord(obj);
+        let err;
+        try { err = ingest.ingestRecord(obj); }
+        catch (e) { err = 'сбой приёма записи: ' + (e && e.message ? e.message : e); }
         if (err) _onFrameError('format', err);
     }
 }

@@ -110,6 +110,30 @@ describe('FrameParser', () => {
         assert.deepEqual(frames.map(f => f.recNo), [5]);
     });
 
+    // Потерянный ETX раньше замечался только по несошедшемуся CRC следующего
+    // кадра: хвост оборванного попадал в его payload, и обрыв выглядел как
+    // помеха на линии. Новый STX — достаточный признак, чтобы бросить обрывок.
+    test('оборванный кадр бросается по новому STX, а не по CRC следующего', () => {
+        const { p, frames, errors } = collect();
+        const lost = encode({ recNo: 10, params: { '0': 0 } });
+        const good = encode({ recNo: 11, params: { '0': 1 } });
+
+        // у кадра recNo:10 потерялся ETX и всё, что за ним; дальше поток идёт как с линии
+        const stream = Buffer.concat([lost.subarray(0, lost.indexOf(ETX)), good]);
+        for (let i = 0; i < stream.length; i++) p.push(stream.subarray(i, i + 1));
+
+        assert.deepEqual(errors, ['truncated'], 'обрыв назван обрывом, а не помехой');
+        assert.deepEqual(frames.map(f => f.recNo), [11]);
+    });
+
+    test('после оборванного кадра следующие разбираются все', () => {
+        const { p, frames } = collect();
+        const lost = encode({ recNo: 1, params: {} });
+        p.push(Buffer.concat([lost.subarray(0, lost.indexOf(ETX)), encode({ recNo: 2, params: {} })]));
+        for (const n of [3, 4]) p.push(encode({ recNo: n, params: {} }));
+        assert.deepEqual(frames.map(f => f.recNo), [2, 3, 4]);
+    });
+
     test('state frame round-trips', () => {
         const { p, frames } = collect();
         p.push(encode({ state: { running: false, reason: 'остановлено оператором' } }));
