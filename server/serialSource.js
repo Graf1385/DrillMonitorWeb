@@ -43,6 +43,8 @@ const READ_BUFFER      = 4096;
 
 let _settings = Object.assign({}, DEFAULTS);
 let _fd       = null;
+let _readingFd   = null;   // дескриптор, на котором сейчас висит read()
+let _closePending = null;  // его же закрыли, но ждём возврата чтения
 let _parser   = null;
 let _retry    = null;
 let _stopped  = true;
@@ -110,9 +112,21 @@ function _closeStream() {
         // два читателя и кадры задвоятся.
         const fd = _fd;
         _fd = null;
-        try { fs.closeSync(fd); } catch (_) {}
+        // Закрывать дескриптор, пока на нём висит чтение, нельзя: тот же номер
+        // тут же выдадут следующему open(), и незавершённое чтение прочитает
+        // чужой файл. Ждём возврата read() — он придёт в пределах VTIME.
+        if (_readingFd === fd) _closePending = fd;
+        else try { fs.closeSync(fd); } catch (_) {}
     }
     _open = false;
+}
+
+/// Закрыть дескриптор, закрытие которого отложили до конца чтения.
+function _closeDeferred() {
+    if (_closePending !== null) {
+        try { fs.closeSync(_closePending); } catch (_) {}
+        _closePending = null;
+    }
 }
 
 function _openPort() {
@@ -154,7 +168,10 @@ function _openPort() {
 /// таймеру, данных на линии пока нет.
 function _read(fd, buf) {
     if (_stopped || _fd !== fd) return;
+    _readingFd = fd;
     fs.read(fd, buf, 0, buf.length, null, function (err, bytes) {
+        _readingFd = null;
+        _closeDeferred();
         if (_stopped || _fd !== fd) return;
         if (err) {
             _setError('порт ' + _settings.port + ': ' + err.message);
