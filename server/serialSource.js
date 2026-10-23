@@ -50,7 +50,13 @@ const FAST_RETRY_MS    = 500;
 /// Чтение возвращается не реже чем раз в VTIME; дольше этого — оно замерло.
 const STALL_MS         = 4000;
 
+// Производители преобразователей USB-UART, которые считаем «нашими», когда
+// штатного узла нет: WCH (CH343/CH340 — стоит на табло), FTDI, Silicon Labs,
+// Prolific. По ним отличаем преобразователь от, скажем, модема на ttyACM.
+const CONVERTER_VENDORS = ['1a86', '0403', '10c4', '067b'];
+
 let _settings = Object.assign({}, DEFAULTS);
+let _activePort = null;    // какой узел открыт на самом деле (может быть запасным)
 let _fd       = null;
 let _readingFd   = null;   // дескриптор, на котором сейчас висит read()
 let _closePending = null;  // его же закрыли, но ждём возврата чтения
@@ -62,7 +68,10 @@ let _stopped  = true;
 let _open     = false;
 let _lastErr  = null;
 let _lastErrLogged = '';
-const _stats  = { framesOk: 0, framesBad: 0, lastFrameAt: 0, openedAt: 0 };
+const _stats  = { framesOk: 0, framesBad: 0, lastFrameAt: 0, openedAt: 0,
+                  // монотонные отметки: системные часы подводит timeSync, и
+                  // прыжок часов не должен выглядеть как тишина на линии
+                  lastFrameMono: 0, openedMono: 0, reopens: 0, framesSinceOpen: 0 };
 
 // ── settings ─────────────────────────────────────────────────────────────────
 
@@ -120,10 +129,60 @@ function _scheduleRetry(fast) {
 /// переподключения преобразователя символьная ссылка ведёт уже на другой узел.
 function _deviceChanged(fd) {
     try {
-        return fs.realpathSync(_settings.port) !== fs.readlinkSync('/proc/self/fd/' + fd);
+        return fs.realpathSync(_activePort || _settings.port) !== fs.readlinkSync('/proc/self/fd/' + fd);
     } catch (_) {
         return true;   // узла нет или не прочитать — переоткрываем
     }
+}
+
+/// Кто на том конце узла: «идентификатор производителя:изделия» USB-устройства.
+/// Путь к устройству обязательно разворачиваем realpath: в /sys это ссылка, а
+/// `path.join(…, '..')` схлопнул бы её текстуально и ушёл не туда.
+function _usbVendor(dev) {
+    try {
+        const node = path.basename(fs.realpathSync(dev));
+        const iface = fs.realpathSync('/sys/class/tty/' + node + '/device');   // …/2-4/2-4:1.0
+        const base  = path.dirname(iface);                                     // …/2-4
+        const vid  = fs.readFileSync(path.join(base, 'idVendor'),  'utf8').trim().toLowerCase();
+        const pid  = fs.readFileSync(path.join(base, 'idProduct'), 'utf8').trim().toLowerCase();
+        return vid + ':' + pid;
+    } catch (_) { return null; }
+}
+
+/**
+ * Какой узел открывать. Обычно — настроенный (/dev/ttyCH343, ссылка от udev).
+ * Но доступа к табло на буровой нет, а ссылки может не оказаться: правило udev
+ * не применилось после обновления, преобразователь перечислился как обычный
+ * ttyACM. Тогда берём единственный найденный преобразователь — лучше принимать
+ * данные с запасного узла, чем ждать человека с клавиатурой.
+ *
+ * Выбираем только при однозначности: два преобразователя сразу — повод
+ * написать в лог, а не угадывать.
+ */
+function choosePort(configured, available, vendorOf) {
+    if (available.indexOf(configured) !== -1) return { port: configured, fallback: false };
+
+    const others = available.filter(function (p) { return p !== configured; });
+    if (!others.length) return { port: null, reason: 'последовательных портов нет' };
+
+    const known = others.filter(function (p) {
+        const v = vendorOf ? vendorOf(p) : null;
+        return !!v && CONVERTER_VENDORS.indexOf(v.split(':')[0]) !== -1;
+    });
+
+    if (known.length === 1)
+        return { port: known[0], fallback: true, vendor: vendorOf ? vendorOf(known[0]) : null };
+    if (known.length > 1)
+        return { port: null, reason: 'преобразователей несколько: ' + known.join(', ') };
+    if (others.length === 1)
+        return { port: others[0], fallback: true, vendor: vendorOf ? vendorOf(others[0]) : null };
+    return { port: null, reason: 'подходящий порт не опознан: ' + others.join(', ') };
+}
+
+function _resolvePort() {
+    const configured = _settings.port;
+    if (fs.existsSync(configured)) return { port: configured, fallback: false };
+    return choosePort(configured, listPorts(), _usbVendor);
 }
 
 /**
@@ -140,10 +199,15 @@ function _startWatchdog() {
         if (_stopped || !_open || _fd === null) return;
         const fd      = _fd;
         const stalled = mono.now() - _lastReadAt > STALL_MS;
-        if (!stalled && !_deviceChanged(fd)) return;
+        // Работаем с запасного узла, а штатный появился (udev наконец отработал)
+        let returned = false;
+        try { returned = _activePort !== _settings.port && fs.existsSync(_settings.port); } catch (_) {}
+        if (!stalled && !returned && !_deviceChanged(fd)) return;
 
-        _setError('порт ' + _settings.port +
-                  (stalled ? ' перестал отвечать' : ' переподключился') + ' — открываю заново');
+        _setError('порт ' + (_activePort || _settings.port) +
+                  (stalled  ? ' перестал отвечать'
+                   : returned ? ': вернулся штатный ' + _settings.port
+                   : ' переподключился') + ' — открываю заново');
         // Закрываем сразу, не дожидаясь чтения: оно может не вернуться никогда,
         // а каждый такой зависший read занимает поток пула libuv.
         _fd = null; _open = false; _readingFd = null; _closePending = null;
@@ -183,11 +247,16 @@ function _closeDeferred() {
 
 function _openPort() {
     if (_stopped) return;
-    const port = _settings.port;
-    if (!fs.existsSync(port)) {
-        _setError('порт ' + port + ' не найден — ожидание подключения');
+    const pick = _resolvePort();
+    if (!pick.port) {
+        _setError('порт ' + _settings.port + ' не найден — ожидание подключения' +
+                  (pick.reason ? ' (' + pick.reason + ')' : ''));
         return _scheduleRetry();
     }
+    const port = pick.port;
+    if (pick.fallback && port !== _activePort)
+        _log('RS-485: ' + _settings.port + ' не найден, открываю ' + port +
+             (pick.vendor ? ' (USB ' + pick.vendor + ')' : ''));
     // raw-режим: 8N1, без управления потоком, без эха, не ждать несущей.
     // min 0 / time N — read() отдаёт то, что пришло, и не ждёт байт вечно.
     const args = ['-F', port, String(_settings.baud), 'raw', '-echo', '-echoe', '-echok',
@@ -208,10 +277,14 @@ function _openPort() {
         }
 
         _open = true;
+        _activePort = port;
         _lastErr = null;
         _lastErrLogged = '';
         _lastReadAt = mono.now();
-        _stats.openedAt = Date.now();
+        if (_stats.openedAt) _stats.reopens++;
+        _stats.openedAt   = Date.now();
+        _stats.openedMono = mono.now();
+        _stats.framesSinceOpen = 0;
         _log('RS-485: порт ' + port + ' открыт, ' + _settings.baud + ' бод');
         _startWatchdog();
         _read(_fd, Buffer.alloc(READ_BUFFER));
@@ -306,7 +379,9 @@ function _onFrameError(code, detail) {
 // проверки приёма без физической линии (кадры из файла вместо порта).
 function handleFrame(obj) {
     _stats.framesOk++;
-    _stats.lastFrameAt = Date.now();
+    _stats.framesSinceOpen++;
+    _stats.lastFrameAt   = Date.now();
+    _stats.lastFrameMono = mono.now();
     if (!obj || typeof obj !== 'object') return;
 
     if (obj.state && typeof obj.state === 'object') {
@@ -382,8 +457,13 @@ function status() {
         framesOk:    _stats.framesOk,
         framesBad:   _stats.framesBad,
         lastFrameAt: _stats.lastFrameAt || null,
+        // Для самодиагностики (server/selfCheck.js)
+        activePort:  _activePort,
+        openMs:      _open && _stats.openedMono ? Math.round(mono.now() - _stats.openedMono) : null,
+        silenceMs:   _stats.lastFrameMono ? Math.round(mono.now() - _stats.lastFrameMono) : null,
+        reopens:     _stats.reopens,
     };
 }
 
 module.exports = { start, stop, restart, status, getSettings, saveSettings, loadSettings,
-                   handleFrame, BAUD_RATES };
+                   handleFrame, choosePort, listPorts, BAUD_RATES };

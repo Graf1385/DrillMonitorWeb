@@ -6,6 +6,7 @@ const dataSource = require('../dataSource');
 const pkg       = require('../../package.json');
 const auth      = require('../auth');
 const netConfig = require('../netConfig');
+const selfCheck = require('../selfCheck');
 
 router.get('/', (req, res) =>{
     res.render('index');
@@ -141,8 +142,13 @@ router.get('/api/alarm-sounds/:id/file', (req, res) => {
 });
 
 
+// Сводка самодиагностики. `ok` означает «сервер отвечает» — по нему Loader
+// проверяет связь, и смысл поля менять нельзя. Состояние подсистем — в
+// `level`/`checks`, их показывает окно «Логи системы» и может читать Loader.
 router.get('/api/health', (req, res) => {
-    res.json({ ok: true, version: pkg.version });
+    let diag = null;
+    try { diag = selfCheck.snapshot(); } catch (e) { diag = { level: 'off', error: e.message }; }
+    res.json(Object.assign({ ok: true, version: pkg.version }, diag));
 });
 
 // Самообновление с GitHub убрано: у табло нет ни шлюза, ни DNS. Новая версия

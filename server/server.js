@@ -7,6 +7,7 @@ const _push_router      = require("./routes/push_router");
 const _serial_router    = require("./routes/serial_router");
 const streamManager  = require("./streams/StreamManager");
 const serialSource   = require("./serialSource");
+const selfCheck      = require("./selfCheck");
 const logger         = require("./logger");
 const db             = require("./db");
 const _exphbs        = require('express-handlebars');
@@ -41,6 +42,9 @@ function Start(port){
         logger.log('Сервер запущен на порту ' + port);
         // Приём данных по RS-485 (если порт настроен и доступен)
         serialSource.start();
+        // Самодиагностика: к табло доступа нет, неисправность должна либо
+        // чиниться сама, либо остаться в журнале (server/selfCheck.js)
+        selfCheck.start();
     });
 
     // Loader шлёт записи с интервалом до 4 с, а node по умолчанию закрывает
@@ -61,6 +65,7 @@ function Start(port){
 // TimeoutStopSec (полторы минуты) и добивает процесс SIGKILL — столько же
 // лишнего времени киоск стоит тёмным после каждого обновления и смены сети.
 function _shutdown() {
+    try { selfCheck.stop(); }      catch (e) { console.error('[stop] diag:', e.message); }
     try { serialSource.stop(); }   catch (e) { console.error('[stop] serial:', e.message); }
     try { streamManager.stopAll(); } catch (e) { console.error('[stop] streams:', e.message); }
     process.exit(0);

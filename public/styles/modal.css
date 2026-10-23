@@ -1150,6 +1150,76 @@ input[type="color"]:disabled {
     color: #e6edf3;
 }
 
+/* ── Самодиагностика в окне логов ───────────────────────────────────────── */
+
+.diagBody {
+    padding: 4px 12px 10px;
+    font-size: 13px;
+    font-family: monospace;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.9);
+}
+
+.diagHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 2px 0 8px;
+    font-weight: 600;
+    color: #3fb950;
+}
+
+.diagHead.warn { color: #d29922; }
+.diagHead.fail { color: #f85149; }
+.diagHead.off  { color: #8b949e; }
+
+.diagUptime {
+    font-weight: 400;
+    color: #8b949e;
+}
+
+.diagRow {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 2px 0;
+    line-height: 1.5;
+}
+
+.diagDot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3fb950;
+}
+
+.diagDot.warn { background: #d29922; }
+.diagDot.fail { background: #f85149; }
+.diagDot.off  { background: #6e7681; }
+
+.diagTitle {
+    flex: 0 0 150px;
+    color: #c9d1d9;
+}
+
+.diagDetail {
+    flex: 1 1 auto;
+    color: #8b949e;
+    overflow-wrap: anywhere;
+}
+
+.diagFixedHead {
+    margin-top: 8px;
+    color: #c9d1d9;
+}
+
+.diagFixed {
+    color: #8b949e;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
 @media (prefers-reduced-motion: reduce) {
     dialog[open],
     .toast-notif,

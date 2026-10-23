@@ -43,6 +43,44 @@ describe('StreamManager.buildRtspUrl', () => {
     });
 });
 
+describe('StreamManager: поток поднимается сам', () => {
+    // К табло на буровой не подойти: если камера моргнула и ffmpeg вышел,
+    // перезапустить его некому. Адрес заведомо нерабочий — ffmpeg (или его
+    // отсутствие) завершится сразу, и это ровно тот случай, который чиним.
+    const waitFor = async (fn, ms = 8000) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms) {
+            if (fn()) return true;
+            await new Promise(r => setTimeout(r, 50));
+        }
+        return false;
+    };
+    const entry = () => sm.diag().find(s => s.key === 'selftest');
+
+    test('после падения поток остаётся в работе и считает перезапуски', async () => {
+        sm.start('selftest', 'rtsp://127.0.0.1:1/none');
+        const fell = await waitFor(() => entry() && entry().restarts >= 1);
+        assert.ok(fell, 'падение ffmpeg должно быть замечено');
+        assert.equal(entry().running, false, 'между попытками процесса нет');
+        assert.ok(sm.isActive('selftest'), 'намерение держать поток сохраняется');
+        sm.stop('selftest');
+    });
+
+    test('остановленный поток больше не поднимается', async () => {
+        sm.start('selftest2', 'rtsp://127.0.0.1:1/none');
+        await waitFor(() => sm.diag().some(s => s.key === 'selftest2' && s.restarts >= 1));
+        sm.stop('selftest2');
+        assert.equal(sm.isActive('selftest2'), false);
+        await new Promise(r => setTimeout(r, 2500));   // дольше первой паузы перезапуска
+        assert.equal(sm.diag().some(s => s.key === 'selftest2'), false);
+    });
+
+    test('diag() и activeKeys() показывают, что сейчас запрошено', () => {
+        assert.deepEqual(sm.activeKeys(), []);
+        assert.ok(sm.hlsBase().length > 0);
+    });
+});
+
 describe('StreamManager.streamKey validation', () => {
     test('start() throws on key with spaces', () => {
         assert.throws(

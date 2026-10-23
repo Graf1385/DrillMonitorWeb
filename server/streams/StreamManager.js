@@ -3,11 +3,29 @@ const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
 
+// Камера на буровой перезагружается, теряет питание, отваливается по сети — и
+// ffmpeg на этом завершается. Доступа к табло нет, перезапустить вручную
+// некому, поэтому поток поднимаем сами, пока его не остановили явно.
+// Паузы растут: мигающую камеру незачем дёргать каждые две секунды.
+const RESTART_DELAYS = [2000, 5000, 10000, 30000];
+/// Прожил дольше — считаем, что поток наладился, и начинаем отсчёт заново
+const STABLE_MS = 60000;
+
 class StreamManager {
     constructor() {
         this._streams = new Map();
         this._hlsBase = path.join(os.tmpdir(), 'drillmonitor_hls');
+        this._log = null;
         try { fs.mkdirSync(this._hlsBase, { recursive: true }); } catch {}
+    }
+
+    /// Логгер подключается лениво: он открывает БД, а в тестах она не нужна
+    _note(msg) {
+        try {
+            if (!this._log) this._log = require('../logger').log;
+            this._log(msg);
+        } catch {}
+        console.log('[streams] ' + msg);
     }
 
     buildRtspUrl({ rtspUrl, host, port, username, password, channel, substream }) {
@@ -27,47 +45,99 @@ class StreamManager {
         const hlsDir = path.join(this._hlsBase, streamKey);
         try { fs.mkdirSync(hlsDir, { recursive: true }); } catch {}
 
+        const entry = {
+            process: null, hlsDir, url: rtspUrl,
+            attempt: 0,          // подряд идущие неудачи — по ним выбираем паузу
+            restarts: 0,         // всего перезапусков с момента start()
+            startedAt: 0, lastExitAt: null, lastError: null,
+            retryTimer: null, stableTimer: null,
+        };
+        this._streams.set(streamKey, entry);
+        this._spawn(streamKey, entry);
+        return hlsDir;
+    }
+
+    _spawn(streamKey, entry) {
         const proc = spawn('ffmpeg', [
             '-loglevel',    'error',
             '-rtsp_transport', 'tcp',
-            '-i',           rtspUrl,
+            '-i',           entry.url,
             '-c:v',         'copy',
             '-an',
             '-f',           'hls',
             '-hls_time',    '1',
             '-hls_list_size', '3',
             '-hls_flags',   'delete_segments+omit_endlist',
-            path.join(hlsDir, 'index.m3u8')
+            path.join(entry.hlsDir, 'index.m3u8')
         ], { stdio: ['ignore', 'ignore', 'pipe'] });
 
-        proc.stderr.on('data', d => process.stderr.write(`[Stream ${streamKey}] ${d}`));
-        // Удаляем запись только если она всё ещё принадлежит этому процессу —
-        // иначе exit старого ffmpeg при рестарте стёр бы запись нового
-        proc.on('exit', () => {
-            const cur = this._streams.get(streamKey);
-            if (cur && cur.process === proc) this._streams.delete(streamKey);
+        entry.process   = proc;
+        entry.startedAt = Date.now();
+
+        proc.stderr.on('data', d => {
+            entry.lastError = String(d).trim().slice(0, 200);
+            process.stderr.write(`[Stream ${streamKey}] ${d}`);
         });
+        proc.on('exit', (code, signal) => this._onExit(streamKey, entry, proc, code, signal));
         // Без обработчика 'error' отсутствие ffmpeg роняет весь процесс
         proc.on('error', err => {
-            console.error(`[Stream ${streamKey}] spawn error: ${err.message}`);
-            const cur = this._streams.get(streamKey);
-            if (cur && cur.process === proc) this._streams.delete(streamKey);
+            entry.lastError = err.message;
+            this._onExit(streamKey, entry, proc, null, null);
         });
 
-        this._streams.set(streamKey, { process: proc, hlsDir });
-        return hlsDir;
+        // Поток, проживший STABLE_MS, считаем восстановленным: сообщаем об этом
+        // один раз, если до того были падения
+        clearTimeout(entry.stableTimer);
+        entry.stableTimer = setTimeout(() => {
+            if (entry.process !== proc) return;
+            if (entry.attempt > 0) this._note('Видеопоток "' + streamKey + '" восстановлен');
+            entry.attempt = 0;
+        }, STABLE_MS);
+        entry.stableTimer.unref?.();
+    }
+
+    _onExit(streamKey, entry, proc, code, signal) {
+        // Запись уже принадлежит другому процессу (успели перезапустить) или
+        // поток остановили явно — восстанавливать нечего
+        if (entry.process !== proc) return;
+        if (this._streams.get(streamKey) !== entry) return;
+
+        entry.process    = null;
+        entry.lastExitAt = Date.now();
+        clearTimeout(entry.stableTimer);
+
+        const lived = Date.now() - entry.startedAt;
+        if (lived > STABLE_MS) entry.attempt = 0;
+        const delay = RESTART_DELAYS[Math.min(entry.attempt, RESTART_DELAYS.length - 1)];
+        entry.attempt++;
+        entry.restarts++;
+
+        // В журнал — только первое падение подряд: иначе недоступная камера
+        // забьёт логи сообщением раз в тридцать секунд
+        if (entry.attempt === 1)
+            this._note('Видеопоток "' + streamKey + '" прервался' +
+                       (entry.lastError ? ': ' + entry.lastError : '') + ' — перезапускаю');
+
+        clearTimeout(entry.retryTimer);
+        entry.retryTimer = setTimeout(() => {
+            if (this._streams.get(streamKey) !== entry) return;
+            this._spawn(streamKey, entry);
+        }, delay);
+        entry.retryTimer.unref?.();
     }
 
     stop(streamKey) {
         const s = this._streams.get(streamKey);
         if (!s) return;
-        try { s.process.kill('SIGTERM'); } catch {}
-        this._streams.delete(streamKey);
+        this._streams.delete(streamKey);          // снимает намерение: перезапусков больше нет
+        clearTimeout(s.retryTimer);
+        clearTimeout(s.stableTimer);
+        if (s.process) { try { s.process.kill('SIGTERM'); } catch {} }
         setTimeout(() => {
             // Стрим успели перезапустить — каталог снова используется
             if (this._streams.has(streamKey)) return;
             try { fs.rmSync(s.hlsDir, { recursive: true, force: true }); } catch {}
-        }, 5000);
+        }, 5000).unref?.();
     }
 
     stopAll() {
@@ -85,6 +155,21 @@ class StreamManager {
 
     count() {
         return this._streams.size;
+    }
+
+    hlsBase() { return this._hlsBase; }
+
+    activeKeys() { return [...this._streams.keys()]; }
+
+    /// Сводка для самодиагностики (server/selfCheck.js)
+    diag() {
+        return [...this._streams.entries()].map(([key, s]) => ({
+            key,
+            running:    !!s.process,
+            restarts:   s.restarts,
+            lastExitAt: s.lastExitAt,
+            lastError:  s.lastError,
+        }));
     }
 }
 

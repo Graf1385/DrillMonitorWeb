@@ -138,11 +138,32 @@ function _buildVideoElement(cfg) {
 // ── Stream lifecycle ──────────────────────────────────────────────────────────
 
 var _hlsInstances = {};
+var _videoRetries = {};
+
+// Сервер поднимает упавший ffmpeg сам, но плеер после фатальной ошибки уже не
+// вернётся к потоку: на табло без доступа это «Ошибка потока» до перезагрузки
+// страницы. Поэтому подключаемся заново, пока виджет на экране.
+var VIDEO_RETRY_MS = 10000;
+
+function _scheduleVideoRetry(el) {
+    var key = el.id;
+    if (_videoRetries[key]) return;
+    _videoRetries[key] = setTimeout(function () {
+        delete _videoRetries[key];
+        if (!document.body.contains(el)) return;
+        _startVideoStream(el);
+    }, VIDEO_RETRY_MS);
+}
+
+function _cancelVideoRetry(key) {
+    if (_videoRetries[key]) { clearTimeout(_videoRetries[key]); delete _videoRetries[key]; }
+}
 
 function _startVideoStream(el) {
     var key = el.id;
     var d   = el.dataset;
     if (!d.streamHost) return;
+    _cancelVideoRetry(key);
 
     var overlay = el.querySelector('.videoOverlay');
     if (overlay) { overlay.style.display = ''; overlay.textContent = 'Подключение…'; }
@@ -169,6 +190,7 @@ function _startVideoStream(el) {
         },
         error: function () {
             if (overlay) { overlay.style.display = ''; overlay.textContent = 'Ошибка подключения'; }
+            _scheduleVideoRetry(el);
         }
     });
 }
@@ -191,10 +213,14 @@ function _attachHls(el, hlsUrl) {
             if (overlay) overlay.style.display = 'none';
         });
         hls.on(Hls.Events.ERROR, function (evt, data) {
-            if (data.fatal && overlay) {
+            if (!data.fatal) return;
+            if (overlay) {
                 overlay.style.display = '';
-                overlay.textContent   = 'Ошибка потока';
+                overlay.textContent   = 'Ошибка потока — переподключение';
             }
+            hls.destroy();
+            if (_hlsInstances[key] === hls) delete _hlsInstances[key];
+            _scheduleVideoRetry(el);
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = hlsUrl;
@@ -207,6 +233,7 @@ function _attachHls(el, hlsUrl) {
 
 function _stopVideoStream(el) {
     var key = el.id;
+    _cancelVideoRetry(key);
     if (_hlsInstances[key]) { _hlsInstances[key].destroy(); delete _hlsInstances[key]; }
     var video = el.querySelector('video');
     if (video) { video.src = ''; video.load(); }

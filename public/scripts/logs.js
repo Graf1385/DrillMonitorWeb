@@ -13,7 +13,48 @@ function _escapeHtml(str) {
         .replace(/>/g, '&gt;');
 }
 
+// ── Состояние подсистем (самодиагностика, GET /api/health) ───────────────────
+// К табло на буровой не подойти, поэтому первое, что должен увидеть открывший
+// логи, — что именно сейчас неисправно и что система починила сама.
+
+var _DIAG_LEVELS = { ok: 'норма', warn: 'внимание', fail: 'неисправность', off: 'не используется' };
+
+function _diagDuration(sec) {
+    if (!sec || sec < 60) return (sec || 0) + ' с';
+    if (sec < 3600)       return Math.round(sec / 60) + ' мин';
+    var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+    return h + ' ч' + (m ? ' ' + m + ' мин' : '');
+}
+
+function _renderDiag(h) {
+    var body = document.querySelector('#diagBody');
+    if (!body) return;
+    if (!h || !h.checks) { body.innerHTML = ''; return; }
+
+    var rows = h.checks.map(function (c) {
+        return '<div class="diagRow">' +
+            '<span class="diagDot ' + c.level + '"></span>' +
+            '<span class="diagTitle">' + _escapeHtml(c.title) + '</span>' +
+            '<span class="diagDetail">' + _escapeHtml(c.detail || _DIAG_LEVELS[c.level] || '') + '</span>' +
+            '</div>';
+    }).join('');
+
+    var fixed = (h.recoveries || []).slice(0, 3).map(function (r) {
+        return '<div class="diagFixed">' + _formatLogTimestamp(r.at) + ' ' + _escapeHtml(r.what) +
+               (r.ok ? '' : ' — не удалось') + '</div>';
+    }).join('');
+
+    body.innerHTML =
+        '<div class="diagHead ' + (h.level || 'ok') + '">Состояние: ' +
+            (_DIAG_LEVELS[h.level] || '—') +
+            '<span class="diagUptime">в работе ' + _diagDuration(h.uptimeSec) +
+            (h.version ? ', версия ' + _escapeHtml(h.version) : '') + '</span>' +
+        '</div>' + rows +
+        (fixed ? '<div class="diagFixedHead">Исправлено самостоятельно</div>' + fixed : '');
+}
+
 function showLogs() {
+    $.getJSON('/api/health', _renderDiag).fail(function () { _renderDiag(null); });
     $.getJSON('/api/logs', function (logs) {
         var body = document.querySelector('#logBody');
         if (!logs.length) {

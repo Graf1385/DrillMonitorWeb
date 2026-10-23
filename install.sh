@@ -156,6 +156,8 @@ Description=DrillMonitorWeb — система мониторинга бурен
 Documentation=file://${APP_DIR}/DEPLOY.txt
 After=network.target
 Wants=network.target
+# Счётчик неудачных запусков не должен однажды оставить табло выключенным
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -163,7 +165,10 @@ User=${APP_USER}
 Group=${APP_USER}
 WorkingDirectory=${APP_DIR}
 ExecStart=${NODE_BIN} app.js
-Restart=on-failure
+# Доступа к табло на буровой нет: служба должна подниматься после любого
+# завершения, и systemd не должен «сдаваться» после нескольких неудач подряд —
+# лучше пробовать вечно, чем оставить бурильщика перед тёмным экраном.
+Restart=always
 RestartSec=5
 # Обновление и смена сети штатно перезагружают устройство, и каждая лишняя
 # секунда — это тёмный экран у бурильщика. Страховка на случай, если процесс
@@ -191,11 +196,62 @@ EOF
 
 ok "Файл сервиса создан: /etc/systemd/system/${SERVICE_NAME}.service"
 
+# ── 10a. Внешний сторож службы ───────────────────────────────────────────────
+# Сама служба чинит то, что видит (порт RS-485, видеопоток, диск). Случай
+# «процесс жив, но не отвечает» изнутри не чинится — раз в минуту спрашиваем
+# снаружи и после трёх неудач подряд перезапускаем. Подробности —
+# scripts/healthcheck.sh и server/selfCheck.js.
+info "Установка сторожа службы..."
+
+cat > "/etc/systemd/system/${SERVICE_NAME}-watchdog.service" <<EOF
+[Unit]
+Description=Проверка отклика ${SERVICE_NAME} и перезапуск при зависании
+
+[Service]
+Type=oneshot
+Environment=APP_DIR=${APP_DIR}
+Environment=APP_USER=${APP_USER}
+Environment=SERVICE=${SERVICE_NAME}
+ExecStart=${APP_DIR}/scripts/healthcheck.sh
+EOF
+
+cat > "/etc/systemd/system/${SERVICE_NAME}-watchdog.timer" <<EOF
+[Unit]
+Description=Ежеминутная проверка отклика ${SERVICE_NAME}
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
+EOF
+
+ok "Сторож установлен: ${SERVICE_NAME}-watchdog.timer"
+
+# ── 10b. Журнал, переживающий перезагрузку ───────────────────────────────────
+# К табло доступа почти нет: причину вчерашнего сбоя читать будет некому, если
+# journald держит записи только в памяти и теряет их при перезагрузке.
+info "Настройка системного журнала..."
+mkdir -p /var/log/journal
+mkdir -p /etc/systemd/journald.conf.d
+cat > /etc/systemd/journald.conf.d/${SERVICE_NAME}.conf <<EOF
+[Journal]
+Storage=persistent
+SystemMaxUse=200M
+SystemMaxFileSize=20M
+EOF
+systemctl restart systemd-journald 2>/dev/null || true
+ok "Журнал сохраняется на диск (до 200 МБ)"
+
 # ── 11. Запуск сервиса ────────────────────────────────────────────────────────
 info "Перезагрузка systemd и запуск сервиса..."
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
 systemctl restart "$SERVICE_NAME"
+systemctl enable --now "${SERVICE_NAME}-watchdog.timer" >/dev/null 2>&1 || \
+    warn "Не удалось включить ${SERVICE_NAME}-watchdog.timer"
 
 sleep 2
 
