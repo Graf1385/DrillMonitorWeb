@@ -31,8 +31,18 @@ const DEFAULTS      = { enabled: true, port: '/dev/ttyCH343', baud: 57600 };
 const BAUD_RATES    = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
 const RETRY_MS      = 10000;
 
+// Порт читаем сами, а не потоком fs.createReadStream: тот отдаёт чтение в пул
+// libuv, где оно виснет в блокирующем read() до первого байта. Пока поток пула
+// занят, node не может завершиться — systemd ждал остановку до таймаута и
+// добивал службу, то есть каждая перезагрузка табло была длиннее на эти секунды
+// (проверено на устройстве: с выключённым приёмом остановка 42 мс, с
+// включённым — упиралась в таймаут). С `min 0 time` read() возвращается и без
+// данных, поэтому поток свободен почти всегда.
+const READ_DECISECONDS = 5;        // VTIME: read() вернётся максимум через 0,5 с
+const READ_BUFFER      = 4096;
+
 let _settings = Object.assign({}, DEFAULTS);
-let _stream   = null;
+let _fd       = null;
 let _parser   = null;
 let _retry    = null;
 let _stopped  = true;
@@ -94,12 +104,13 @@ function _scheduleRetry() {
 }
 
 function _closeStream() {
-    if (_stream) {
-        // Обработчики снимаем до destroy: иначе 'close' закрытого потока запустит
-        // ещё одно переоткрытие и на порту окажутся два читателя (дубли кадров).
-        const s = _stream;
-        _stream = null;
-        try { s.removeAllListeners(); s.destroy(); } catch (_) {}
+    if (_fd !== null) {
+        // Обнуляем раньше закрытия: незавершённое чтение вернётся с ошибкой и
+        // не должно запустить ещё одно переоткрытие — иначе на порту окажутся
+        // два читателя и кадры задвоятся.
+        const fd = _fd;
+        _fd = null;
+        try { fs.closeSync(fd); } catch (_) {}
     }
     _open = false;
 }
@@ -111,9 +122,11 @@ function _openPort() {
         _setError('порт ' + port + ' не найден — ожидание подключения');
         return _scheduleRetry();
     }
-    // raw-режим: 8N1, без управления потоком, без эха, не ждать несущей
+    // raw-режим: 8N1, без управления потоком, без эха, не ждать несущей.
+    // min 0 / time N — read() отдаёт то, что пришло, и не ждёт байт вечно.
     const args = ['-F', port, String(_settings.baud), 'raw', '-echo', '-echoe', '-echok',
-                  'cs8', '-parenb', '-cstopb', '-crtscts', 'clocal', 'cread', '-hupcl'];
+                  'cs8', '-parenb', '-cstopb', '-crtscts', 'clocal', 'cread', '-hupcl',
+                  'min', '0', 'time', String(READ_DECISECONDS)];
     execFile('stty', args, { timeout: 5000 }, function (err, stdout, stderr) {
         if (_stopped) return;
         if (err) {
@@ -122,33 +135,38 @@ function _openPort() {
         }
         _parser = new FrameParser(handleFrame, _onFrameError);
         try {
-            _stream = fs.createReadStream(port, { highWaterMark: 4096 });
+            _fd = fs.openSync(port, fs.constants.O_RDONLY | fs.constants.O_NOCTTY);
         } catch (e) {
             _setError('открытие ' + port + ': ' + e.message);
             return _scheduleRetry();
         }
-        _stream.on('open', function () {
-            _open = true;
-            _lastErr = null;
-            _lastErrLogged = '';
-            _stats.openedAt = Date.now();
-            _log('RS-485: порт ' + port + ' открыт, ' + _settings.baud + ' бод');
-        });
-        // Последняя страховка: разбор кадра не должен ронять сервер монитора
-        _stream.on('data', function (chunk) {
-            try { _parser.push(chunk); }
-            catch (e) { _onFrameError('parser', e && e.message ? e.message : String(e)); }
-        });
-        _stream.on('error', function (e) {
-            _setError('порт ' + port + ': ' + e.message);
+
+        _open = true;
+        _lastErr = null;
+        _lastErrLogged = '';
+        _stats.openedAt = Date.now();
+        _log('RS-485: порт ' + port + ' открыт, ' + _settings.baud + ' бод');
+        _read(_fd, Buffer.alloc(READ_BUFFER));
+    });
+}
+
+/// Цикл чтения порта. Пустой результат — обычное дело: read() вернулся по
+/// таймеру, данных на линии пока нет.
+function _read(fd, buf) {
+    if (_stopped || _fd !== fd) return;
+    fs.read(fd, buf, 0, buf.length, null, function (err, bytes) {
+        if (_stopped || _fd !== fd) return;
+        if (err) {
+            _setError('порт ' + _settings.port + ': ' + err.message);
             _closeStream();
-            _scheduleRetry();
-        });
-        _stream.on('close', function () {
-            if (_open) { _open = false; _setError('порт ' + port + ' закрыт — переоткрытие'); }
-            _stream = null;
-            _scheduleRetry();
-        });
+            return _scheduleRetry();
+        }
+        if (bytes > 0) {
+            // Последняя страховка: разбор кадра не должен ронять сервер монитора
+            try { _parser.push(buf.subarray(0, bytes)); }
+            catch (e) { _onFrameError('parser', e && e.message ? e.message : String(e)); }
+        }
+        setImmediate(function () { _read(fd, buf); });
     });
 }
 
