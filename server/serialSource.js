@@ -41,10 +41,21 @@ const RETRY_MS      = 10000;
 const READ_DECISECONDS = 5;        // VTIME: read() вернётся максимум через 0,5 с
 const READ_BUFFER      = 4096;
 
+// Преобразователь может переподключиться по USB (так и было 2026-10-23: он
+// пересел с ttyACM0 на ttyACM1). Пустое чтение от этого неотличимо — порт
+// «открыт», ошибок нет, а данных нет никогда. Поэтому в тишине сверяем, ведёт
+// ли /dev/ttyCH343 туда же, что и наш дескриптор.
+const DEVICE_CHECK_MS  = 3000;
+const FAST_RETRY_MS    = 500;
+/// Чтение возвращается не реже чем раз в VTIME; дольше этого — оно замерло.
+const STALL_MS         = 4000;
+
 let _settings = Object.assign({}, DEFAULTS);
 let _fd       = null;
 let _readingFd   = null;   // дескриптор, на котором сейчас висит read()
 let _closePending = null;  // его же закрыли, но ждём возврата чтения
+let _lastReadAt   = 0;     // когда чтение последний раз возвращалось
+let _watchdog     = null;  // сторож: не ушёл ли порт и не замерло ли чтение
 let _parser   = null;
 let _retry    = null;
 let _stopped  = true;
@@ -99,10 +110,51 @@ function _setError(msg) {
     if (msg && msg !== _lastErrLogged) { _lastErrLogged = msg; _log('RS-485: ' + msg); }
 }
 
-function _scheduleRetry() {
+function _scheduleRetry(fast) {
     if (_stopped) return;
     clearTimeout(_retry);
-    _retry = setTimeout(_openPort, RETRY_MS);
+    _retry = setTimeout(_openPort, fast ? FAST_RETRY_MS : RETRY_MS);
+}
+
+/// Тот ли это физический порт, что мы открыли? Проверяем по /proc: после
+/// переподключения преобразователя символьная ссылка ведёт уже на другой узел.
+function _deviceChanged(fd) {
+    try {
+        return fs.realpathSync(_settings.port) !== fs.readlinkSync('/proc/self/fd/' + fd);
+    } catch (_) {
+        return true;   // узла нет или не прочитать — переоткрываем
+    }
+}
+
+/**
+ * Сторож порта. Сам цикл чтения проверять себя не может: на исчезнувшем
+ * устройстве read() перестаёт возвращаться вовсе, и всё замирает — порт
+ * «открыт», ошибок нет, данных нет никогда. Ровно так табло и оглохло, когда
+ * преобразователь пересел с ttyACM0 на ttyACM1. Поэтому проверяем со стороны:
+ * раз в DEVICE_CHECK_MS смотрим, ведёт ли /dev/ttyCH343 туда же, куда наш
+ * дескриптор, и возвращается ли чтение вообще.
+ */
+function _startWatchdog() {
+    if (_watchdog) return;
+    _watchdog = setInterval(function () {
+        if (_stopped || !_open || _fd === null) return;
+        const fd      = _fd;
+        const stalled = mono.now() - _lastReadAt > STALL_MS;
+        if (!stalled && !_deviceChanged(fd)) return;
+
+        _setError('порт ' + _settings.port +
+                  (stalled ? ' перестал отвечать' : ' переподключился') + ' — открываю заново');
+        // Закрываем сразу, не дожидаясь чтения: оно может не вернуться никогда,
+        // а каждый такой зависший read занимает поток пула libuv.
+        _fd = null; _open = false; _readingFd = null; _closePending = null;
+        try { fs.closeSync(fd); } catch (_) {}
+        _scheduleRetry(true);
+    }, DEVICE_CHECK_MS);
+    _watchdog.unref();
+}
+
+function _stopWatchdog() {
+    if (_watchdog) { clearInterval(_watchdog); _watchdog = null; }
 }
 
 function _closeStream() {
@@ -158,8 +210,10 @@ function _openPort() {
         _open = true;
         _lastErr = null;
         _lastErrLogged = '';
+        _lastReadAt = mono.now();
         _stats.openedAt = Date.now();
         _log('RS-485: порт ' + port + ' открыт, ' + _settings.baud + ' бод');
+        _startWatchdog();
         _read(_fd, Buffer.alloc(READ_BUFFER));
     });
 }
@@ -178,6 +232,7 @@ function _read(fd, buf) {
             _closeStream();
             return _scheduleRetry();
         }
+        _lastReadAt = mono.now();
         if (bytes > 0) {
             // Последняя страховка: разбор кадра не должен ронять сервер монитора
             try { _parser.push(buf.subarray(0, bytes)); }
@@ -293,6 +348,7 @@ function start() {
 function stop() {
     _stopped = true;
     clearTimeout(_retry);
+    _stopWatchdog();
     _closeStream();
 }
 
