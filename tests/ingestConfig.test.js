@@ -83,9 +83,37 @@ describe('ingest.ingestConfig', () => {
     });
 
     test('отклоняет неверные полезные нагрузки', () => {
-        assert.match(ingest.ingestConfig(null)                        || '', /формат/i);
-        assert.match(ingest.ingestConfig({})                         || '', /профил/i);
-        assert.match(ingest.ingestConfig({ profile: {} })           || '', /индикатор/i);
-        assert.match(ingest.ingestConfig({ profile: {}, indicators: [] }) || '', /имен/i);
+        assert.match(ingest.ingestConfig(null)                                   || '', /формат/i);
+        assert.match(ingest.ingestConfig({})                                     || '', /профил/i);
+        assert.match(ingest.ingestConfig({ profile: {} })                        || '', /имен/i);
+        assert.match(ingest.ingestConfig({ profile: { name: 'Без списка' } })    || '', /индикатор/i);
+    });
+});
+
+describe('ingest.ingestConfig: быстрое переключение профиля', () => {
+    // Профили лежат на табло, поэтому переключение — это одно имя, а не
+    // пересылка всей раскладки (по RS-485 это были бы секунды эфира).
+    const mk = (name) => ingest.ingestConfig({
+        profile: { name, background: '#101010', cellSize: 20, wsWidth: 1280, wsHeight: 720 },
+        indicators: [{ param_id: 1, type: 'digitalIndicator', pos_left: 1, pos_top: 1, width: 10, height: 10 }],
+    });
+
+    test('делает активным уже сохранённый профиль', () => {
+        assert.equal(mk('Смена А'), null);
+        assert.equal(mk('Смена Б'), null);
+        assert.equal(db.getActiveProfile().name, 'Смена Б', 'последняя загрузка активна');
+
+        assert.equal(ingest.ingestConfig({ profile: { name: 'Смена А' }, select: true }), null);
+        assert.equal(db.getActiveProfile().name, 'Смена А');
+
+        // Раскладка профиля при переключении не трогается
+        const prof = db.getProfiles().find(p => p.name === 'Смена А');
+        assert.equal(db.getIndicatorsByProfile(prof.id).length, 1);
+    });
+
+    test('неизвестное имя — понятная ошибка, активный профиль прежний', () => {
+        const before = db.getActiveProfile().name;
+        assert.match(ingest.ingestConfig({ profile: { name: 'Нет такого' }, select: true }) || '', /нет|не найден/i);
+        assert.equal(db.getActiveProfile().name, before);
     });
 });

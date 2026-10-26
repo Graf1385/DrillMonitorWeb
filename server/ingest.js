@@ -117,15 +117,21 @@ function _normIndicator(it) {
 }
 
 // cfg: { profile: {...}, indicators: [...] }
+//      { profile: { name }, select: true }  — переключиться на готовый профиль
 // Возвращает null при успехе или текст ошибки.
 function ingestConfig(cfg) {
     if (!cfg || typeof cfg !== 'object')  return 'Неверный формат конфигурации';
     const p = cfg.profile;
     if (!p || typeof p !== 'object')      return 'Нет профиля в конфигурации';
-    if (!Array.isArray(cfg.indicators))   return 'Нет списка индикаторов';
 
     const name = _str(p.name, '').trim();
     if (!name) return 'Профиль без имени';
+
+    // Быстрое переключение: профили хранятся на табло, и менять их незачем
+    // пересылкой всей раскладки — по линии RS-485 это были бы секунды эфира.
+    if (cfg.select === true) return selectProfile(name);
+
+    if (!Array.isArray(cfg.indicators))   return 'Нет списка индикаторов';
 
     const background     = _str(p.background, '#000000');
     const cellSize       = _int(p.cellSize       !== undefined ? p.cellSize       : p.cell_size,       20);
@@ -153,6 +159,20 @@ function ingestConfig(cfg) {
     sse.broadcast('workspace-saved',  saved);
 
     try { logger.log('Конфигурация профиля "' + name + '" применена (' + list.length + ' индикаторов)'); } catch (_) {}
+    return null;
+}
+
+/// Сделать активным профиль, который уже лежит на табло (по имени).
+function selectProfile(name) {
+    const profile = db.getProfiles().find(function (x) { return x.name === name; });
+    if (!profile) return 'Профиля «' + name + '» на табло нет';
+
+    db.selectProfile(profile.id);
+    const saved = db.getProfile(profile.id);
+    sse.broadcast('profile-selected', saved);
+    sse.broadcast('workspace-saved',  saved);
+
+    try { logger.log('Выбран профиль "' + name + '"'); } catch (_) {}
     return null;
 }
 
