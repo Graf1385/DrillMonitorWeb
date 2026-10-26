@@ -162,6 +162,12 @@ function _restoreIndicators(indicators) {
     });
 }
 
+/// Индикатор показывает время самой записи, а не значение параметра
+function _usesGlobalTime(el) {
+    var def = _indicatorTypes[_getIndicatorType(el)];
+    return !!(def && def.usesGlobalTime);
+}
+
 var _loadSeq = 0;
 
 function _loadIndicatorsForProfile(profileId) {
@@ -243,10 +249,15 @@ function _hideDataBanner() {
         var params = record.params;
         Object.keys(params).forEach(function (id) {
             document.querySelectorAll('.indicator[data-param-id="' + id + '"]')
-                .forEach(function (el) { setIndicatorValue(el, params[id]); });
+                .forEach(function (el) {
+                    // Часы и дата идут от времени записи, а не от параметра:
+                    // источник может писать в свой «временной» слот что угодно
+                    if (_usesGlobalTime(el)) return;
+                    setIndicatorValue(el, params[id]);
+                });
         });
         if (record.time) {
-            document.querySelectorAll('.dateIndicator')
+            document.querySelectorAll('.timeIndicator, .dateIndicator')
                 .forEach(function (el) { setIndicatorValue(el, record.time); });
         }
     });

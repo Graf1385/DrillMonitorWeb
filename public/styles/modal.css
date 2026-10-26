@@ -160,25 +160,34 @@
 
 /* ── Loader ────────────────────────────────────────────────────────────────── */
 
+/* Табло работает сутками, и этот оверлей почти всегда невидим. Пока он просто
+   прозрачный, браузер всё равно держит полноэкранный слой с размытием фона и
+   крутит в нём две бесконечные анимации: на киоске это съедало полтора ядра
+   из четырёх (chromium: gpu 76 %, renderer 68 %) круглые сутки. Поэтому в
+   покое слой убран из отрисовки целиком — ни видимости, ни размытия, ни
+   анимаций; всё включается вместе с классом .active. */
 #loaderOverlay {
     display: flex;
     position: fixed;
     inset: 0;
     z-index: 9999;
     background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(3px);
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 22px;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.25s ease, visibility 0s linear 0.25s;
 }
 
 #loaderOverlay.active {
     opacity: 1;
+    visibility: visible;
+    backdrop-filter: blur(3px);
     pointer-events: auto;
+    transition: opacity 0.25s ease, visibility 0s;
 }
 
 .loader-ring {
@@ -199,8 +208,11 @@
     inset: -10px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 65%);
-    animation: loader-glow 2s ease-in-out infinite;
     pointer-events: none;
+}
+
+#loaderOverlay.active .loader-ring::after {
+    animation: loader-glow 2s ease-in-out infinite;
 }
 
 #loaderOverlay.active .loader-ring {
@@ -226,8 +238,11 @@
     stroke-width: 3;
     stroke-linecap: round;
     stroke-dasharray: 60 104;
-    animation: loader-spin 0.9s linear infinite;
     transform-origin: 30px 30px;
+}
+
+#loaderOverlay.active .loader-arc {
+    animation: loader-spin 0.9s linear infinite;
 }
 
 .loader-text {

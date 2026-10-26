@@ -25,13 +25,14 @@ async function pushConfig(request) {
         alarm_enabled: 0, alarm_min: null, alarm_max: null, alarm_color: '#ff0000',
         units: '', zone_colors: 0, ticker_speed: 12, value_bg_opacity: 0, extra_data: null,
     });
+    const clock = Object.assign(mk(52, 70, 'Время сбора данных'), { type: 'timeIndicator' });
     const resp = await request.post('/api/push/config', {
         data: {
             config: {
                 profile: { name: PROFILE, background: '#000000', cellSize: 20,
                            wsWidth: 1920, wsHeight: 1080, timezone: '0',
                            alarmSoundId: null, alarmVolume: 50, alarmDelay: 2, sidebarTimeout: 20 },
-                indicators: [mk(P_DEPTH, 10, 'Глубина забоя'), mk(P_WEIGHT, 45, 'Вес на крюке')],
+                indicators: [mk(P_DEPTH, 10, 'Глубина забоя'), mk(P_WEIGHT, 45, 'Вес на крюке'), clock],
                 activate: true,
             },
         },
@@ -111,6 +112,19 @@ test.describe('Значения показываются как присланы
             data: { recNo: 2, depth: 1500, time: 0, params: { [P_DEPTH]: 10.5 } },
         });
         await expect.poll(() => value(page, P_DEPTH)).toBe(10.5);
+    });
+
+    test('часы показывают время записи, а не слот 52 станции', async ({ page, request }) => {
+        // Станция DTCIS кладёт в слот 52 своё местное время как Unix-метку и уходит
+        // на часы вперёд. Табло должно показывать время, которое поставил Loader.
+        await open(page);
+        const real    = Date.UTC(2026, 9, 26, 12, 34, 56) / 1000;   // 12:34:56 UTC
+        const station = real + 7 * 3600;                            // часы станции: +7 ч
+        await request.post('/api/push/data', {
+            data: { recNo: 4, depth: 0, time: real, params: { 52: station, [P_WEIGHT]: 5 } },
+        });
+        const text = () => page.locator('.timeIndicator .indicatorValue').textContent();
+        await expect.poll(text).toBe('12:34:56');
     });
 
     test('обрыв передачи показывает баннер', async ({ page, request }) => {

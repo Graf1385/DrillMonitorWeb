@@ -46,6 +46,10 @@ var _indicatorTypes = {
     timeIndicator: {
         cardId: '#typeTime',
         isNumeric: false,
+        // Время берём из самой записи (его ставит BCS_DrillerMonitorLoader в момент
+        // съёма данных), а не из слота 52. Станция DTCIS пишет в этот слот своё
+        // местное время как Unix-метку — на табло оно выходило на часы вперёд.
+        usesGlobalTime: true,
         fixedParamId: 52,
         fixedHeader: 'Время сбора данных',
         defaultSize: {},
