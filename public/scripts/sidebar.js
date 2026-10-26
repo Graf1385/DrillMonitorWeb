@@ -1,168 +1,10 @@
-// Parameters and units management live in parametersManager.js (loaded after).
+// Боковая панель табло: только журнал с самодиагностикой и версия программы.
+// Настраивают табло из BCS_DrillerMonitorLoader — по TCP/IP или по RS-485.
 
 let sideBar = document.querySelector('#sideBar');
 let logo    = document.querySelector('#sideBarLogo');
-let rmBtn   = sideBar.querySelector('#removeButton');
-let saveBtn = sideBar.querySelector('#saveButton');
 
-function showRemoveBtn() {
-    rmBtn.classList.add('visible');
-}
-
-function hideRemoveBtn() {
-    rmBtn.classList.remove('visible');
-}
-
-function showSaveBtn() {
-    saveBtn.classList.add('visible');
-}
-
-function hideSaveBtn() {
-    saveBtn.classList.remove('visible');
-}
-
-function _escHtml(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function showIndicatorList() {
-    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
-    var body = document.querySelector('#indicatorListBody');
-    if (indicators.length === 0) {
-        body.innerHTML = '<p class="alarmOverviewEmpty">Нет индикаторов на рабочей области</p>';
-        document.querySelector('#indicatorListModal').showModal();
-        return;
-    }
-    (function() {
-        var rows = indicators.map(function(ind, i) {
-            var d = ind.dataset;
-            var paramName = d.paramName || (d.paramId ? '#' + d.paramId : '—');
-            var header = d.headerText || '';
-            var format = d.format     || '';
-            return '<tr>' +
-                '<td class="il-id">'    + _escHtml(d.paramId || '—') + '</td>' +
-                '<td class="il-pname">' + _escHtml(paramName)        + '</td>' +
-                '<td>'                  + _escHtml(header)           + '</td>' +
-                '<td>'                  + _escHtml(format)           + '</td>' +
-                '<td class="il-del"><button class="il-delBtn" onclick="deleteIndicatorFromList(' + i + ')">Удалить</button></td>' +
-            '</tr>';
-        });
-        body.innerHTML = '<table class="settingsTable il-table">' +
-            '<colgroup><col style="width:50px"><col><col><col style="width:110px"><col style="width:90px"></colgroup>' +
-            '<thead><tr><th>ID</th><th>Параметр</th><th>Заголовок</th><th>Формат</th><th></th></tr></thead>' +
-            '<tbody>' + rows.join('') + '</tbody></table>';
-        var tbody = body.querySelector('tbody');
-        tbody.addEventListener('click', function(e) {
-            var row = e.target.closest('tr');
-            if (!row) return;
-            var wasSelected = row.classList.contains('il-selected');
-            body.querySelectorAll('tr.il-selected').forEach(function(r) { r.classList.remove('il-selected'); });
-            if (!wasSelected) row.classList.add('il-selected');
-        });
-        tbody.addEventListener('contextmenu', function(e) {
-            var row = e.target.closest('tr');
-            if (!row) return;
-            e.preventDefault();
-            var idx = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
-            var indicator = indicators[idx];
-            if (!indicator || !window.showIndicatorCtxMenu) return;
-            row.classList.add('il-selected');
-            body.querySelectorAll('tr.il-selected').forEach(function(r) {
-                if (r !== row) r.classList.remove('il-selected');
-            });
-            // Модалка живёт в top layer и перекрывает обычный fixed-div меню —
-            // закрываем её, иначе меню невидимо
-            document.querySelector('#indicatorListModal').close();
-            window.showIndicatorCtxMenu(indicator, e.clientX, e.clientY);
-        });
-        tbody.addEventListener('dblclick', function(e) {
-            var row = e.target.closest('tr');
-            if (!row) return;
-            var idx = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
-            var indicator = indicators[idx];
-            if (!indicator || !window.openEditModal) return;
-            window.openEditModal(indicator);
-        });
-        document.querySelector('#indicatorListModal').showModal();
-    })();
-}
-
-window.deleteIndicatorFromList = function(index) {
-    var indicators = Array.from(document.querySelectorAll('#workSpace .indicator'));
-    if (indicators[index]) {
-        // removeIndicatorElement останавливает видеопоток и снимает обсерверы —
-        // простой .remove() оставлял ffmpeg-процесс на сервере навсегда
-        if (window.removeIndicatorElement) window.removeIndicatorElement(indicators[index]);
-        else indicators[index].remove();
-        showSaveBtn();
-        showIndicatorList();
-    }
-};
-
-// ── Parameters modal ──────────────────────────────────────────────────────────
-// Delegates to window.parametersManager (defined in parametersManager.js).
-
-function showParameters() {
-    window.parametersManager.show();
-}
-
-// ── Authentication ────────────────────────────────────────────────────────────
-
-var _AUTH_KEY = 'drillmonitor_auth';
-var _AUTH_TTL = 24 * 60 * 60 * 1000;
-
-function _isAuthenticated() {
-    var raw = localStorage.getItem(_AUTH_KEY);
-    if (!raw) return false;
-    try {
-        var ts = JSON.parse(raw).ts;
-        return Date.now() - ts < _AUTH_TTL;
-    } catch { return false; }
-}
-
-function _setAuthenticated() {
-    localStorage.setItem(_AUTH_KEY, JSON.stringify({ ts: Date.now() }));
-}
-
-function showLoginModal() {
-    localStorage.removeItem(_AUTH_KEY);
-    document.querySelector('#login_password').value = '';
-    document.querySelector('#loginModal').showModal();
-}
-
-// Сессия на сервере истекла (или её не было) — любой 401 от API
-// открывает окно входа вместо молчаливого отказа
-$(document).ajaxError(function (e, xhr, settings) {
-    if (xhr.status === 401 && settings.url !== '/api/auth/login') {
-        var modal = document.querySelector('#loginModal');
-        if (modal && !modal.open) showLoginModal();
-    }
-});
-
-function submitLogin() {
-    var name     = document.querySelector('#login_name').value.trim();
-    var password = document.querySelector('#login_password').value;
-    $.ajax({
-        url: '/api/auth/login',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ name, password }),
-        success: function() {
-            _setAuthenticated();
-            document.querySelector('#loginModal').close();
-            document.querySelector('#login_password').value = '';
-            sideBar.classList.add('open');
-            _restartCollapseTimer();
-        },
-        error: function(xhr) {
-            var msg = xhr.responseJSON && xhr.responseJSON.error;
-            showError(msg || 'Неверный логин или пароль');
-        }
-    });
-}
-
-// ── Sidebar auto-collapse ─────────────────────────────────────────────────────
+// ── Автоскрытие ──────────────────────────────────────────────────────────────
 
 var _collapseTimer = null;
 var _collapseDelay = 20;
@@ -185,7 +27,9 @@ window.setSidebarTimeout = function(sec) {
     _restartCollapseTimer();
 };
 
-// ── Logo click ────────────────────────────────────────────────────────────────
+// ── Открытие по логотипу ─────────────────────────────────────────────────────
+// Пароль больше не спрашиваем: менять на табло нечего, панель только показывает
+// журнал и версию.
 
 logo.addEventListener('click', function() {
     if (sideBar.classList.contains('open')) {
@@ -193,11 +37,6 @@ logo.addEventListener('click', function() {
         clearTimeout(_collapseTimer);
         return;
     }
-    if (!_isAuthenticated()) {
-        document.querySelector('#login_password').value = '';
-        document.querySelector('#loginModal').showModal();
-    } else {
-        sideBar.classList.add('open');
-        _restartCollapseTimer();
-    }
+    sideBar.classList.add('open');
+    _restartCollapseTimer();
 });

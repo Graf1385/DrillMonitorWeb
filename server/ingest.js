@@ -2,33 +2,17 @@
 
 // ── Приём записей данных от BCS_DrillerMonitorLoader ─────────────────────────
 // Единая точка для обоих транспортов: HTTP push (/api/push/*) и RS-485
-// (server/serialSource.js). Здесь — проверка пакета, подмена глубины, запуск
-// push-режима, рассылка по SSE и синхронизация часов.
+// (server/serialSource.js). Здесь — проверка пакета, запуск push-режима,
+// рассылка по SSE и синхронизация часов.
+//
+// Данные НЕ преобразуются: их готовит Loader, табло только показывает. Всё,
+// что здесь происходит со значениями, — приведение ключей к числам.
 
 const dataSource = require('./dataSource');
 const sse        = require('./sse');
 const db         = require('./db');
 const timeSync   = require('./timeSync');
 const logger     = require('./logger');
-
-// Параметры, значение которых подменяется достоверной глубиной из заголовка
-// записи (LST). Список строится при старте по именам из справочника.
-const _DEPTH_NAMES = ['глубина забоя', 'глубина долота'];
-let _depthParamIds = [];
-
-// Справочник параметров можно править из Loader (server/ingestAdmin.js), поэтому
-// список перечитывается не только при старте.
-function refreshDepthParams() {
-    const ids = [];
-    try {
-        db.getParameters().forEach(function (p) {
-            if (p.name && _DEPTH_NAMES.indexOf(p.name.toLowerCase()) !== -1) ids.push(p.id);
-        });
-    } catch (_) { return _depthParamIds; }
-    _depthParamIds = ids;
-    return ids;
-}
-refreshDepthParams();
 
 function startPush() {
     dataSource.startPushMode(
@@ -56,14 +40,16 @@ function ingestRecord(body) {
 
     if (!dataSource.isPushMode()) startPush();
 
+    // Значения кладём как прислали. Готовит данные BCS_DrillerMonitorLoader —
+    // он знает и источник, и единицы; табло их только показывает. Раньше здесь
+    // глубина из заголовка записи затирала параметры с именами «глубина забоя»
+    // и «глубина долота», то есть данные преобразовывались второй раз, уже по
+    // справочнику табло.
     const params = new Map(
         Object.entries(body.params)
             .map(([k, v]) => [parseInt(k, 10), v])
             .filter(([k]) => Number.isInteger(k))
     );
-    const lstDepth = Number(body.depth);
-    if (!isNaN(lstDepth) && lstDepth > 0)
-        _depthParamIds.forEach(function (id) { params.set(id, lstDepth); });
 
     const recTime = Number(body.time) || 0;
     dataSource.receivePushRecord({
@@ -182,4 +168,4 @@ function ingestState(body) {
     }
 }
 
-module.exports = { ingestRecord, ingestState, ingestConfig, startPush, refreshDepthParams };
+module.exports = { ingestRecord, ingestState, ingestConfig, startPush };

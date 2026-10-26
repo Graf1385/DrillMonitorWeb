@@ -1,94 +1,9 @@
-// Video widget — stream lifecycle and HLS playback.
-// Requires hls.min.js loaded before this file.
-// _buildVideoElement is called from main.js when restoring saved indicators.
+// Видеоиндикатор: поток с регистратора и его воспроизведение.
+// Требует hls.min.js, загруженный раньше. _buildVideoElement вызывается из
+// main.js при восстановлении раскладки, присланной BCS_DrillerMonitorLoader —
+// на табло камера не настраивается.
 
-var _videoSettingsEl = null;
-
-// ── Settings modal ────────────────────────────────────────────────────────────
-
-function openVideoSettings(el) {
-    _videoSettingsEl = el;
-    var d = el.dataset;
-    document.querySelector('#vs_title').value       = d.headerText    || 'Камера';
-    document.querySelector('#vs_host').value        = d.streamHost    || '';
-    document.querySelector('#vs_port').value        = d.streamPort    || '554';
-    document.querySelector('#vs_username').value    = d.streamUser    || '';
-    document.querySelector('#vs_password').value    = d.streamPass    || '';
-    document.querySelector('#vs_channel').value     = d.streamChannel || '1';
-    document.querySelector('#vs_substream').checked = d.streamSub === '1';
-    document.querySelector('#vs_width').value       = d.width         || '320';
-    document.querySelector('#vs_height').value      = d.height        || '240';
-    document.querySelector('#videoSettingsModal').showModal();
-}
-
-function showNewVideoItem() {
-    _videoSettingsEl = null;
-    document.querySelector('#vs_title').value       = 'Камера';
-    document.querySelector('#vs_host').value        = '';
-    document.querySelector('#vs_port').value        = '554';
-    document.querySelector('#vs_username').value    = '';
-    document.querySelector('#vs_password').value    = '';
-    document.querySelector('#vs_channel').value     = '1';
-    document.querySelector('#vs_substream').checked = false;
-    document.querySelector('#vs_width').value       = '320';
-    document.querySelector('#vs_height').value      = '240';
-    document.querySelector('#videoSettingsModal').showModal();
-}
-
-function submitVideoSettings() {
-    var host = document.querySelector('#vs_host').value.trim();
-    if (!host) { showError('Введите адрес камеры'); return; }
-
-    var cfg = {
-        headerText:    document.querySelector('#vs_title').value.trim() || 'Камера',
-        streamHost:    host,
-        streamPort:    document.querySelector('#vs_port').value.trim()    || '554',
-        streamUser:    document.querySelector('#vs_username').value.trim(),
-        streamPass:    document.querySelector('#vs_password').value,
-        streamChannel: document.querySelector('#vs_channel').value.trim()  || '1',
-        streamSub:     document.querySelector('#vs_substream').checked ? '1' : '0',
-        width:         parseInt(document.querySelector('#vs_width').value)  || 320,
-        height:        parseInt(document.querySelector('#vs_height').value) || 240
-    };
-
-    document.querySelector('#videoSettingsModal').close();
-
-    if (_videoSettingsEl) {
-        _applyVideoConfig(_videoSettingsEl, cfg);
-        showSaveBtn();
-    } else {
-        var ws   = document.querySelector('#wsCanvas');
-        var left = Math.max(20, Math.round(ws.clientWidth  / 2 - cfg.width  / 2));
-        var top  = Math.max(20, Math.round(ws.clientHeight / 2 - cfg.height / 2));
-        var el   = _buildVideoElement(cfg);
-        el.style.left = left + 'px';
-        el.style.top  = top  + 'px';
-        ws.appendChild(el);
-        _startVideoStream(el);
-        showSaveBtn();
-    }
-    _videoSettingsEl = null;
-}
-
-// ── DOM helpers ───────────────────────────────────────────────────────────────
-
-function _applyVideoConfig(el, cfg) {
-    el.style.width  = cfg.width  + 'px';
-    el.style.height = cfg.height + 'px';
-    el.dataset.width         = cfg.width;
-    el.dataset.height        = cfg.height;
-    el.dataset.headerText    = cfg.headerText;
-    el.dataset.streamHost    = cfg.streamHost;
-    el.dataset.streamPort    = cfg.streamPort;
-    el.dataset.streamUser    = cfg.streamUser;
-    el.dataset.streamPass    = cfg.streamPass;
-    el.dataset.streamChannel = cfg.streamChannel;
-    el.dataset.streamSub     = cfg.streamSub;
-    var hdr = el.querySelector('.indicatorHeader');
-    if (hdr) hdr.textContent = cfg.headerText;
-    _stopVideoStream(el);
-    _startVideoStream(el);
-}
+// ── Построение элемента ──────────────────────────────────────────────────────
 
 function _buildVideoElement(cfg) {
     var el = document.createElement('div');

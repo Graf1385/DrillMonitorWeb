@@ -1,0 +1,9 @@
+<div id="alarmAudioBanner" onclick="alarmAudioBannerClick()">
+    &#9888; Звук сигнализации заблокирован браузером &mdash; нажмите для включения
+</div>
+
+<!-- Единственное действие оператора на табло: заглушить сирену по сработавшей
+     тревоге. Появляется правым щелчком только на индикаторе в тревоге. -->
+<div id="indicatorContextMenu" class="indicatorCtxMenu">
+    <button id="ctxAckBtn" onclick="ctxAckAlarm()">Квитировать тревогу</button>
+</div>

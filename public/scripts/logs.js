@@ -72,20 +72,8 @@ function showLogs() {
     }).fail(function () { showError('Ошибка загрузки логов'); });
 }
 
-function clearLogs() {
-    $.ajax({
-        url: '/api/logs',
-        method: 'DELETE',
-        success: function () {
-            document.querySelector('#logBody').innerHTML =
-                '<p class="alarmOverviewEmpty">Логов нет</p>';
-        },
-        error: function (xhr) {
-            if (xhr.status === 401) { if (typeof showLoginModal === 'function') showLoginModal(); return; }
-            showError('Ошибка очистки логов');
-        }
-    });
-}
+// Очистка журнала с табло убрана: на нём ничего не настраивают и не стирают,
+// журнал чистят из BCS_DrillerMonitorLoader (DELETE /api/logs по TCP).
 
 function exportLogs() {
     window.open('/api/logs/export', '_blank');

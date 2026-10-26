@@ -93,11 +93,22 @@ describe('ingestAdmin.ingestRefs', () => {
         assert.match(ingestAdmin.ingestRefs({ parameters: [{ id: 9, name: '' }] })       || '', /назван/i);
     });
 
-    test('после правки справочника пересчитываются параметры глубины', () => {
+    test('значения параметров табло не подменяет — что прислали, то и показывает', () => {
         const ingest = require('../server/ingest');
         ingestAdmin.ingestRefs({ parameters: [{ id: 904, name: 'Глубина забоя' }] });
-        assert.ok(ingest.refreshDepthParams().includes(904),
-                  'новый параметр глубины попал в список подмены');
+
+        // Поле depth записи больше не затирает параметр с «глубинным» именем:
+        // данные готовит Loader, второй раз их преобразовывать нельзя
+        let got = null;
+        const sse = require('../server/sse');
+        const orig = sse.broadcast;
+        sse.broadcast = (ev, data) => { if (ev === 'drill-data') got = data; };
+        try {
+            assert.equal(ingest.ingestRecord({ recNo: 1, depth: 1500, time: 0, params: { 904: 7.5 } }), null);
+        } finally { sse.broadcast = orig; }
+
+        assert.equal(got.params['904'], 7.5, 'значение осталось таким, каким пришло');
+        assert.equal(got.depth, 1500, 'глубина записи передаётся отдельным полем');
     });
 });
 

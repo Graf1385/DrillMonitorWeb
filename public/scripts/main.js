@@ -180,12 +180,10 @@ function _loadIndicatorsForProfile(profileId) {
     });
 }
 
-// Apply active profile from DB on page load
+// Активный профиль при загрузке страницы: раскладку задаёт Loader, табло её
+// только применяет
 $.getJSON('/api/profiles/active', function (profile) {
     if (!profile) return;
-    _activeProfileId     = profile.id;
-    _settings.background = profile.background;
-    _settings.cellSize   = profile.cell_size;
     applyProfileFromSSE(profile);
     _loadIndicatorsForProfile(profile.id);
 }).fail(function () { showError('Ошибка загрузки профиля'); });
@@ -217,17 +215,12 @@ function _hideDataBanner() {
 
     evtSource.addEventListener('profile-selected', function (e) {
         var profile = JSON.parse(e.data);
-        _settings.background = profile.background;
-        _settings.cellSize   = profile.cell_size;
         applyProfileFromSSE(profile);
         _loadIndicatorsForProfile(profile.id);
-        if (window.profileSwitcherSetActive) profileSwitcherSetActive(profile.id);
     });
 
     evtSource.addEventListener('run-state', function (e) {
         var data = JSON.parse(e.data);
-        // Update button only on deliberate start/stop, not on stale-data events
-        if (window._applyRunState && (data.running || !data.reason)) _applyRunState(data.running);
         if (!data.running) {
             document.querySelectorAll('.indicator').forEach(function (el) {
                 if (window.setIndicatorValue) setIndicatorValue(el, null);
