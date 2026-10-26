@@ -287,15 +287,13 @@ var _indicatorTypes = {
             fills.setAttribute('clip-path', 'url(#' + clipId + ')');
             fills.appendChild(mkRect('tankDimBg', _TANK_X, _TANK_Y, _TANK_W, _TANK_H, '#0b1220'));
 
+            // Волна движется вместе с данными: гребень сдвигается при каждом
+            // новом значении (_updateTank). Бесконечной анимации здесь нет
+            // намеренно — и SVG-анимация <animateTransform>, и CSS-трансформ на
+            // SVG заставляют браузер пересчитывать стиль и вёрстку каждый кадр.
+            // На табло с двумя ёмкостями это круглосуточно жгло два ядра из
+            // четырёх даже при полностью остановленной передаче.
             var waveGroup = document.createElementNS(NS, 'g');
-            var anim = document.createElementNS(NS, 'animateTransform');
-            anim.setAttribute('attributeName', 'transform');
-            anim.setAttribute('type', 'translate');
-            anim.setAttribute('from', '0,0');
-            anim.setAttribute('to', (-_TANK_W) + ',0');
-            anim.setAttribute('dur', '3s');
-            anim.setAttribute('repeatCount', 'indefinite');
-            waveGroup.appendChild(anim);
             var wavePath = document.createElementNS(NS, 'path');
             wavePath.setAttribute('class', 'tankProg');
             wavePath.setAttribute('fill', cfg.valueColor);

@@ -184,10 +184,14 @@ function _updateGaugeSvg(el, numericVal) {
     if (rEl) rEl.style.strokeDasharray = rPrg.toFixed(2) + ' ' + _GAUGE_L;
 }
 
-function _makeTankWavePath(waterY) {
+/// phase — сдвиг гребня по горизонтали (0…W). Им волна и «едет»: раньше её
+/// двигала бесконечная SVG-анимация, из-за которой браузер пересчитывал стиль
+/// и вёрстку 60 раз в секунду круглосуточно. Теперь гребень смещается на
+/// каждом новом значении — ровно тогда, когда индикатор и так перерисовывается.
+function _makeTankWavePath(waterY, phase) {
     var amp = 1.2;
     var W   = _TANK_W;
-    var x0  = _TANK_X - W;
+    var x0  = _TANK_X - W + (phase || 0);
     var x1  = _TANK_X + W * 3;
     var bot = _TANK_BOT + 2;
     if (waterY >= _TANK_BOT - amp) {
@@ -208,7 +212,11 @@ function _updateTankSvg(el, numericVal) {
     var r   = _parseRange(el.dataset);
     var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
     var prog = el.querySelector('.tankProg');
-    if (prog) prog.setAttribute('d', _makeTankWavePath(_TANK_BOT - pct * _TANK_H));
+    if (!prog) return;
+    // Восьмая периода на пакет: вода заметно «живёт» при идущих данных и
+    // замирает вместе с ними, не дёргая вёрстку между обновлениями
+    el._wavePhase = ((el._wavePhase || 0) + _TANK_W / 8) % _TANK_W;
+    prog.setAttribute('d', _makeTankWavePath(_TANK_BOT - pct * _TANK_H, el._wavePhase));
 }
 
 function _updateHBar(el, numericVal) {
