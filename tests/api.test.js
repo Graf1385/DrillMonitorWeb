@@ -201,22 +201,17 @@ describe('DELETE /api/profiles/:id — default profile protection', () => {
         });
 });
 
-// ── Parameters ────────────────────────────────────────────────────────────────
+// ── Справочники ───────────────────────────────────────────────────────────────
 
-describe('GET /api/parameters', () => {
-    test('returns an array of at least 255 parameters', async () => {
-        const r = await req('GET', '/api/parameters');
-        assert.equal(r.status, 200);
-        assert.ok(Array.isArray(r.body));
-        assert.ok(r.body.length >= 255);
-    });
-
-    test('parameter 52 is "Время сбора данных"', async () => {
-        const r = await req('GET', '/api/parameters');
-        const p = r.body.find(x => x.id === 52);
-        assert.ok(p, 'parameter 52 not found');
-        assert.equal(p.name, 'Время сбора данных');
-    });
+describe('Справочники на табло не хранятся', () => {
+    // Параметры, единицы и типы данных переехали в BCS_DrillerMonitorLoader:
+    // табло ими не пользуется ни для показа, ни для приёма данных.
+    for (const path of ['/api/parameters', '/api/units', '/api/data-types']) {
+        test(path + ' → 404', async () => {
+            const r = await req('GET', path);
+            assert.equal(r.status, 404);
+        });
+    }
 });
 
 // ── Input validation ──────────────────────────────────────────────────────────

@@ -1,9 +1,6 @@
 const db                  = require('./connection');
 const { initSchema }      = require('./schema');
 const ProfileRepository   = require('./ProfileRepository');
-const UnitRepository      = require('./UnitRepository');
-const ParameterRepository = require('./ParameterRepository');
-const DataTypeRepository  = require('./DataTypeRepository');
 const IndicatorRepository = require('./IndicatorRepository');
 const LogRepository       = require('./LogRepository');
 const FontRepository      = require('./FontRepository');
@@ -14,9 +11,6 @@ const SessionRepository   = require('./SessionRepository');
 initSchema(db);
 
 const profiles   = new ProfileRepository(db);
-const units      = new UnitRepository(db);
-const parameters = new ParameterRepository(db);
-const dataTypes  = new DataTypeRepository(db);
 const indicators = new IndicatorRepository(db);
 const logs       = new LogRepository(db);
 const fonts      = new FontRepository(db);
@@ -33,29 +27,6 @@ module.exports = {
     selectProfile:  (id) => profiles.selectProfile(id),
     updateProfile:  (id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz) => profiles.updateProfile(id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz),
     deleteProfile:  (id) => profiles.deleteProfile(id),
-
-    // units
-    getUnits:   () => units.getUnits(),
-    createUnit: (name, symbol) => units.createUnit(name, symbol),
-    updateUnit: (id, name, symbol) => units.updateUnit(id, name, symbol),
-    importUnits: (list) => units.importUnits(list),
-    upsertUnits: (list) => units.upsertUnits(list),
-    deleteUnit:  (id) => units.deleteUnit(id),
-
-    // parameters
-    getParameters:    () => parameters.getParameters(),
-    getParameter:     (id) => parameters.getParameter(id),
-    createParameter:  (id, name, typeId, unitId, size, accuracy, refUnit) => parameters.createParameter(id, name, typeId, unitId, size, accuracy, refUnit),
-    updateParameter:  (id, name, typeId, unitId, size, accuracy, refUnit) => parameters.updateParameter(id, name, typeId, unitId, size, accuracy, refUnit),
-    importParameters: (params) => parameters.importParameters(params),
-    deleteParameter:  (id) => parameters.deleteParameter(id),
-
-    // data types
-    getDataTypes:   () => dataTypes.getDataTypes(),
-    getDataType:    (id) => dataTypes.getDataType(id),
-    createDataType: (name, fmt) => dataTypes.createDataType(name, fmt),
-    updateDataType: (id, name, fmt) => dataTypes.updateDataType(id, name, fmt),
-    deleteDataType: (id) => dataTypes.deleteDataType(id),
 
     // indicators
     getIndicatorsByProfile: (profileId) => indicators.getIndicatorsByProfile(profileId),

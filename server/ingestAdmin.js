@@ -6,7 +6,7 @@
 // доступны только по линии RS-485: сетевые настройки, приём по RS-485,
 // справочники параметров/единиц и пароль учётной записи. По TCP Loader
 // пользуется обычным REST (со входом в систему), по RS-485 — кадрами
-// {"net":…}, {"serial":…}, {"refs":…}, {"auth":…}, которые приходят сюда из
+// {"net":…}, {"serial":…}, {"auth":…}, которые приходят сюда из
 // server/serialSource.js.
 //
 // Все функции возвращают null при успехе или текст ошибки — как ingestConfig.
@@ -109,82 +109,4 @@ function ingestAuth(a) {
     return null;
 }
 
-// ── Справочники параметров и единиц ───────────────────────────────────────────
-//
-// refs: {
-//   units:            [{id?, name, symbol}],
-//   parameters:       [{id, name, typeId?, unitId?, size?, accuracy?}],
-//   deleteUnits:      [id],
-//   deleteParameters: [id]
-// }
-// Любой раздел необязателен. Применение идемпотентно: единицы и параметры
-// переписываются по id, повтор кадра ничего не портит.
-
-function _ids(list) {
-    const out = [];
-    (list || []).forEach(function (v) {
-        const n = parseInt(v, 10);
-        if (!isNaN(n)) out.push(n);
-    });
-    return out;
-}
-
-function _validateUnits(list) {
-    for (let i = 0; i < list.length; i++) {
-        const u = list[i] || {};
-        if (!String(u.name   || '').trim()) return 'Единица #' + (i + 1) + ': пустое название';
-        if (!String(u.symbol || '').trim()) return 'Единица #' + (i + 1) + ': пустой символ';
-    }
-    return null;
-}
-
-function _validateParams(list) {
-    for (let i = 0; i < list.length; i++) {
-        const p = list[i] || {};
-        if (parseInt(p.id, 10) !== parseInt(p.id, 10)) return 'Параметр #' + (i + 1) + ': нет id';
-        if (!String(p.name || '').trim())              return 'Параметр id=' + p.id + ': пустое название';
-    }
-    return null;
-}
-
-function ingestRefs(refs) {
-    if (!refs || typeof refs !== 'object') return 'Неверный формат справочников';
-
-    const units     = Array.isArray(refs.units)      ? refs.units      : null;
-    const params    = Array.isArray(refs.parameters) ? refs.parameters : null;
-    const delUnits  = _ids(refs.deleteUnits);
-    const delParams = _ids(refs.deleteParameters);
-
-    if (!units && !params && !delUnits.length && !delParams.length)
-        return 'Справочники пусты';
-
-    if (units)  { const e = _validateUnits(units);   if (e) return e; }
-    if (params) { const e = _validateParams(params); if (e) return e; }
-
-    // Строка, помеченная на удаление, не должна приехать обратно в том же кадре:
-    // Loader шлёт список целиком, и забытая в нём строка отменила бы удаление.
-    const delUnitSet  = new Set(delUnits);
-    const delParamSet = new Set(delParams);
-    const unitsUp  = units  ? units.filter(function (u)  { return !delUnitSet.has(parseInt(u.id, 10)); })  : null;
-    const paramsUp = params ? params.filter(function (p) { return !delParamSet.has(parseInt(p.id, 10)); }) : null;
-
-    // Удаления идут первыми: освобождают символ единицы, который мог переехать
-    // на другую строку при переименовании (units.symbol — UNIQUE).
-    const parts = [];
-    try {
-        delParams.forEach(function (id) { db.deleteParameter(id); });
-        delUnits.forEach(function (id)  { db.deleteUnit(id); });
-        if (delParams.length) parts.push('удалено параметров: ' + delParams.length);
-        if (delUnits.length)  parts.push('удалено единиц: '     + delUnits.length);
-
-        if (unitsUp)  { db.upsertUnits(unitsUp);       parts.push('единиц: '     + unitsUp.length); }
-        if (paramsUp) { db.importParameters(paramsUp); parts.push('параметров: ' + paramsUp.length); }
-    } catch (e) {
-        return 'Ошибка записи справочников: ' + (e.message || e);
-    }
-
-    _log('Справочники обновлены (' + parts.join(', ') + ')');
-    return null;
-}
-
-module.exports = { ingestNetwork, ingestSerial, ingestRefs, ingestAuth };
+module.exports = { ingestNetwork, ingestSerial, ingestAuth };

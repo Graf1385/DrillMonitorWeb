@@ -330,7 +330,6 @@ let _lastApply = { kind: null, json: null, at: -Infinity };
 function _dispatch(kind, data) {
     switch (kind) {
         case 'config': return ingest.ingestConfig(data);
-        case 'refs':   return ingestAdmin.ingestRefs(data);
         case 'net':    return ingestAdmin.ingestNetwork(data);
         case 'serial': return ingestAdmin.ingestSerial(data);
         case 'auth':   return ingestAdmin.ingestAuth(data);
@@ -392,8 +391,6 @@ function handleFrame(obj) {
         if (done) _apply(done.kind, done.data);
     } else if (obj.config && typeof obj.config === 'object') {
         _apply('config', obj.config);   // конфигурация целиком в одном кадре
-    } else if (obj.refs && typeof obj.refs === 'object') {
-        _apply('refs', obj.refs);       // справочники параметров и единиц
     } else if (obj.net && typeof obj.net === 'object') {
         _apply('net', obj.net);         // сетевые настройки устройства
     } else if (obj.serial && typeof obj.serial === 'object') {

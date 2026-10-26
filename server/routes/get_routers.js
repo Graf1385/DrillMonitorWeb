@@ -31,33 +31,6 @@ router.get('/api/profiles/active', (req, res) => {
     }
 });
 
-router.get('/api/units', (req, res) => {
-    try {
-        res.status(200).json(db.getUnits());
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.get('/api/parameters', (req, res) => {
-    try {
-        res.status(200).json(db.getParameters());
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.get('/api/data-types', (req, res) => {
-    try {
-        res.status(200).json(db.getDataTypes());
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
 router.get('/api/indicators/active', (req, res) => {
     try {
         res.status(200).json(db.getActiveIndicators());
