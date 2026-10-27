@@ -49,6 +49,12 @@ const MEM_WARN_PCT = 10, MEM_FAIL_PCT = 4;
 /// Раньше этой даты системные часы заведомо не выставлены (NTP в сети буровой нет)
 const MIN_EPOCH_MS = 1700000000000;     // 2023-11-14
 
+// Видео. Сегмент HLS пишется раз в секунду (hls_time=1), поэтому пауза в
+// пятнадцать секунд — это уже не задержка, а молчание. На первый сегмент
+// после запуска даём больше: камере нужно время на отклик.
+const VIDEO_SILENT_MS = 15 * 1000;
+const VIDEO_WARMUP_MS = 20 * 1000;
+
 const RANK = { ok: 0, off: 0, warn: 1, fail: 2 };
 
 // ── Внешние зависимости (в тестах подменяются) ───────────────────────────────
@@ -321,11 +327,31 @@ function _probeClock() {
 function _probeVideo() {
     const list = _deps.streams();
     if (!list || !list.length) return { level: 'off', detail: 'видеопотоки не запускались' };
+
+    const now  = _deps.now();
     const down = list.filter(function (s) { return !s.running; });
+
+    // Процесс жив, а сегментов нет — обычная картина при недоступной камере:
+    // ffmpeg висит на подключении и молчит. Раньше такой поток считался
+    // исправным, и табло показывало чёрный прямоугольник при зелёной проверке.
+    const mute = list.filter(function (s) {
+        if (!s.running) return false;
+        return s.playlistAt
+            ? now - s.playlistAt > VIDEO_SILENT_MS
+            : now - s.startedAt  > VIDEO_WARMUP_MS;
+    });
+
+    const names = function (a) { return a.map(function (s) { return s.key; }).join(', '); };
+    if (down.length && mute.length)
+        return { level: 'warn',
+                 detail: 'не идёт ' + down.length + ' из ' + list.length + ': ' + names(down) +
+                         '; без кадров: ' + names(mute) };
     if (down.length)
         return { level: 'warn',
-                 detail: 'не идёт ' + down.length + ' из ' + list.length + ': ' +
-                         down.map(function (s) { return s.key; }).join(', ') };
+                 detail: 'не идёт ' + down.length + ' из ' + list.length + ': ' + names(down) };
+    if (mute.length)
+        return { level: 'warn',
+                 detail: 'нет кадров с камеры (' + names(mute) + ') — проверьте адрес и сеть' };
     return { level: 'ok', detail: 'потоков ' + list.length };
 }
 

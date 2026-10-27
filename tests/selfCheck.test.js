@@ -225,6 +225,40 @@ describe('selfCheck: данные, диск, память, часы', () => {
         assert.equal(check('video').level, 'warn');
         assert.match(check('video').detail, /cam1/);
     });
+
+    // Недоступная камера: ffmpeg жив и молчит. Процесс есть — видео нет,
+    // и проверка обязана говорить об этом, а не показывать «ок».
+    test('живой ffmpeg без единого сегмента — предупреждение', () => {
+        env.streams = [{ key: 'cam1', running: true, restarts: 0,
+                         startedAt: env.now - 60000, playlistAt: 0 }];
+        run(20000);
+        assert.equal(check('video').level, 'warn');
+        assert.match(check('video').detail, /нет кадров/);
+        assert.match(check('video').detail, /cam1/);
+    });
+
+    test('только что запущенному потоку дают время на первый сегмент', () => {
+        env.streams = [{ key: 'cam1', running: true, restarts: 0,
+                         startedAt: env.now - 5000, playlistAt: 0 }];
+        run(20000);
+        assert.equal(check('video').level, 'ok');
+    });
+
+    test('поток с живым плейлистом — всё в порядке', () => {
+        env.streams = [{ key: 'cam1', running: true, restarts: 0,
+                         startedAt: env.now - 60000, playlistAt: env.now - 1000 }];
+        run(20000);
+        assert.equal(check('video').level, 'ok');
+        assert.match(check('video').detail, /потоков 1/);
+    });
+
+    test('плейлист перестал обновляться — поток замер', () => {
+        env.streams = [{ key: 'cam1', running: true, restarts: 0,
+                         startedAt: env.now - 120000, playlistAt: env.now - 40000 }];
+        run(20000);
+        assert.equal(check('video').level, 'warn');
+        assert.match(check('video').detail, /нет кадров/);
+    });
 });
 
 describe('selfCheck: сводка', () => {

@@ -169,8 +169,16 @@ class StreamManager {
             restarts:   s.restarts,
             lastExitAt: s.lastExitAt,
             lastError:  s.lastError,
+            startedAt:  s.startedAt,
+            // Живой ffmpeg — ещё не идущее видео: с недоступной камерой он
+            // висит и не пишет ни одного сегмента. Правду знает плейлист.
+            playlistAt: _mtimeMs(path.join(s.hlsDir, 'index.m3u8')),
         }));
     }
+}
+
+function _mtimeMs(file) {
+    try { return fs.statSync(file).mtimeMs; } catch { return 0; }
 }
 
 module.exports = new StreamManager();
