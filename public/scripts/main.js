@@ -77,13 +77,16 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 
 function _restoreIndicators(indicators) {
     var ws  = document.querySelector('#wsCanvas');
-    var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;
-    var wsH = (_wsHeight > 0) ? _wsHeight : ws.clientHeight;
     ws.querySelectorAll('.videoIndicator').forEach(function(el) { _stopVideoStream(el); });
     ws.querySelectorAll('.tickerIndicator').forEach(function(el) {
         if (el._tickerObserver) el._tickerObserver.disconnect();
     });
     ws.querySelectorAll('.indicator').forEach(function(el) { el.remove(); });
+
+    // Размер поля берём у пустой канвы: проценты раскладки должны считаться
+    // от экрана, а не от того, что на нём осталось от прежней раскладки
+    var wsW = (_wsWidth  > 0) ? _wsWidth  : ws.clientWidth;
+    var wsH = (_wsHeight > 0) ? _wsHeight : ws.clientHeight;
     indicators.forEach(function(ind) {
         var left = Math.round((ind.pos_left || 0) * wsW / 100);
         var top  = Math.round((ind.pos_top  || 0) * wsH / 100);
