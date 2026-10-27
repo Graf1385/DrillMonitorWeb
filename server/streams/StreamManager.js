@@ -40,6 +40,15 @@ class StreamManager {
 
     start(streamKey, rtspUrl) {
         if (!/^[a-zA-Z0-9_-]{1,64}$/.test(streamKey)) throw new Error('Invalid streamKey');
+
+        // Плеер табло переспрашивает поток целиком, а не только ffmpeg: при
+        // недоступной камере start() прилетает раз в десять секунд. Время
+        // начала переносим на новую запись, иначе выдержка на первый сегмент
+        // обнуляется каждый раз и самодиагностика считает поток исправным.
+        // Сменился адрес камеры — это уже другой поток, отсчёт заново.
+        const prev     = this._streams.get(streamKey);
+        const openedAt = prev && prev.url === rtspUrl ? prev.openedAt : Date.now();
+
         this.stop(streamKey);
 
         const hlsDir = path.join(this._hlsBase, streamKey);
@@ -49,6 +58,7 @@ class StreamManager {
             process: null, hlsDir, url: rtspUrl,
             attempt: 0,          // подряд идущие неудачи — по ним выбираем паузу
             restarts: 0,         // всего перезапусков с момента start()
+            openedAt,            // когда поток попросили впервые — переживает повторы
             startedAt: 0, lastExitAt: null, lastError: null,
             retryTimer: null, stableTimer: null,
         };
@@ -170,6 +180,10 @@ class StreamManager {
             lastExitAt: s.lastExitAt,
             lastError:  s.lastError,
             startedAt:  s.startedAt,
+            // Недоступная камера роняет ffmpeg каждые несколько секунд, и
+            // startedAt всё время свежий. Выдержку на первый сегмент надо
+            // отсчитывать от начала потока, а не от последней попытки
+            openedAt:   s.openedAt,
             // Живой ffmpeg — ещё не идущее видео: с недоступной камерой он
             // висит и не пишет ни одного сегмента. Правду знает плейлист.
             playlistAt: _mtimeMs(path.join(s.hlsDir, 'index.m3u8')),

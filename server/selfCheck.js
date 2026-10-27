@@ -334,11 +334,17 @@ function _probeVideo() {
     // Процесс жив, а сегментов нет — обычная картина при недоступной камере:
     // ffmpeg висит на подключении и молчит. Раньше такой поток считался
     // исправным, и табло показывало чёрный прямоугольник при зелёной проверке.
+    //
+    // Выдержку на первый сегмент отсчитываем от начала потока (openedAt), а не
+    // от последнего запуска ffmpeg: с недоступной камерой он падает и встаёт
+    // каждые несколько секунд, startedAt всё время свежий — и выдержка не
+    // истекала никогда.
     const mute = list.filter(function (s) {
         if (!s.running) return false;
+        const since = s.openedAt || s.startedAt;
         return s.playlistAt
             ? now - s.playlistAt > VIDEO_SILENT_MS
-            : now - s.startedAt  > VIDEO_WARMUP_MS;
+            : now - since        > VIDEO_WARMUP_MS;
     });
 
     const names = function (a) { return a.map(function (s) { return s.key; }).join(', '); };

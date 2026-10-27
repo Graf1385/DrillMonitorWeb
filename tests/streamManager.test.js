@@ -79,6 +79,25 @@ describe('StreamManager: поток поднимается сам', () => {
         assert.deepEqual(sm.activeKeys(), []);
         assert.ok(sm.hlsBase().length > 0);
     });
+
+    // Плеер табло переспрашивает поток целиком раз в десять секунд, пока
+    // камера недоступна. Если считать это новым потоком, выдержка на первый
+    // сегмент обнуляется бесконечно, и самодиагностика не увидит беды
+    test('повторный start с тем же адресом не обнуляет начало потока', async () => {
+        sm.start('selftest3', 'rtsp://127.0.0.1:1/none');
+        const first = sm.diag().find(s => s.key === 'selftest3').openedAt;
+        assert.ok(first, 'начало потока должно быть записано');
+
+        await new Promise(r => setTimeout(r, 30));
+        sm.start('selftest3', 'rtsp://127.0.0.1:1/none');
+        assert.equal(sm.diag().find(s => s.key === 'selftest3').openedAt, first,
+                     'тот же адрес — тот же поток');
+
+        sm.start('selftest3', 'rtsp://127.0.0.1:1/other');
+        assert.notEqual(sm.diag().find(s => s.key === 'selftest3').openedAt, first,
+                        'сменили камеру — отсчёт заново');
+        sm.stop('selftest3');
+    });
 });
 
 describe('StreamManager.streamKey validation', () => {

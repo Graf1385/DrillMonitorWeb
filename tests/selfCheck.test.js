@@ -239,9 +239,21 @@ describe('selfCheck: данные, диск, память, часы', () => {
 
     test('только что запущенному потоку дают время на первый сегмент', () => {
         env.streams = [{ key: 'cam1', running: true, restarts: 0,
-                         startedAt: env.now - 5000, playlistAt: 0 }];
+                         openedAt: env.now - 5000, startedAt: env.now - 5000, playlistAt: 0 }];
         run(20000);
         assert.equal(check('video').level, 'ok');
+    });
+
+    // Недоступная камера роняет ffmpeg каждые несколько секунд. Выдержка,
+    // отсчитанная от последнего запуска, в таком потоке не истекает никогда —
+    // и проверка показывала «ок», пока на экране был чёрный прямоугольник
+    test('поток, который всё время перезапускается, не прячется за выдержкой', () => {
+        env.streams = [{ key: 'cam1', running: true, restarts: 12,
+                         openedAt: env.now - 5 * 60 * 1000, startedAt: env.now - 3000,
+                         playlistAt: 0 }];
+        run(20000);
+        assert.equal(check('video').level, 'warn');
+        assert.match(check('video').detail, /нет кадров/);
     });
 
     test('поток с живым плейлистом — всё в порядке', () => {
