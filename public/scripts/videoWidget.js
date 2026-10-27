@@ -64,14 +64,35 @@ var _videoRetries = {};
 // страницы. Поэтому подключаемся заново, пока виджет на экране.
 var VIDEO_RETRY_MS = 10000;
 
-function _scheduleVideoRetry(el) {
+// Кодек камеры сам не поменяется, а каждая попытка заново поднимает ffmpeg.
+// Переспрашиваем раз в минуту — на случай, если камеру перенастроили
+var VIDEO_CODEC_RETRY_MS = 60000;
+
+function _scheduleVideoRetry(el, delayMs) {
     var key = el.id;
     if (_videoRetries[key]) return;
     _videoRetries[key] = setTimeout(function () {
         delete _videoRetries[key];
         if (!document.body.contains(el)) return;
         _startVideoStream(el);
-    }, VIDEO_RETRY_MS);
+    }, delayMs || VIDEO_RETRY_MS);
+}
+
+// Поток дошёл, но проиграть его нечем: браузер табло не знает этого кодека.
+// Так выглядит камера, настроенная на H.265, — MSE в Chromium под Linux его
+// не поддерживает. Отдельное сообщение нужно потому, что «ошибка потока»
+// одинаково выглядит и при обрыве связи, и здесь, а чинить надо разное.
+function _isCodecError(data) {
+    var details = data && data.details ? String(data.details) : '';
+    if (/[Cc]odec/.test(details)) return true;
+    var text = '';
+    if (data) {
+        if (data.reason) text += data.reason;
+        if (data.mimeType) text += ' ' + data.mimeType;
+        if (data.error && data.error.message) text += ' ' + data.error.message;
+        if (data.err   && data.err.message)   text += ' ' + data.err.message;
+    }
+    return /codec|hvc1|hev1|hevc/i.test(text);
 }
 
 function _cancelVideoRetry(key) {
@@ -133,13 +154,16 @@ function _attachHls(el, hlsUrl) {
         });
         hls.on(Hls.Events.ERROR, function (evt, data) {
             if (!data.fatal) return;
+            var codec = _isCodecError(data);
             if (overlay) {
                 overlay.style.display = '';
-                overlay.textContent   = 'Ошибка потока — переподключение';
+                overlay.textContent   = codec
+                    ? 'Камера передаёт кодек, который табло не проигрывает — переключите её на H.264'
+                    : 'Ошибка потока — переподключение';
             }
             hls.destroy();
             if (_hlsInstances[key] === hls) delete _hlsInstances[key];
-            _scheduleVideoRetry(el);
+            _scheduleVideoRetry(el, codec ? VIDEO_CODEC_RETRY_MS : VIDEO_RETRY_MS);
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = hlsUrl;
