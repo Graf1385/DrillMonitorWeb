@@ -96,6 +96,8 @@ function _restoreIndicators(indicators) {
                 headerText:    ind.header_text  || 'Камера',
                 headerColor:   ind.header_color || '#c9d1d9',
                 headerBg:      ind.header_bg    || '#161b22',
+                headerFont:    ind.header_font,
+                headerSize:    ind.header_size,
                 streamHost:    extra.streamHost    || '',
                 streamPort:    extra.streamPort    || '554',
                 streamUser:    extra.streamUser    || '',

@@ -30,6 +30,10 @@ function _buildVideoElement(cfg) {
     hdr.textContent = cfg.headerText || 'Камера';
     hdr.style.color      = cfg.headerColor || '#c9d1d9';
     hdr.style.background = cfg.headerBg    || '#161b22';
+    // Заголовок — единственное оформление, которое есть у видеоиндикатора:
+    // шрифт и размер должны работать так же, как у остальных типов
+    hdr.style.fontFamily = _getFontFamily(cfg.headerFont);
+    if (cfg.headerSize) hdr.style.fontSize = _fontFromPct(cfg.headerSize);
     el.appendChild(hdr);
 
     var wrap = document.createElement('div');
