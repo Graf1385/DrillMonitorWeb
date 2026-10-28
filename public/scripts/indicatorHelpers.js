@@ -162,6 +162,14 @@ function _applyToValue(valueEl, config, numericVal) {
 
 // ── SVG / DOM updaters ────────────────────────────────────────────────────────
 
+/// Доля шкалы. null — данных нет: рисунок гасим в ноль, как у только что
+/// построенного индикатора. Оставлять стрелку и заливку на последнем
+/// показании нельзя: рядом с прочерком они выглядят живым значением.
+function _pctOf(numericVal, min, max) {
+    if (numericVal == null) return 0;
+    return Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+}
+
 function _updateGaugeSvg(el, numericVal) {
     var r   = _parseRange(el.dataset);
     var min = r.min, max = r.max;
@@ -171,7 +179,7 @@ function _updateGaugeSvg(el, numericVal) {
     if (minLbl) minLbl.textContent = min;
     if (maxLbl) maxLbl.textContent = max;
 
-    var pct  = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var pct  = _pctOf(numericVal, min, max);
     var gPrg = Math.min(pct, 0.6)                     * _GAUGE_L;
     var yPrg = Math.max(0, Math.min(pct, 0.8) - 0.6)  * _GAUGE_L;
     var rPrg = Math.max(0, pct - 0.8)                 * _GAUGE_L;
@@ -210,9 +218,11 @@ function _makeTankWavePath(waterY, phase) {
 
 function _updateTankSvg(el, numericVal) {
     var r   = _parseRange(el.dataset);
-    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
+    var pct = _pctOf(numericVal, r.min, r.max);
     var prog = el.querySelector('.tankProg');
     if (!prog) return;
+    // Данных нет — ёмкость пустая и волна не едет: движение означает поток
+    if (numericVal == null) { prog.setAttribute('d', _makeTankWavePath(_TANK_BOT, el._wavePhase || 0)); return; }
     // Восьмая периода на пакет: вода заметно «живёт» при идущих данных и
     // замирает вместе с ними, не дёргая вёрстку между обновлениями
     el._wavePhase = ((el._wavePhase || 0) + _TANK_W / 8) % _TANK_W;
@@ -221,7 +231,7 @@ function _updateTankSvg(el, numericVal) {
 
 function _updateHBar(el, numericVal) {
     var r   = _parseRange(el.dataset);
-    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
+    var pct = _pctOf(numericVal, r.min, r.max);
     var fill = el.querySelector('.hBarFill');
     if (fill) fill.style.width = (pct * 100).toFixed(2) + '%';
     var mn = el.querySelector('.hBarMin'); if (mn) mn.textContent = r.min;
@@ -230,7 +240,7 @@ function _updateHBar(el, numericVal) {
 
 function _updateVBar(el, numericVal) {
     var r   = _parseRange(el.dataset);
-    var pct = Math.max(0, Math.min(1, (numericVal - r.min) / (r.max - r.min)));
+    var pct = _pctOf(numericVal, r.min, r.max);
     var fill = el.querySelector('.vBarFill');
     if (fill) fill.style.height = (pct * 100).toFixed(2) + '%';
     var mn = el.querySelector('.vBarMin'); if (mn) mn.textContent = r.min;
@@ -246,7 +256,7 @@ function _updateManoSvg(el, numericVal) {
     if (minLbl) minLbl.textContent = min;
     if (maxLbl) maxLbl.textContent = max;
 
-    var pct  = Math.max(0, Math.min(1, (numericVal - min) / (max - min)));
+    var pct  = _pctOf(numericVal, min, max);
     var gPrg = Math.min(pct, 0.6) * _MANO_L;
     var yPrg = Math.max(0, Math.min(pct, 0.8) - 0.6) * _MANO_L;
     var rPrg = Math.max(0, pct - 0.8) * _MANO_L;

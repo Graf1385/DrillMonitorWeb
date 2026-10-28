@@ -48,6 +48,23 @@ describe('dataSource push mode', () => {
         assert.equal(ds.isPushMode(), false);
     });
 
+    test('причина остановки доживает до следующего getRunState', () => {
+        // Киоск, открытый уже после остановки, берёт состояние отсюда,
+        // а не из события, которым о ней объявили
+        ds.startPushMode(function () {});
+        ds.stopPushMode('остановлено оператором');
+        assert.deepEqual(ds.getRunState(), { running: false, reason: 'остановлено оператором' });
+    });
+
+    test('новый запуск передачи стирает прежнюю причину', () => {
+        ds.startPushMode(function () {});
+        ds.stopPushMode('остановлено оператором');
+        ds.startPushMode(function () {});
+        assert.deepEqual(ds.getRunState(), { running: true });
+        ds.stopPushMode();
+        assert.equal(ds.getRunState().reason, null);
+    });
+
     test('startPushMode is no-op when already active', () => {
         let callCount = 0;
         ds.startPushMode(function () { callCount++; });

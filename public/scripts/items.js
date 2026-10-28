@@ -255,7 +255,11 @@ function _addIndicator(type, config, left, top) {
     el.style.setProperty('--value-color', cfg.valueColor);
     _applySize(el, cfg);
     _storeConfig(el, cfg);
-    el._currentValue = 0;
+    // Только что построенный индикатор показаний ещё не знает. Ноль здесь был
+    // полноценным значением: при alarmMin > 0 он поднимал тревогу с сиреной и
+    // записью в историю — на каждое сохранение раскладки, смену профиля и
+    // перезагрузку киоска, до того как придёт первая запись.
+    el._currentValue = null;
 
     var header = document.createElement('div');
     header.className = 'indicatorHeader';
@@ -263,7 +267,9 @@ function _addIndicator(type, config, left, top) {
     el.appendChild(header);
 
     typeDef.create(el, cfg);
-    if (typeDef.isNumeric) setIndicatorValue(el, 0);
+    // Не только числовым: часы иначе встают на «00:00:00», а это выглядит
+    // показанием. У типов без setValue вызов ничего не делает.
+    setIndicatorValue(el, null);
     return el;
 }
 

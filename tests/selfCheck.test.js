@@ -128,9 +128,30 @@ describe('selfCheck: RS-485', () => {
     test('порт открыт, но кадров не было ни одного — предупреждение', () => {
         env.serial.silenceMs = null;
         env.serial.openMs    = 3 * 60 * 1000;
+        env.push = false;
         run(20000);
         assert.equal(check('serial').level, 'warn');
         assert.match(check('serial').detail, /кадров не было/);
+    });
+
+    test('кадров не было, но данные идут по сети — линия просто не используется', () => {
+        env.serial.silenceMs = null;
+        env.serial.openMs    = 3 * 60 * 1000;
+        env.push = true; env.running = true;
+        run(20000);
+        assert.equal(check('serial').level, 'off');
+        assert.match(check('serial').detail, /данные идут по сети/);
+    });
+
+    test('молчание линии при живом приёме по сети не делает табло неисправным', () => {
+        // Передача по TCP/IP: приём по линии включён в настройках, но ею никто
+        // не пользуется. Это не отказ, и дёргать порт незачем.
+        env.serial.silenceMs = 6 * 60 * 1000;
+        env.push = true; env.running = true;
+        run(60 * 60 * 1000);
+        assert.equal(check('serial').level, 'off');
+        assert.equal(env.reopens, 0, 'переоткрывать порт, в который никто не пишет, незачем');
+        assert.notEqual(diag.snapshot().level, 'fail');
     });
 
     test('работа с запасного узла видна в сводке', () => {
@@ -141,6 +162,7 @@ describe('selfCheck: RS-485', () => {
 
     test('молчание линии переоткрывает порт, но не чаще раза в десять минут', () => {
         env.serial.silenceMs = 6 * 60 * 1000;
+        env.running = false;            // линия и есть транспорт — данных нет вовсе
         run(10000);
         assert.equal(env.reopens, 1, 'первое переоткрытие сразу');
         run(9 * 60 * 1000);
@@ -152,12 +174,14 @@ describe('selfCheck: RS-485', () => {
 
     test('не помогло трижды — порт больше не дёргаем', () => {
         env.serial.silenceMs = 6 * 60 * 1000;
+        env.running = false;
         run(60 * 60 * 1000);            // час молчания: Loader просто выключен
         assert.equal(env.reopens, 3, 'трёх попыток достаточно');
     });
 
     test('после возвращения данных попытки отсчитываются заново', () => {
         env.serial.silenceMs = 6 * 60 * 1000;
+        env.running = false;
         run(60 * 60 * 1000);
         env.serial.silenceMs = 1000;    // кадры пошли
         run(10000);
@@ -303,6 +327,7 @@ describe('selfCheck: сводка', () => {
 
     test('самовосстановления попадают в сводку', () => {
         env.serial.silenceMs = 6 * 60 * 1000;
+        env.running = false;            // линия и есть транспорт — данных нет вовсе
         run(10000);
         const r = diag.snapshot().recoveries;
         assert.equal(r.length, 1);

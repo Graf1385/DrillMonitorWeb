@@ -183,7 +183,9 @@ function ingestState(body) {
     if (running) {
         if (!dataSource.isPushMode()) startPush();
     } else {
-        dataSource.stopPushMode();
+        // Причину передаём и в dataSource: экран, открытый уже после остановки,
+        // берёт состояние оттуда, а это событие он не застанет
+        dataSource.stopPushMode(b.reason || null);
         sse.broadcast('run-state', { running: false, reason: b.reason || null });
     }
 }

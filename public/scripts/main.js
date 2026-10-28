@@ -236,14 +236,15 @@ function _hideDataBanner() {
             document.querySelectorAll('.indicator').forEach(function (el) {
                 if (window.setIndicatorValue) setIndicatorValue(el, null);
             });
-            if (data.reason) {
-                // 'network' — сервер не получает пакеты от Loader (TCP/IP или RS-485);
-                // любая другая причина приходит текстом от самого Loader
-                var msg = data.reason === 'network'
-                    ? 'Нет данных от BCS_DrillerMonitorLoader'
-                    : 'Передача остановлена: ' + data.reason;
-                _showDataBanner(msg);
-            }
+            // Баннер поднимаем всегда: причина приходит не в каждом состоянии
+            // (табло ещё ни разу не получало данных — её просто нет), а экран
+            // в прочерках без единого слова объяснения хуже неточного текста.
+            // 'network' — сервер не получает пакеты от Loader (TCP/IP или RS-485);
+            // любая другая причина приходит текстом от самого Loader
+            var msg = (!data.reason || data.reason === 'network')
+                ? 'Нет данных от BCS_DrillerMonitorLoader'
+                : 'Передача остановлена: ' + data.reason;
+            _showDataBanner(msg);
         } else {
             _hideDataBanner();
         }

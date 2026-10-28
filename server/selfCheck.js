@@ -215,9 +215,12 @@ function _probeSerial() {
     if (!st)         return { level: 'off',  detail: 'сведений нет' };
     if (!st.enabled) return { level: 'off',  detail: 'приём по линии выключен в настройках' };
 
+    // Данные идут — значит они идут по сети: кадры с линии попадают в тот же
+    // push-режим, и при живом обмене по RS-485 молчания на ней не бывает.
+    // Линия тогда просто не используется, и это не отказ табло.
+    const overNetwork = _deps.pushMode() && _deps.runState().running;
+
     if (!st.open) {
-        // Данные идут по сети — значит линия просто не используется
-        const overNetwork = _deps.pushMode() && _deps.runState().running;
         return { level: overNetwork ? 'warn' : 'fail',
                  detail: st.error || ('порт ' + st.port + ' не открыт') };
     }
@@ -227,12 +230,18 @@ function _probeSerial() {
 
     if (st.silenceMs == null) {
         if ((st.openMs || 0) > NO_DATA_MS)
-            return { level: 'warn',
-                     detail: 'порт ' + where + ' открыт ' + _dur(st.openMs) + ', кадров не было ни одного' };
+            return { level: overNetwork ? 'off' : 'warn',
+                     detail: overNetwork
+                         ? 'линия не используется — данные идут по сети'
+                         : 'порт ' + where + ' открыт ' + _dur(st.openMs) + ', кадров не было ни одного' };
         return { level: 'ok', detail: 'порт ' + where + ', ' + st.baud + ' бод' };
     }
 
     if (st.silenceMs > SILENCE_FAIL_MS) {
+        // Переоткрывать порт, в который никто и не пишет, незачем: данные идут
+        // по сети, а попытки восстановления только засоряют журнал
+        if (overNetwork)
+            return { level: 'off', detail: 'линия не используется — данные идут по сети' };
         if (_serialTries < REOPEN_TRIES &&
             _recover('serial-reopen', 'переоткрытие порта ' + where + ' после ' + _dur(st.silenceMs) + ' тишины',
                      REOPEN_MIN_MS, _deps.reopenSerial))

@@ -22,6 +22,7 @@ let _pushInterval    = 0;      // наблюдаемый интервал меж
 let _pushDataStale   = false;
 let _pushStaleReason = null;
 let _pushStaleTimer  = null;
+let _stopReason      = null;   // чем объяснили последнюю остановку передачи
 let _onRecord        = null;
 let _onStale         = null;
 let _onResume        = null;
@@ -41,6 +42,7 @@ function startPushMode(onRecord, { onStale, onResume } = {}) {
     _pushInterval    = 0;
     _pushDataStale   = false;
     _pushStaleReason = null;
+    _stopReason      = null;
     _onRecord        = onRecord || null;
     _onStale         = onStale  || null;
     _onResume        = onResume || null;
@@ -55,10 +57,14 @@ function startPushMode(onRecord, { onStale, onResume } = {}) {
     }, 1000);
 }
 
-function stopPushMode() {
+// Причину остановки запоминаем: экран, открытый уже после неё (перезагрузка
+// киоска, второй браузер), получает состояние из getRunState, а не то событие,
+// которым о ней объявили, — и без этого показывал прочерки молча.
+function stopPushMode(reason) {
     _pushMode        = false;
     _pushDataStale   = false;
     _pushStaleReason = null;
+    _stopReason      = reason || null;
     _pushLastMono    = 0;
     _pushInterval    = 0;
     if (_pushStaleTimer) { clearInterval(_pushStaleTimer); _pushStaleTimer = null; }
@@ -92,7 +98,7 @@ function getRunState() {
         if (_pushDataStale) return { running: false, reason: _pushStaleReason };
         return { running: true };
     }
-    return { running: false, reason: null };
+    return { running: false, reason: _stopReason };
 }
 
 module.exports = {

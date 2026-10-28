@@ -78,7 +78,9 @@ var _indicatorTypes = {
             v.style.fontFamily      = _getFontFamily(cfg.valueFont);
             v.style.fontSize        = _valueFontPx(cfg.valueSize);
             v.style.textShadow      = _makeShadow(cfg.valueColor);
-            v.textContent           = '00:00:00';
+            // Пока записи не пришло, часы показывают прочерки, а не полночь:
+            // «00:00:00» выглядит показанием, хотя времени ещё никто не дал
+            v.textContent           = '--:--:--';
             el.appendChild(v);
         },
         applyEdit: function (el, cfg) {
@@ -141,7 +143,9 @@ var _indicatorTypes = {
         defaultValueSize: 30,
         setValue: function (el, val) {
             var t = el.querySelector('.gaugeValueText');
-            if (val == null) { if (t) t.textContent = '—'; return; }
+            // Данных нет — гасим и рисунок: дуга, замершая на последнем
+            // показании рядом с прочерком, читается как живое значение
+            if (val == null) { if (t) t.textContent = '—'; _updateGaugeSvg(el, null); return; }
             if (t) t.textContent = _formatValue(el, val);
             _updateGaugeSvg(el, val);
         },
@@ -250,7 +254,7 @@ var _indicatorTypes = {
         defaultValueSize: 28,
         setValue: function (el, val) {
             var t = el.querySelector('.tankValueText');
-            if (val == null) { if (t) t.textContent = '—'; return; }
+            if (val == null) { if (t) t.textContent = '—'; _updateTankSvg(el, null); return; }
             if (t) t.textContent = _formatValue(el, val);
             _updateTankSvg(el, val);
         },
@@ -354,7 +358,7 @@ var _indicatorTypes = {
         defaultValueSize: 24,
         setValue: function (el, val, zc) {
             var hv = el.querySelector('.hBarValue');
-            if (val == null) { if (hv) hv.textContent = '—'; return; }
+            if (val == null) { if (hv) hv.textContent = '—'; _updateHBar(el, null); return; }
             if (hv) {
                 hv.textContent = _formatValue(el, val);
                 var c = zc || el.dataset.valueColor;
@@ -435,7 +439,7 @@ var _indicatorTypes = {
         defaultValueSize: 26,
         setValue: function (el, val, zc) {
             var vv = el.querySelector('.vBarValue');
-            if (val == null) { if (vv) vv.textContent = '—'; return; }
+            if (val == null) { if (vv) vv.textContent = '—'; _updateVBar(el, null); return; }
             if (vv) {
                 vv.textContent = _formatValue(el, val);
                 var c = zc || el.dataset.valueColor;
@@ -577,7 +581,7 @@ var _indicatorTypes = {
         defaultValueSize: 28,
         setValue: function (el, val) {
             var t = el.querySelector('.manoValueText');
-            if (val == null) { if (t) t.textContent = '—'; return; }
+            if (val == null) { if (t) t.textContent = '—'; _updateManoSvg(el, null); return; }
             if (t) t.textContent = _formatValue(el, val);
             _updateManoSvg(el, val);
         },
