@@ -321,11 +321,10 @@ const _cfgAsm = new ConfigReassembler();
 // ── Применение настроек, пришедших по линии ──────────────────────────────────
 //
 // Loader повторяет каждый кадр настройки: линия односторонняя, подтверждений
-// нет. Применять одно и то же по три раза незачем — сравниваем посылку с
-// последней успешно применённой того же вида. После ошибки повтор принимается.
+// нет. Отсев повторов общий с TCP/IP — server/applyGuard.js: табло одно, и
+// повтор по сети после отправки по линии это тот же самый повтор.
 
-const APPLY_DEDUPE_MS = 10000;
-let _lastApply = { kind: null, json: null, at: -Infinity };
+const applyGuard = require('./applyGuard').shared;
 
 function _dispatch(kind, data) {
     switch (kind) {
@@ -339,15 +338,7 @@ function _dispatch(kind, data) {
 }
 
 function _apply(kind, data) {
-    let json = null;
-    try { json = JSON.stringify(data); } catch (_) {}
-
-    // Окно отсева считаем монотонными часами: перевод системных (timeSync)
-    // иначе либо пропустил бы повтор, либо держал отсев лишние минуты.
-    if (json !== null && _lastApply.kind === kind && _lastApply.json === json &&
-        (mono.now() - _lastApply.at) < APPLY_DEDUPE_MS) {
-        return;   // повтор того же кадра
-    }
+    if (applyGuard.isRepeat(kind, data)) return;   // повтор того же кадра
 
     // Исключение отсюда всплыло бы в обработчик 'data' потока и уронило процесс:
     // кадр с линии не должен иметь такой власти над табло.
@@ -356,10 +347,10 @@ function _apply(kind, data) {
     catch (e) { err = 'сбой применения: ' + (e && e.message ? e.message : e); }
 
     if (err) {
-        _lastApply = { kind: null, json: null, at: -Infinity };
+        applyGuard.failed();
         _onFrameError(kind, err);
     } else {
-        _lastApply = { kind: kind, json: json, at: mono.now() };
+        applyGuard.applied(kind, data);
     }
 }
 

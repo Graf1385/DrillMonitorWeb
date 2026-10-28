@@ -1,11 +1,11 @@
 {
   "name": "drillmonitorweb",
-  "version": "1.8.7",
+  "version": "1.8.8",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "node --test --test-force-exit tests/password.test.js tests/profileRepository.test.js tests/indicatorRepository.test.js tests/streamManager.test.js tests/dataSource.test.js tests/timeSync.test.js tests/serialFrame.test.js tests/serialPort.test.js tests/selfCheck.test.js tests/configReassembler.test.js tests/ingestConfig.test.js tests/ingestAdmin.test.js tests/updatePackage.test.js tests/api.test.js",
+    "test": "node --test --test-force-exit tests/password.test.js tests/profileRepository.test.js tests/indicatorRepository.test.js tests/streamManager.test.js tests/dataSource.test.js tests/timeSync.test.js tests/serialFrame.test.js tests/serialPort.test.js tests/selfCheck.test.js tests/configReassembler.test.js tests/applyGuard.test.js tests/ingestConfig.test.js tests/ingestAdmin.test.js tests/updatePackage.test.js tests/api.test.js",
     "test:e2e": "npx playwright test"
   },
   "author": "Andrey Podlesnyy",

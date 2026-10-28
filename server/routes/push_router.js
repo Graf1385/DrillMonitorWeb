@@ -4,6 +4,7 @@ const express = require('express');
 const router  = express.Router();
 const ingest  = require('../ingest');
 const mono    = require('../monotonic');
+const applyGuard = require('../applyGuard').shared;
 
 // Не больше 5 записей в секунду с одного адреса. Часы монотонные: системные
 // подводит timeSync по данным того же Loader, и прыжок назад растянул бы окно
@@ -48,10 +49,23 @@ router.post('/api/push/state', function (req, res) {
 // SSE so the live kiosk redraws without a reboot. Same payload travels over
 // RS-485 as a {"config":…} frame (server/serialSource.js).
 router.post('/api/push/config', function (req, res) {
+    const cfg = req.body && req.body.config;
+
+    // «Сохранить» повторяет запрос после таймаута, а на этой сети таймаут
+    // случается и у запроса, который до табло доехал. Отсев общий с RS-485
+    // (server/applyGuard.js): переписывать раскладку второй раз незачем —
+    // киоск бы её перестроил, а в журнале это выглядит как два сохранения.
+    // Повтор — не ошибка: отвечаем так же, как на применённую посылку.
+    if (applyGuard.isRepeat('config', cfg)) return res.json({ ok: true, repeat: true });
+
     let err;
-    try { err = ingest.ingestConfig(req.body && req.body.config); }
-    catch (e) { return res.status(500).json({ error: 'Сбой применения конфигурации: ' + (e.message || e) }); }
-    if (err) return res.status(400).json({ error: err });
+    try { err = ingest.ingestConfig(cfg); }
+    catch (e) {
+        applyGuard.failed();
+        return res.status(500).json({ error: 'Сбой применения конфигурации: ' + (e.message || e) });
+    }
+    if (err) { applyGuard.failed(); return res.status(400).json({ error: err }); }
+    applyGuard.applied('config', cfg);
     res.json({ ok: true });
 });
 

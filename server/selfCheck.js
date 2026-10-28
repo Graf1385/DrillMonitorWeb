@@ -237,11 +237,13 @@ function _probeSerial() {
         return { level: 'ok', detail: 'порт ' + where + ', ' + st.baud + ' бод' };
     }
 
+    // Молчание линии при живом приёме по сети — не отказ и не повод
+    // переоткрывать порт, в который никто не пишет. Решаем это до порогов:
+    // иначе между минутой и пятью табло всё равно жаловалось бы.
+    if (overNetwork && st.silenceMs > SILENCE_WARN_MS)
+        return { level: 'off', detail: 'линия не используется — данные идут по сети' };
+
     if (st.silenceMs > SILENCE_FAIL_MS) {
-        // Переоткрывать порт, в который никто и не пишет, незачем: данные идут
-        // по сети, а попытки восстановления только засоряют журнал
-        if (overNetwork)
-            return { level: 'off', detail: 'линия не используется — данные идут по сети' };
         if (_serialTries < REOPEN_TRIES &&
             _recover('serial-reopen', 'переоткрытие порта ' + where + ' после ' + _dur(st.silenceMs) + ' тишины',
                      REOPEN_MIN_MS, _deps.reopenSerial))

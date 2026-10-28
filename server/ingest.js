@@ -154,9 +154,11 @@ function ingestConfig(cfg) {
     const list = cfg.indicators.map(_normIndicator);
     db.saveIndicators(id, list);
 
-    const saved = db.getProfile(id);
-    sse.broadcast('profile-selected', saved);
-    sse.broadcast('workspace-saved',  saved);
+    // Одно событие на одно применение. Раньше уходили оба, а слушатели —
+    // и киоск, и Loader — на каждое перечитывают профиль и список индикаторов:
+    // лишний запрос и лишняя перестройка раскладки на ровном месте. Веб-маршруты
+    // уже шлют по одному событию на действие, здесь было исключение.
+    sse.broadcast('workspace-saved', db.getProfile(id));
 
     try { logger.log('Конфигурация профиля "' + name + '" применена (' + list.length + ' индикаторов)'); } catch (_) {}
     return null;
@@ -168,9 +170,7 @@ function selectProfile(name) {
     if (!profile) return 'Профиля «' + name + '» на табло нет';
 
     db.selectProfile(profile.id);
-    const saved = db.getProfile(profile.id);
-    sse.broadcast('profile-selected', saved);
-    sse.broadcast('workspace-saved',  saved);
+    sse.broadcast('profile-selected', db.getProfile(profile.id));
 
     try { logger.log('Выбран профиль "' + name + '"'); } catch (_) {}
     return null;
