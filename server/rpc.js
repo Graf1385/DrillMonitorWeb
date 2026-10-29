@@ -37,21 +37,27 @@ function _log(msg) { try { logger.log(msg); } catch (_) {} }
 // ── Представление профиля и индикаторов ───────────────────────────────────────
 //
 // Отдаём ровно то, что принимает profile.save: Loader прочитал, поправил,
-// вернул — и ничего по дороге не потерялось. Часового пояса и таймаута боковой
-// панели здесь нет: пояс общий для всех профилей и переезжает в настройки
-// табло, панель убирается совсем. Пока они живут в строке профиля, их бережёт
-// ingestConfig — профиль, сохранённый без них, их не затирает.
+// вернул — и ничего по дороге не потерялось.
+//
+// Часовой пояс и таймаут боковой панели пока едут здесь же. Пояс общий для всех
+// профилей и переезжает в настройки табло, панель убирается совсем — но сделать
+// это можно только разом: киоск, настройки табло и диалог Loader. Убрать их из
+// ответа раньше значило бы, что редактор сохраняет профиль без пояса и затирает
+// на табло то, чего не показывал. От посылки без них ingestConfig бережёт
+// отдельно — на случай профиля из файла.
 
 function _profileOut(p) {
     return {
-        name:         p.name,
-        background:   p.background,
-        cellSize:     p.cell_size,
-        wsWidth:      p.ws_width,
-        wsHeight:     p.ws_height,
-        alarmSoundId: p.alarm_sound_id,
-        alarmVolume:  p.alarm_volume,
-        alarmDelay:   p.alarm_delay,
+        name:           p.name,
+        background:     p.background,
+        cellSize:       p.cell_size,
+        wsWidth:        p.ws_width,
+        wsHeight:       p.ws_height,
+        alarmSoundId:   p.alarm_sound_id,
+        alarmVolume:    p.alarm_volume,
+        alarmDelay:     p.alarm_delay,
+        timezone:       p.timezone,
+        sidebarTimeout: p.sidebar_timeout,
     };
 }
 
@@ -136,6 +142,8 @@ function opProfileCreate(data) {
                           alarm_volume: 50, alarm_delay: 2, ws_width: 0, ws_height: 0,
                           sidebar_timeout: 20, timezone: '0' };
 
+    const wasActive = db.getActiveProfile();
+
     const id = db.createProfile(name, base.background, base.cell_size).lastInsertRowid;
     // updateProfile заодно делает профиль активным
     db.updateProfile(id, base.background, base.cell_size, base.alarm_sound_id,
@@ -148,10 +156,21 @@ function opProfileCreate(data) {
         ? db.getIndicatorsByProfile(src.id).map(_indicatorOut) : [];
     db.saveIndicators(id, copied);
 
+    // Новый профиль не выводим на экран: его ещё только собирают, и пустое
+    // поле вместо показаний бурильщику ни к чему. Возвращаем активным тот,
+    // что был; на экран новый профиль попадёт, когда его сохранят.
+    if (wasActive && wasActive.id !== id) db.selectProfile(wasActive.id);
+
     _log('Создан профиль "' + name + '"' +
          (copied.length ? ' копией "' + src.name + '" (' + copied.length + ' индикаторов)' : '') +
          ' из BCS_DrillerMonitorLoader');
-    return boardState();
+
+    // created — каким профиль создан: редактору есть что показать, не угадывая,
+    // и раскладка к нему, если копировали с образца
+    const state = boardState();
+    state.created           = _profileOut(db.getProfile(id));
+    state.createdIndicators = copied;
+    return state;
 }
 
 function opProfileDelete(data) {

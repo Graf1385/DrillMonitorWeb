@@ -41,10 +41,18 @@ describe('rpc: словарь обменов', () => {
         assert.equal(res.data.sounds, undefined);
     });
 
-    test('в профиле нет часового пояса и таймаута панели: это не профиль', () => {
-        const d = call('profile.get').data;
-        assert.equal(d.profile.timezone, undefined);
-        assert.equal(d.profile.sidebarTimeout, undefined);
+    test('часовой пояс ездит туда и обратно без потерь', () => {
+        // Пояс переезжает в настройки табло, но пока он в профиле — и обмен
+        // обязан его возвращать: иначе редактор сохранит профиль без пояса
+        // и затрёт на табло то, чего не показывал
+        const id = db.getActiveProfile().id;
+        db.updateProfile(id, '#000000', 20, null, 50, 2, 0, 0, 20, '5');
+
+        const got = call('profile.get').data.profile;
+        assert.equal(got.timezone, '5');
+
+        assert.equal(call('profile.save', { profile: got, indicators: [] }).ok, true);
+        assert.equal(db.getActiveProfile().timezone, '5');
     });
 
     test('неизвестный обмен — понятный отказ, а не падение', () => {
@@ -68,10 +76,14 @@ describe('rpc: словарь обменов', () => {
 
 describe('rpc: профили', () => {
     test('create → select → save → delete', () => {
-        assert.equal(call('profile.create', { name: 'Бурение' }).ok, true);
-        assert.equal(db.getActiveProfile().name, 'Бурение', 'новый профиль сразу активен');
-        assert.deepEqual(db.getIndicatorsByProfile(db.getActiveProfile().id), [],
-                         'новый профиль пустой');
+        const before = db.getActiveProfile().name;
+        const made   = call('profile.create', { name: 'Бурение' });
+        assert.equal(made.ok, true, made.error);
+        assert.equal(made.data.created.name, 'Бурение', 'ответ говорит, каким профиль создан');
+        assert.equal(db.getActiveProfile().name, before,
+                     'на экране прежний профиль: новый ещё собирают');
+        const fresh = db.getProfiles().find(p => p.name === 'Бурение');
+        assert.deepEqual(db.getIndicatorsByProfile(fresh.id), [], 'новый профиль пустой');
 
         const saved = call('profile.save', {
             profile: { name: 'Бурение', background: '#102030', cellSize: 25,
@@ -104,8 +116,10 @@ describe('rpc: профили', () => {
         });
         const res = call('profile.create', { name: 'Копия', copyFrom: 'Образец' });
         assert.equal(res.ok, true, res.error);
-        assert.equal(res.data.indicators.length, 2);
-        assert.equal(db.getActiveProfile().name, 'Копия');
+        assert.equal(res.data.created.name, 'Копия');
+        const copy = db.getProfiles().find(p => p.name === 'Копия');
+        assert.equal(db.getIndicatorsByProfile(copy.id).length, 2, 'раскладка образца скопирована');
+        assert.equal(db.getActiveProfile().name, 'Образец', 'на экране по-прежнему образец');
     });
 
     test('повторное имя, пустое имя и несуществующий образец — отказ с текстом', () => {
@@ -132,8 +146,8 @@ describe('rpc: профили', () => {
 
     test('сохранение без часового пояса его не затирает', () => {
         call('profile.create', { name: 'Пояс' });
-        const id = db.getActiveProfile().id;
-        db.updateProfile(id, '#000000', 20, null, 50, 2, 0, 0, 20, '7');
+        const id = db.getProfiles().find(x => x.name === 'Пояс').id;
+        db.updateProfile(id, '#000000', 20, null, 50, 2, 0, 0, 20, '7');   // он же активирует
 
         call('profile.save', {
             profile: { name: 'Пояс', background: '#222222', cellSize: 20 },
