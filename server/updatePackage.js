@@ -35,7 +35,7 @@ const BACKUP_PATHS = ['app.js', 'package.json', 'package-lock.json', 'server', '
 // В пакет они попадать не должны, но архив легко собрать из рабочего дерева
 // вместе с ними — тогда табло потеряет свою базу или скорость линии. Поэтому
 // такие файлы при распаковке пропускаются (список — это .gitignore проекта).
-const RUNTIME_STATE = /^server\/data\/([^/]*\.db(-shm|-wal)?|serial-settings\.json|data-source-settings\.json)$/;
+const RUNTIME_STATE = /^server\/data\/([^/]*\.db(-shm|-wal)?|serial-settings\.json|data-source-settings\.json|board-settings\.json)$/;
 
 // ── Разбор и проверка архива ──────────────────────────────────────────────────
 

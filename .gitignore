@@ -11,6 +11,7 @@ server/data/*.db-shm
 server/data/*.db-wal
 server/data/data-source-settings.json
 server/data/serial-settings.json
+server/data/board-settings.json
 
 # Local server output redirects
 *.log
