@@ -4,19 +4,24 @@ const express = require('express');
 const router  = express.Router();
 const ingest  = require('../ingest');
 const mono    = require('../monotonic');
+const rpc     = require('../rpc');
+const auth    = require('../auth');
 const applyGuard = require('../applyGuard').shared;
 
 // Не больше 5 записей в секунду с одного адреса. Часы монотонные: системные
 // подводит timeSync по данным того же Loader, и прыжок назад растянул бы окно
 // на минуты — поток данных начал бы получать 429 на ровном месте.
+// У обменов настройки счётчик свой: они редкие, но идут вперемешку с потоком,
+// и общий счётчик отдавал бы 429 то одному, то другому.
 const _rlMap = new Map();
-function _isRateLimited(ip) {
+function _isRateLimited(ip, limit, bucket) {
+    const key   = (bucket || 'data') + ' ' + ip;
     const now   = mono.now();
-    let   entry = _rlMap.get(ip);
+    let   entry = _rlMap.get(key);
     if (!entry || now > entry.reset) entry = { count: 0, reset: now + 1000 };
     entry.count++;
-    _rlMap.set(ip, entry);
-    return entry.count > 5;
+    _rlMap.set(key, entry);
+    return entry.count > limit;
 }
 setInterval(function () {
     const now = mono.now();
@@ -25,7 +30,7 @@ setInterval(function () {
 
 // Receive drill data record from BCS_Loader — auto-activates push mode on first call
 router.post('/api/push/data', function (req, res) {
-    if (_isRateLimited(req.ip || 'unknown'))
+    if (_isRateLimited(req.ip || 'unknown', 5, 'data'))
         return res.status(429).json({ error: 'Слишком много запросов' });
 
     // Сбой на одной записи не должен возвращаться HTML-страницей ошибки:
@@ -67,6 +72,26 @@ router.post('/api/push/config', function (req, res) {
     if (err) { applyGuard.failed(); return res.status(400).json({ error: err }); }
     applyGuard.applied('config', cfg);
     res.json({ ok: true });
+});
+
+// ── Обмены настройки табла ────────────────────────────────────────────────────
+//
+// Один словарь на оба канала (server/rpc.js): по TCP/IP он приезжает сюда, по
+// RS-485 — кадром {"req":…}. Тело запроса: { id, op, data }.
+//
+// Код ответа всегда 200, даже на отказ: «успешно или нет» лежит в самом ответе,
+// и на линии RS-485 никаких кодов нет вовсе. Иначе на двух каналах пришлось бы
+// по-разному отвечать на одно и то же, а Loader — по-разному разбирать.
+router.post('/api/rpc', function (req, res) {
+    if (_isRateLimited(req.ip || 'unknown', 10, 'rpc')) {
+        const id = req.body && Number.isInteger(req.body.id) ? req.body.id : null;
+        return res.status(429).json({ id: id, ok: false, error: 'Слишком много запросов' });
+    }
+
+    res.json(rpc.handle(req.body, {
+        channel: 'tcp',
+        authed:  auth.isAuthenticated(req),
+    }));
 });
 
 module.exports = router;

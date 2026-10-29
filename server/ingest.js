@@ -140,11 +140,20 @@ function ingestConfig(cfg) {
     const alarmDelay     = _num(p.alarmDelay     !== undefined ? p.alarmDelay     : p.alarm_delay,      2);
     const wsWidth        = _int(p.wsWidth        !== undefined ? p.wsWidth        : p.ws_width,         0);
     const wsHeight       = _int(p.wsHeight       !== undefined ? p.wsHeight       : p.ws_height,        0);
-    const sidebarTimeout = _int(p.sidebarTimeout !== undefined ? p.sidebarTimeout : p.sidebar_timeout, 20);
-    const timezone       = _str(p.timezone, '0');
-
     // upsert профиля по имени
     const existing = db.getProfiles().find(function (x) { return x.name === name; });
+
+    // Часовой пояс и таймаут боковой панели в профиль больше не входят: пояс
+    // один на всё табло, панель убирается. Посылка без них ничего не затирает —
+    // у профиля остаётся прежнее значение, у нового берётся умолчание.
+    const sidebarTimeout =
+        p.sidebarTimeout  !== undefined ? _int(p.sidebarTimeout,  20) :
+        p.sidebar_timeout !== undefined ? _int(p.sidebar_timeout, 20) :
+        existing ? existing.sidebar_timeout : 20;
+    const timezone =
+        p.timezone !== undefined ? _str(p.timezone, '0') :
+        existing ? existing.timezone : '0';
+
     const id = existing ? existing.id : db.createProfile(name, background, cellSize).lastInsertRowid;
 
     // updateProfile обновляет поля и делает профиль активным (is_active=1)
@@ -190,4 +199,4 @@ function ingestState(body) {
     }
 }
 
-module.exports = { ingestRecord, ingestState, ingestConfig, startPush };
+module.exports = { ingestRecord, ingestState, ingestConfig, selectProfile, startPush };

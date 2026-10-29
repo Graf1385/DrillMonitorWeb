@@ -45,4 +45,5 @@ function clearCookie() {
     return `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`;
 }
 
-module.exports = { createSession, destroySession, requireAuth, sessionCookie, clearCookie, _getToken };
+module.exports = { createSession, destroySession, isAuthenticated, requireAuth,
+                   sessionCookie, clearCookie, _getToken };
