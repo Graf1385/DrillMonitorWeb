@@ -315,8 +315,10 @@ function handle(req, ctx) {
     if (!entry) return { id: id, ok: false, error: 'Неизвестный обмен: ' + (op || '(пусто)') };
 
     const c = ctx || {};
+    // code: отказ из-за входа Loader узнаёт по признаку, а не по тексту — он
+    // входит в систему и повторяет обмен сам
     if (entry.auth && c.channel !== 'rs485' && !c.authed)
-        return { id: id, ok: false, error: 'Требуется вход в систему табло' };
+        return { id: id, ok: false, code: 'auth', error: 'Требуется вход в систему табло' };
 
     // Повтор (потерялся ответ, а не запрос) — отдаём тот же ответ, не выполняя
     let json;
