@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrillMonitorWeb — служебная</title>
+    <style>
+        /* Страница самостоятельная: ни скриптов киоска, ни его стилей. Её
+           открывают с ноутбука, когда Loader не подключается, и единственное,
+           что от неё нужно, — показать состояние и журнал. */
+        :root {
+            --bg: #0d1117; --panel: #161b22; --line: #30363d;
+            --text: #c9d1d9; --muted: #8b949e; --accent: #38bdf8;
+            --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
+            font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+        }
+        .wrap { max-width: 980px; margin: 0 auto; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; letter-spacing: .02em; }
+        .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+        .card {
+            background: var(--panel); border: 1px solid var(--line);
+            border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+        }
+        .card h2 { font-size: 13px; font-weight: 600; color: var(--muted);
+                   text-transform: uppercase; letter-spacing: .08em; margin: 0 0 10px; }
+        .check { display: flex; gap: 10px; padding: 5px 0; align-items: baseline; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px; }
+        .ok   { background: var(--ok); }
+        .warn { background: var(--warn); }
+        .bad  { background: var(--bad); }
+        .off  { background: var(--muted); }
+        .title { min-width: 150px; }
+        .detail { color: var(--muted); }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 4px 10px 4px 0; vertical-align: top; border-top: 1px solid var(--line); }
+        tr:first-child td { border-top: none; }
+        td.time { color: var(--muted); white-space: nowrap;
+                  font-family: Consolas, "DejaVu Sans Mono", monospace; font-size: 12px; }
+        .empty { color: var(--muted); padding: 8px 0; }
+        button {
+            background: #21262d; color: var(--text); border: 1px solid var(--line);
+            border-radius: 6px; padding: 6px 14px; font: inherit; cursor: pointer;
+        }
+        button:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>DrillMonitorWeb · служебная страница</h1>
+    <p class="sub">Настраивают табло из BCS_DrillerMonitorLoader — по TCP/IP или по RS-485.
+        Здесь только состояние и журнал.</p>
+
+    <div class="card">
+        <h2>Состояние</h2>
+        <div id="diag"><div class="empty">читаю…</div></div>
+    </div>
+
+    <div class="card">
+        <h2>Журнал <button id="reload" style="float:right;margin-top:-4px">Обновить</button></h2>
+        <div id="logs"><div class="empty">читаю…</div></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var LEVELS = { ok: 'ok', warn: 'warn', bad: 'bad', off: 'off' };
+
+    function el(tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls)  e.className = cls;
+        if (text != null) e.textContent = text;
+        return e;
+    }
+
+    function get(url, done, fail) {
+        var r = new XMLHttpRequest();
+        r.open('GET', url, true);
+        r.timeout = 8000;
+        r.onload = function () {
+            if (r.status < 200 || r.status >= 300) return fail('HTTP ' + r.status);
+            try { done(JSON.parse(r.responseText)); } catch (e) { fail('ответ не разобран'); }
+        };
+        r.onerror = r.ontimeout = function () { fail('табло не ответило'); };
+        r.send();
+    }
+
+    function showDiag(h) {
+        var box = document.getElementById('diag');
+        box.innerHTML = '';
+
+        var head = el('div', 'check');
+        head.appendChild(el('span', 'dot ' + (LEVELS[h.level] || 'off')));
+        head.appendChild(el('span', 'title', 'Версия'));
+        head.appendChild(el('span', 'detail', h.version || '—'));
+        box.appendChild(head);
+
+        (h.checks || []).forEach(function (c) {
+            var row = el('div', 'check');
+            row.appendChild(el('span', 'dot ' + (LEVELS[c.level] || 'off')));
+            row.appendChild(el('span', 'title', c.title));
+            row.appendChild(el('span', 'detail', c.detail || (c.level === 'ok' ? 'норма' : '')));
+            box.appendChild(row);
+        });
+    }
+
+    function showLogs(list) {
+        var box = document.getElementById('logs');
+        box.innerHTML = '';
+        if (!list.length) { box.appendChild(el('div', 'empty', 'Журнал пуст')); return; }
+
+        var table = el('table');
+        list.forEach(function (l) {
+            var tr = el('tr');
+            var d  = new Date(l.timestamp);
+            tr.appendChild(el('td', 'time', isNaN(d) ? l.timestamp : d.toLocaleString('ru-RU')));
+            tr.appendChild(el('td', null, l.message));
+            table.appendChild(tr);
+        });
+        box.appendChild(table);
+    }
+
+    function fail(id, why) {
+        var box = document.getElementById(id);
+        box.innerHTML = '';
+        box.appendChild(el('div', 'empty', 'Не прочитано: ' + why));
+    }
+
+    function load() {
+        get('/api/health', showDiag, function (w) { fail('diag', w); });
+        get('/api/logs',   showLogs, function (w) { fail('logs', w); });
+    }
+
+    document.getElementById('reload').addEventListener('click', load);
+    load();
+})();
+</script>
+</body>
+</html>

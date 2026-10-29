@@ -20,12 +20,14 @@
 // на него, а повторить удаление профиля из-за потерянного «готово» — это
 // удалить второй профиль.
 
-const db          = require('./db');
-const ingest      = require('./ingest');
-const ingestAdmin = require('./ingestAdmin');
-const netConfig   = require('./netConfig');
-const logger      = require('./logger');
-const pkg         = require('../package.json');
+const db            = require('./db');
+const ingest        = require('./ingest');
+const ingestAdmin   = require('./ingestAdmin');
+const netConfig     = require('./netConfig');
+const boardSettings = require('./boardSettings');
+const sse           = require('./sse');
+const logger        = require('./logger');
+const pkg           = require('../package.json');
 
 const RESPONSE_TTL      = 120000;
 const KEEP_RESPONSES    = 16;
@@ -39,25 +41,22 @@ function _log(msg) { try { logger.log(msg); } catch (_) {} }
 // Отдаём ровно то, что принимает profile.save: Loader прочитал, поправил,
 // вернул — и ничего по дороге не потерялось.
 //
-// Часовой пояс и таймаут боковой панели пока едут здесь же. Пояс общий для всех
-// профилей и переезжает в настройки табло, панель убирается совсем — но сделать
-// это можно только разом: киоск, настройки табло и диалог Loader. Убрать их из
-// ответа раньше значило бы, что редактор сохраняет профиль без пояса и затирает
-// на табло то, чего не показывал. От посылки без них ingestConfig бережёт
-// отдельно — на случай профиля из файла.
+// Часового пояса здесь нет: часы на буровой одни, какой профиль ни покажи, и
+// пояс переехал в настройки табла (server/boardSettings.js). Таймаута боковой
+// панели нет потому, что нет и самой панели. Столбцы в базе остались, и профиль,
+// сохранённый без них, их не затирает (server/ingest.js) — профили из старых
+// файлов не портятся.
 
 function _profileOut(p) {
     return {
-        name:           p.name,
-        background:     p.background,
-        cellSize:       p.cell_size,
-        wsWidth:        p.ws_width,
-        wsHeight:       p.ws_height,
-        alarmSoundId:   p.alarm_sound_id,
-        alarmVolume:    p.alarm_volume,
-        alarmDelay:     p.alarm_delay,
-        timezone:       p.timezone,
-        sidebarTimeout: p.sidebar_timeout,
+        name:         p.name,
+        background:   p.background,
+        cellSize:     p.cell_size,
+        wsWidth:      p.ws_width,
+        wsHeight:     p.ws_height,
+        alarmSoundId: p.alarm_sound_id,
+        alarmVolume:  p.alarm_volume,
+        alarmDelay:   p.alarm_delay,
     };
 }
 
@@ -91,7 +90,10 @@ function boardState(withRefs) {
     if (!p) return null;
 
     const state = {
-        version:    pkg.version,
+        version: pkg.version,
+        // Пояс — настройка табла, а не профиля, но редактору он нужен сразу:
+        // по нему он рисует часы так, как их покажет табло
+        timezone:   boardSettings.read().timezone,
         profile:    _profileOut(p),
         indicators: db.getIndicatorsByProfile(p.id).map(_indicatorOut),
         profiles:   db.getProfiles().map(function (x) {
@@ -211,9 +213,10 @@ function opSettingsGet() {
 
     const s = serialSource.status();
     return {
-        version: pkg.version,
-        time:    Date.now(),
-        network: network,
+        version:  pkg.version,
+        time:     Date.now(),
+        timezone: boardSettings.read().timezone,
+        network:  network,
         networkError: networkError,
         serial: {
             enabled: s.enabled, port: s.port, baud: s.baud,
@@ -225,16 +228,27 @@ function opSettingsGet() {
 
 function opSettingsSave(data) {
     const d = data || {};
-    if (!d.serial && !d.network) throw new Error('В настройках нечего менять');
+    if (!d.serial && !d.network && d.timezone === undefined)
+        throw new Error('В настройках нечего менять');
 
     const applied = [];
 
-    // Порядок не случаен: сначала линия, сеть последней. Смена сети
+    // Порядок не случаен: сначала линия и часы, сеть последней. Смена сети
     // перезагружает табло, и всё, что отправлено после неё, уехало бы в никуда.
     if (d.serial) {
         const err = ingestAdmin.ingestSerial(d.serial);
         if (err) throw new Error(err);
         applied.push('RS-485');
+    }
+
+    if (d.timezone !== undefined) {
+        const err = boardSettings.save({ timezone: d.timezone });
+        if (err) throw new Error(err);
+        // Киоск переводит часы, не перезагружаясь
+        sse.broadcast('board-settings', boardSettings.read());
+        _log('Часовой пояс табла: UTC' +
+             (parseInt(d.timezone, 10) >= 0 ? '+' : '') + parseInt(d.timezone, 10));
+        applied.push('часовой пояс');
     }
 
     let reboot = false;

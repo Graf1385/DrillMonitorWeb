@@ -1,6 +1,9 @@
 'use strict';
 // Изолированная БД в памяти — ДО require('../server/db')
 process.env.DB_PATH = ':memory:';
+// Настройки табла — во временный файл: рабочий каталог устройства не трогаем
+process.env.BOARD_SETTINGS_FILE =
+    require('path').join(require('os').tmpdir(), 'dm-board-settings-rpc-' + process.pid + '.json');
 
 const { test, describe, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,18 +44,19 @@ describe('rpc: словарь обменов', () => {
         assert.equal(res.data.sounds, undefined);
     });
 
-    test('часовой пояс ездит туда и обратно без потерь', () => {
-        // Пояс переезжает в настройки табло, но пока он в профиле — и обмен
-        // обязан его возвращать: иначе редактор сохранит профиль без пояса
-        // и затрёт на табло то, чего не показывал
+    test('часового пояса в профиле нет, и сохранение его не трогает', () => {
+        // Часы на буровой одни, какой профиль ни покажи: пояс — настройка
+        // табла. Столбец в базе остался, и профиль, сохранённый без пояса,
+        // его не затирает — иначе портились бы профили из старых файлов
         const id = db.getActiveProfile().id;
         db.updateProfile(id, '#000000', 20, null, 50, 2, 0, 0, 20, '5');
 
         const got = call('profile.get').data.profile;
-        assert.equal(got.timezone, '5');
+        assert.equal(got.timezone, undefined, 'пояс не часть профиля');
+        assert.equal(got.sidebarTimeout, undefined, 'панели больше нет');
 
         assert.equal(call('profile.save', { profile: got, indicators: [] }).ok, true);
-        assert.equal(db.getActiveProfile().timezone, '5');
+        assert.equal(db.getProfiles().find(p => p.id === id).timezone, '5', 'прежнее значение цело');
     });
 
     test('неизвестный обмен — понятный отказ, а не падение', () => {
@@ -219,18 +223,35 @@ describe('rpc: доступ', () => {
 });
 
 describe('rpc: настройки и журнал', () => {
-    test('settings.get отдаёт линию, а сеть — с понятной ошибкой, если nmcli нет', () => {
+    test('settings.get отдаёт линию, пояс и сеть — с понятной ошибкой, если nmcli нет', () => {
         const res = call('settings.get');
         assert.equal(res.ok, true, res.error);
         assert.ok(res.data.serial, 'настройки RS-485');
         assert.ok(Array.isArray(res.data.serial.bauds));
         assert.ok(res.data.version);
+        assert.ok(res.data.timezone !== undefined, 'часовой пояс — настройка табла');
         // На машине разработчика nmcli нет — это не повод отказать во всём ответе
         assert.ok(res.data.network || res.data.networkError);
     });
 
     test('settings.save без разделов — отказ', () => {
         assert.match(call('settings.save', {}).error, /нечего/i);
+    });
+
+    test('часовой пояс меняется одним обменом и переживает смену профиля', () => {
+        assert.equal(call('settings.save', { timezone: '7' }).ok, true);
+        assert.equal(call('settings.get').data.timezone, '7');
+
+        call('profile.create', { name: 'Другой часовой' });
+        assert.equal(call('profile.select', { name: 'Другой часовой' }).ok, true);
+        assert.equal(call('settings.get').data.timezone, '7', 'профиль часы не переводит');
+    });
+
+    test('негодный часовой пояс отклоняется', () => {
+        const before = call('settings.get').data.timezone;
+        assert.match(call('settings.save', { timezone: '25' }).error, /часов/i);
+        assert.match(call('settings.save', { timezone: 'полдень' }).error, /часов/i);
+        assert.equal(call('settings.get').data.timezone, before, 'прежнее значение цело');
     });
 
     test('log.get отдаёт журнал новыми вперёд и уважает предел', () => {

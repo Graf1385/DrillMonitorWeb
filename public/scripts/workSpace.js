@@ -12,10 +12,8 @@ let _activeProfileId = null;
 let _alarmSoundId    = '';
 let _alarmVolume     = 50;
 let _alarmDelay      = 2;
-let _sidebarTimeout  = 20;
 let _wsWidth         = 0;
 let _wsHeight        = 0;
-let _timezone        = '';
 
 let _settings = {
     get background() { return getComputedStyle(_workSpace).getPropertyValue('--workSpace-color').trim(); },
@@ -83,17 +81,22 @@ function applyProfileFromSSE(profile) {
     _alarmSoundId    = profile.alarm_sound_id || '';
     _alarmVolume     = profile.alarm_volume    != null ? parseInt(profile.alarm_volume)    : 50;
     _alarmDelay      = profile.alarm_delay     != null ? parseFloat(profile.alarm_delay)   : 2;
-    _sidebarTimeout  = profile.sidebar_timeout != null ? parseInt(profile.sidebar_timeout) : 20;
-    _timezone        = profile.timezone || '0';
-    _settings.timezone = _timezone;
+    // Часового пояса здесь нет: он общий для всех профилей и приходит
+    // настройками табла (setBoardTimezone). Иначе смена профиля переводила бы
+    // часы, хотя часы на буровой одни.
     // Фон и шаг сетки применяем здесь же: иначе новый профиль из Loader менял
     // раскладку, но оставлял прежний фон до перезагрузки страницы
     if (profile.background) _settings.background = profile.background;
     if (profile.cell_size)  _settings.cellSize   = profile.cell_size;
     _refreshTimeIndicators();
     _applyResolution(profile.ws_width || 0, profile.ws_height || 0);
-    if (window.setSidebarTimeout) window.setSidebarTimeout(_sidebarTimeout);
 }
+
+/// Часовой пояс табла: при загрузке и по событию board-settings.
+window.setBoardTimezone = function (tz) {
+    _settings.timezone = (tz === undefined || tz === null || tz === '') ? '0' : String(tz);
+    _refreshTimeIndicators();
+};
 
 window._getAlarmConfig = function() {
     return { soundId: _alarmSoundId, volume: _alarmVolume, delay: _alarmDelay };

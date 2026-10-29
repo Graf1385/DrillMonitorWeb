@@ -7,9 +7,24 @@ const pkg       = require('../../package.json');
 const auth      = require('../auth');
 const netConfig = require('../netConfig');
 const selfCheck = require('../selfCheck');
+const boardSettings = require('../boardSettings');
 
 router.get('/', (req, res) =>{
     res.render('index');
+});
+
+// Служебная страница: журнал и состояние табла. На экран бурильщика она не
+// выведена и из киоска недоступна — туда больше не ведёт ни одна кнопка.
+// Нужна она инженеру с ноутбуком в той же сети, когда Loader почему-то не
+// подключается: иначе единственным путём внутрь осталась бы линия RS-485.
+router.get('/service', (req, res) => {
+    res.render('service', { layout: false });
+});
+
+// Настройки табла, общие для всех профилей. Киоск читает отсюда часовой пояс:
+// часы на буровой одни, какой профиль ни покажи.
+router.get('/api/board-settings', (req, res) => {
+    res.json(boardSettings.read());
 });
 
 router.get('/api/profiles', (req, res) => {

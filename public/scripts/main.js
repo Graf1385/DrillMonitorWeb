@@ -59,21 +59,17 @@ document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 //
 // Проверять релизы на GitHub табло нечем: в интернет оно не ходит. Новая версия
 // приезжает из BCS_DrillerMonitorLoader — по RS-485 или TCP/IP, и устройство
-// перезагружается само. Кнопка показывает, что сейчас установлено.
+// перезагружается само. Версию показывают Loader и служебная страница /service;
+// на экране бурильщика её нет, как нет и кнопок.
 
-(function () {
-    var _btn = document.getElementById('versionButton');
-    if (!_btn) return;
+// ── Настройки табла ───────────────────────────────────────────────────────────
+//
+// Часовой пояс общий для всех профилей: часы на буровой одни, какой профиль ни
+// покажи. Раньше он лежал в профиле, и переключение профиля переводило часы.
 
-    _btn.addEventListener('click', function () {
-        $.ajax({ url: '/api/health', dataType: 'json', global: false, timeout: 5000 })
-            .done(function (data) {
-                showSuccess('Версия ' + (data.version || '—') +
-                            '. Обновления приходят из BCS_DrillerMonitorLoader.');
-            })
-            .fail(function () { showError('Не удалось прочитать версию программы'); });
-    });
-})();
+$.getJSON('/api/board-settings', function (s) {
+    if (s && window.setBoardTimezone) window.setBoardTimezone(s.timezone);
+}).fail(function () { showError('Настройки табла не прочитаны'); });
 
 function _restoreIndicators(indicators) {
     var ws  = document.querySelector('#wsCanvas');
@@ -222,6 +218,11 @@ function _hideDataBanner() {
         var profile = JSON.parse(e.data);
         applyProfileFromSSE(profile);
         _loadIndicatorsForProfile(profile.id);
+    });
+
+    evtSource.addEventListener('board-settings', function (e) {
+        var s = JSON.parse(e.data);
+        if (window.setBoardTimezone) window.setBoardTimezone(s.timezone);
     });
 
     evtSource.addEventListener('profile-selected', function (e) {
