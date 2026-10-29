@@ -1,0 +1,18 @@
+{{!-- Заставка обновления. Закрывает экран целиком: пока идёт приём пакета,
+      показаний всё равно нет, а замершие цифры выглядят как обрыв связи.
+      По линии RS-485 это минуты, поэтому видно, сколько уже принято. --}}
+<div id="updateOverlay">
+    <div class="upd-box">
+        <div class="upd-title">Идёт обновление</div>
+        <div class="upd-version" id="updVersion"></div>
+
+        <div class="upd-bar"><div class="upd-fill" id="updFill"></div></div>
+
+        <div class="upd-foot">
+            <span id="updPhase">приём пакета</span>
+            <span id="updCount"></span>
+        </div>
+
+        <div class="upd-warn">Не выключайте питание</div>
+    </div>
+</div>

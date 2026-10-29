@@ -22,6 +22,7 @@ const { ConfigReassembler } = require('./configReassembler');
 const ingest      = require('./ingest');
 const ingestAdmin = require('./ingestAdmin');
 const updatePackage = require('./updatePackage');
+const updateMode  = require('./updateMode');
 const rpc         = require('./rpc');
 const mono        = require('./monotonic');
 const logger      = require('./logger');
@@ -432,6 +433,9 @@ function _apply(kind, data) {
 
     if (err) {
         applyGuard.failed();
+        // Обновление не состоялось — снять заставку, иначе табло останется
+        // закрытым, а дотянуться до него на буровой нечем
+        if (kind === 'upd') updateMode.fail(err);
         _onFrameError(kind, err);
     } else {
         applyGuard.applied(kind, data);
@@ -470,6 +474,14 @@ function handleFrame(obj, send) {
     } else if (obj.cfgSeq && typeof obj.cfgSeq === 'object') {
         // Часть длинной посылки — собираем и применяем, когда полна
         const done = _cfgAsm.push(obj.cfgSeq);
+
+        // Пакет обновления идёт по линии минутами: пока он едет, табло
+        // показывает заставку с ходом приёма (server/updateMode.js)
+        if (obj.cfgSeq.k === 'upd') {
+            if (done) updateMode.unpacking();
+            else      updateMode.progress(_cfgAsm.received(), _cfgAsm.total());
+        }
+
         if (done && done.kind === 'req') _answer(done.data, send);
         else if (done)                   _apply(done.kind, done.data);
     } else if (obj.config && typeof obj.config === 'object') {
@@ -481,7 +493,8 @@ function handleFrame(obj, send) {
     } else if (obj.auth && typeof obj.auth === 'object') {
         _apply('auth', obj.auth);       // пароль учётной записи монитора
     } else if (obj.upd && typeof obj.upd === 'object') {
-        _apply('upd', obj.upd);         // пакет обновления программы
+        updateMode.unpacking();
+        _apply('upd', obj.upd);         // пакет обновления программы (целиком в кадре)
     } else if (obj.params) {
         let err;
         try { err = ingest.ingestRecord(obj); }

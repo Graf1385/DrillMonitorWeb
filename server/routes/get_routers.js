@@ -8,6 +8,7 @@ const auth      = require('../auth');
 const netConfig = require('../netConfig');
 const selfCheck = require('../selfCheck');
 const boardSettings = require('../boardSettings');
+const updateMode    = require('../updateMode');
 
 router.get('/', (req, res) =>{
     res.render('index');
@@ -156,6 +157,11 @@ router.get('/api/events', (req, res) => {
     if (!state.running) {
         res.write(`event: run-state\ndata: ${JSON.stringify(state)}\n\n`);
     }
+    // Состояние обновления шлём всегда, а не только когда оно идёт. Клиент мог
+    // перезагрузиться посреди обновления — заставку надо вернуть; но важнее
+    // обратное: клиент, переживший обрыв подписки во время обновления, иначе
+    // остался бы с заставкой навсегда, и экран бурильщика закрыт до перезагрузки.
+    res.write(`event: update-state\ndata: ${JSON.stringify(updateMode.state())}\n\n`);
 
     sse.addClient(res);
     req.on('close', () => sse.removeClient(res));

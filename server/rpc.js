@@ -25,6 +25,7 @@ const ingest        = require('./ingest');
 const ingestAdmin   = require('./ingestAdmin');
 const netConfig     = require('./netConfig');
 const boardSettings = require('./boardSettings');
+const updateMode    = require('./updateMode');
 const sse           = require('./sse');
 const logger        = require('./logger');
 const pkg           = require('../package.json');
@@ -280,6 +281,32 @@ function opLogGet(data) {
     };
 }
 
+// ── Обновление ────────────────────────────────────────────────────────────────
+
+/**
+ * Loader объявляет обновление до того, как пошёл пакет. Сам пакет сюда не
+ * попадает — он двоичный и едет своим путём (server/updatePackage.js), а по
+ * линии это минуты, всё это время экран закрыт заставкой с ходом приёма.
+ */
+function opUpdateBegin(data) {
+    const d = data || {};
+    const err = updateMode.begin({
+        name:    d.name,
+        version: d.version,
+        size:    d.size,
+        channel: d.channel,
+    });
+    if (err) throw new Error(err);
+    return updateMode.state();
+}
+
+/// Обновление сорвалось на стороне Loader — снять заставку, не дожидаясь сторожа.
+function opUpdateCancel(data) {
+    const why = (data && data.reason) ? String(data.reason) : 'отменено оператором';
+    updateMode.fail(why);
+    return { ok: true };
+}
+
 function opLogClear() {
     db.clearLogs();
     // Первая же запись в пустом журнале — о том, кто его очистил
@@ -303,6 +330,8 @@ const OPS = {
     'settings.save':  { fn: opSettingsSave,  auth: true  },
     'log.get':        { fn: opLogGet,        auth: false },
     'log.clear':      { fn: opLogClear,      auth: true  },
+    'update.begin':   { fn: opUpdateBegin,   auth: true  },
+    'update.cancel':  { fn: opUpdateCancel,  auth: true  },
 };
 
 function ops() { return Object.keys(OPS); }

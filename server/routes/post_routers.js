@@ -8,6 +8,7 @@ const auth        = require('../auth');
 const netConfig   = require('../netConfig');
 const ingestAdmin = require('../ingestAdmin');
 const updatePackage = require('../updatePackage');
+const updateMode  = require('../updateMode');
 const mono        = require('../monotonic');
 
 // ── Login rate limiter ────────────────────────────────────────────────────────
@@ -235,12 +236,23 @@ router.post('/api/update/package',
     auth.requireAuth,
     express.raw({ type: '*/*', limit: updatePackage.MAX_BYTES }),
     function (req, res) {
+        // По сети пакет приезжает за секунды, и объявить обновление заранее
+        // Loader мог не успеть — но заставку всё равно показываем: распаковка
+        // и перезагрузка это ещё полминуты тёмного экрана
+        if (!updateMode.isActive())
+            updateMode.begin({ name: req.get('x-update-name'),
+                               size: req.body ? req.body.length : 0, channel: 'TCP/IP' });
+        updateMode.unpacking();
+
         const err = updatePackage.apply({
             name:    req.get('x-update-name'),
             sha256:  req.get('x-update-sha256'),
             channel: 'TCP/IP'
         }, req.body);
-        if (err) return res.status(400).json({ error: err });
+        if (err) {
+            updateMode.fail(err);
+            return res.status(400).json({ error: err });
+        }
         res.json({ ok: true });
     });
 

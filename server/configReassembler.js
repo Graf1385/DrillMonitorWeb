@@ -64,6 +64,10 @@ class ConfigReassembler {
         }
     }
 
+    /// Сколько частей уже собрано и сколько всего — для показа хода приёма.
+    received() { return this._cur ? this._cur.count : 0; }
+    total()    { return this._cur ? this._cur.n : 0; }
+
     reset() { this._cur = null; }
 }
 

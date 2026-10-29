@@ -210,6 +210,44 @@ function _hideDataBanner() {
     if (el) el.classList.remove('visible');
 }
 
+// ── Заставка обновления ───────────────────────────────────────────────────────
+//
+// Пакет новой версии по линии RS-485 едет минутами. Без заставки это выглядит
+// как обрыв связи: показания замерли, баннер говорит «нет данных». Пока она
+// поднята, показания не трогаем — их и не присылают.
+
+var _updateActive = false;
+
+function _applyUpdateState(s) {
+    var el = document.getElementById('updateOverlay');
+    if (!el) return;
+
+    _updateActive = !!(s && s.active);
+    if (!_updateActive) {
+        el.classList.remove('visible', 'unpacking');
+        return;
+    }
+
+    var unpacking = s.phase === 'unpacking';
+    el.classList.add('visible');
+    el.classList.toggle('unpacking', unpacking);
+
+    document.getElementById('updVersion').textContent =
+        s.version ? 'версия ' + s.version : (s.name || '');
+    document.getElementById('updPhase').textContent =
+        unpacking ? 'распаковка и перезагрузка' : 'приём пакета';
+
+    var fill = document.getElementById('updFill');
+    if (!unpacking) fill.style.width = (s.percent || 0) + '%';
+
+    var count = document.getElementById('updCount');
+    count.textContent = unpacking ? ''
+        : (s.percent || 0) + '%' + (s.size ? ' · ' + Math.round(s.size / 1024) + ' КБ' : '');
+
+    // Поверх заставки баннер «нет данных» не нужен: данных и не должно быть
+    _hideDataBanner();
+}
+
 // Listen for profile activation from other clients
 (function () {
     var evtSource = new EventSource('/api/events');
@@ -231,8 +269,14 @@ function _hideDataBanner() {
         _loadIndicatorsForProfile(profile.id);
     });
 
+    evtSource.addEventListener('update-state', function (e) {
+        _applyUpdateState(JSON.parse(e.data));
+    });
+
     evtSource.addEventListener('run-state', function (e) {
         var data = JSON.parse(e.data);
+        // Идёт обновление — поток и должен стоять, объяснять это баннером незачем
+        if (_updateActive) return;
         if (!data.running) {
             document.querySelectorAll('.indicator').forEach(function (el) {
                 if (window.setIndicatorValue) setIndicatorValue(el, null);

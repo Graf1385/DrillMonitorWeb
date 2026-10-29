@@ -51,3 +51,94 @@
 #dataBanner.visible {
     opacity: 1;
 }
+
+/* ── Заставка обновления ──────────────────────────────────────────────────────
+   Экран бурильщика смотрят издали, поэтому крупно и без украшений: что
+   происходит, сколько осталось и чего не делать. Перекрывает всё, включая
+   баннер «нет данных»: во время обновления данных и не должно быть. */
+
+#updateOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #05070a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #c9d1d9;
+}
+
+#updateOverlay.visible { display: flex; }
+
+.upd-box {
+    width: min(70vw, 900px);
+    text-align: center;
+}
+
+.upd-title {
+    font-size: clamp(28px, 4.2vw, 64px);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #e6edf3;
+}
+
+.upd-version {
+    margin-top: 10px;
+    font-size: clamp(14px, 1.5vw, 24px);
+    color: #8b949e;
+    min-height: 1.4em;
+}
+
+.upd-bar {
+    margin-top: clamp(20px, 3vh, 44px);
+    height: clamp(12px, 1.6vh, 22px);
+    border: 1px solid #30363d;
+    border-radius: 999px;
+    background: #0d1117;
+    overflow: hidden;
+}
+
+.upd-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: #38bdf8;
+    transition: width 0.4s linear;
+}
+
+/* Распаковка: ход её не измерить, поэтому полоса не врёт процентами,
+   а просто показывает, что работа идёт */
+#updateOverlay.unpacking .upd-fill {
+    width: 100%;
+    background: linear-gradient(90deg, #0d1117 0%, #38bdf8 50%, #0d1117 100%);
+    background-size: 220% 100%;
+    animation: upd-sweep 1.6s linear infinite;
+    transition: none;
+}
+
+@keyframes upd-sweep {
+    from { background-position: 120% 0; }
+    to   { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #updateOverlay.unpacking .upd-fill { animation: none; background: #38bdf8; }
+    .upd-fill { transition: none; }
+}
+
+.upd-foot {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    font-size: clamp(13px, 1.3vw, 20px);
+    color: #8b949e;
+}
+
+.upd-warn {
+    margin-top: clamp(24px, 4vh, 56px);
+    font-size: clamp(14px, 1.5vw, 24px);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #d29922;
+}
