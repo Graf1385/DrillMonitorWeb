@@ -17,11 +17,12 @@
 const fs       = require('fs');
 const path     = require('path');
 const { execFile } = require('child_process');
-const { FrameParser } = require('./serialFrame');
+const { FrameParser, encode } = require('./serialFrame');
 const { ConfigReassembler } = require('./configReassembler');
 const ingest      = require('./ingest');
 const ingestAdmin = require('./ingestAdmin');
 const updatePackage = require('./updatePackage');
+const rpc         = require('./rpc');
 const mono        = require('./monotonic');
 const logger      = require('./logger');
 
@@ -50,6 +51,11 @@ const FAST_RETRY_MS    = 500;
 /// Чтение возвращается не реже чем раз в VTIME; дольше этого — оно замерло.
 const STALL_MS         = 4000;
 
+// Передача в линию: кадр пишем кусками, чтобы не занимать поток пула libuv на
+// всю посылку разом. 57600 бод — это 5,6 КБ/с, и ответ на 15 КБ держал бы поток
+// почти три секунды; кусками между записями успевает пройти чужая работа.
+const WRITE_CHUNK = 1024;
+
 // Производители преобразователей USB-UART, которые считаем «нашими», когда
 // штатного узла нет: WCH (CH343/CH340 — стоит на табло), FTDI, Silicon Labs,
 // Prolific. По ним отличаем преобразователь от, скажем, модема на ttyACM.
@@ -71,7 +77,9 @@ let _lastErrLogged = '';
 const _stats  = { framesOk: 0, framesBad: 0, lastFrameAt: 0, openedAt: 0,
                   // монотонные отметки: системные часы подводит timeSync, и
                   // прыжок часов не должен выглядеть как тишина на линии
-                  lastFrameMono: 0, openedMono: 0, reopens: 0, framesSinceOpen: 0 };
+                  lastFrameMono: 0, openedMono: 0, reopens: 0, framesSinceOpen: 0,
+                  // передача: ответы на обмены, см. «Ответы в линию»
+                  framesSent: 0, bytesSent: 0, lastSentAt: 0, sendErrors: 0 };
 
 // ── settings ─────────────────────────────────────────────────────────────────
 
@@ -270,7 +278,10 @@ function _openPort() {
         }
         _parser = new FrameParser(handleFrame, _onFrameError);
         try {
-            _fd = fs.openSync(port, fs.constants.O_RDONLY | fs.constants.O_NOCTTY);
+            // O_RDWR: по линии табло не только слушает, но и отвечает на обмены
+            // (server/rpc.js). O_NOCTTY обязателен — иначе tty станет
+            // управляющим терминалом процесса.
+            _fd = fs.openSync(port, fs.constants.O_RDWR | fs.constants.O_NOCTTY);
         } catch (e) {
             _setError('открытие ' + port + ': ' + e.message);
             return _scheduleRetry();
@@ -315,8 +326,81 @@ function _read(fd, buf) {
     });
 }
 
-// Сборщик длинных посылок из частей {"cfgSeq":…} (конфиг, справочники)
+// Сборщик длинных посылок из частей {"cfgSeq":…} (конфиг, справочники, обмены)
 const _cfgAsm = new ConfigReassembler();
+
+// ── Ответы в линию ───────────────────────────────────────────────────────────
+//
+// Линия физически двусторонняя (проверено на устройстве 2026-10-29: табло
+// писало в /dev/ttyCH343, ПК принял всё до байта). Поэтому на каждый обмен,
+// кроме потока данных, табло отвечает кадром {"res":{id,ok,…}} того же формата,
+// что и запрос.
+//
+// Ответ уходит ОДНИМ кадром, даже на 15 КБ. Резать его на части, как Loader
+// режет длинные посылки к табло, больше незачем: части слались россыпью без
+// подтверждений, и потеря одной была незаметна, а теперь потерянный ответ
+// виден сразу — Loader не дождался и повторил запрос целиком. Один кадр —
+// одна контрольная сумма и один простой разбор на той стороне.
+//
+// Писать в линию, пока на ней говорит Loader, нельзя: пара RS-485 одна на оба
+// направления. Этого и не случается — табло отвечает только на запрос, а Loader
+// на время обмена останавливает поток данных и ждёт ответа.
+
+let _sendQueue = Promise.resolve();
+
+function _writeAll(fd, buf) {
+    return new Promise(function (resolve, reject) {
+        let off = 0;
+        (function step() {
+            if (_fd !== fd) return reject(new Error('порт закрылся во время передачи'));
+            if (off >= buf.length) return resolve(buf.length);
+            const len = Math.min(WRITE_CHUNK, buf.length - off);
+            fs.write(fd, buf, off, len, null, function (err, written) {
+                if (err) return reject(err);
+                off += written;
+                setImmediate(step);
+            });
+        })();
+    });
+}
+
+/// Отправить объект кадром. Очередь — чтобы два ответа не перемешались в линии.
+function sendFrame(obj) {
+    const fd = _fd;
+    if (fd === null || !_open) {
+        _log('RS-485: ответ не отправлен — порт закрыт');
+        _stats.sendErrors++;
+        return Promise.resolve(false);
+    }
+    const buf = encode(obj);
+    _sendQueue = _sendQueue.then(function () {
+        return _writeAll(fd, buf).then(function () {
+            _stats.framesSent++;
+            _stats.bytesSent += buf.length;
+            _stats.lastSentAt = Date.now();
+            return true;
+        });
+    }).catch(function (e) {
+        _stats.sendErrors++;
+        _setError('передача: ' + (e && e.message ? e.message : e));
+        return false;
+    });
+    return _sendQueue;
+}
+
+/// Выполнить обмен, пришедший с линии, и ответить. send — для проверок.
+function _answer(req, send) {
+    let res;
+    try {
+        res = rpc.handle(req, { channel: 'rs485' });
+    } catch (e) {
+        // rpc.handle не бросает, но ответить надо даже на невозможное: Loader
+        // ждёт ответа и без него считает табло неотвечающим
+        res = { id: (req && Number.isInteger(req.id)) ? req.id : null, ok: false,
+                error: 'сбой обмена: ' + (e && e.message ? e.message : e) };
+    }
+    return (send || sendFrame)({ res: res });
+}
 
 // ── Применение настроек, пришедших по линии ──────────────────────────────────
 //
@@ -367,7 +451,12 @@ function _onFrameError(code, detail) {
 
 // Разбор одного принятого кадра. Вынесено в экспорт: той же точкой пользуются
 // проверки приёма без физической линии (кадры из файла вместо порта).
-function handleFrame(obj) {
+function handleFrame(obj, send) {
+    // Своё эхо. Двухпроводная линия возвращает передатчику то, что он сказал
+    // сам: ответ табло приходит обратно в табло. Это не кадр с той стороны —
+    // не считаем его ни принятым, ни битым, просто молчим.
+    if (obj && typeof obj === 'object' && obj.res !== undefined) return;
+
     _stats.framesOk++;
     _stats.framesSinceOpen++;
     _stats.lastFrameAt   = Date.now();
@@ -376,10 +465,13 @@ function handleFrame(obj) {
 
     if (obj.state && typeof obj.state === 'object') {
         ingest.ingestState(obj.state);
+    } else if (obj.req && typeof obj.req === 'object') {
+        _answer(obj.req, send);         // обмен: выполнить и ответить
     } else if (obj.cfgSeq && typeof obj.cfgSeq === 'object') {
         // Часть длинной посылки — собираем и применяем, когда полна
         const done = _cfgAsm.push(obj.cfgSeq);
-        if (done) _apply(done.kind, done.data);
+        if (done && done.kind === 'req') _answer(done.data, send);
+        else if (done)                   _apply(done.kind, done.data);
     } else if (obj.config && typeof obj.config === 'object') {
         _apply('config', obj.config);   // конфигурация целиком в одном кадре
     } else if (obj.net && typeof obj.net === 'object') {
@@ -445,6 +537,10 @@ function status() {
         framesOk:    _stats.framesOk,
         framesBad:   _stats.framesBad,
         lastFrameAt: _stats.lastFrameAt || null,
+        framesSent:  _stats.framesSent,
+        bytesSent:   _stats.bytesSent,
+        lastSentAt:  _stats.lastSentAt || null,
+        sendErrors:  _stats.sendErrors,
         // Для самодиагностики (server/selfCheck.js)
         activePort:  _activePort,
         openMs:      _open && _stats.openedMono ? Math.round(mono.now() - _stats.openedMono) : null,
@@ -454,4 +550,4 @@ function status() {
 }
 
 module.exports = { start, stop, restart, status, getSettings, saveSettings, loadSettings,
-                   handleFrame, choosePort, listPorts, BAUD_RATES };
+                   handleFrame, sendFrame, choosePort, listPorts, BAUD_RATES };

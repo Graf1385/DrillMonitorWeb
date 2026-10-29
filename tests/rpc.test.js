@@ -20,11 +20,11 @@ function call(op, data, ctx) {
 beforeEach(() => rpc.reset());
 
 describe('rpc: словарь обменов', () => {
-    test('profile.get отдаёт состояние табла одним ответом', () => {
+    test('profile.get отдаёт состояние табло одним ответом', () => {
         const res = call('profile.get');
         assert.equal(res.ok, true, res.error);
         const d = res.data;
-        assert.ok(d.version, 'версия программы табла');
+        assert.ok(d.version, 'версия программы табло');
         assert.ok(d.profile && d.profile.name, 'активный профиль');
         assert.ok(Array.isArray(d.indicators), 'раскладка');
         assert.ok(Array.isArray(d.profiles) && d.profiles.length, 'список профилей');
@@ -198,7 +198,7 @@ describe('rpc: доступ', () => {
         assert.equal(call('profile.get', null, TCP).ok, true);
     });
 
-    test('по RS-485 входа нет: кто добрался до линии, тот стоит у табла', () => {
+    test('по RS-485 входа нет: кто добрался до линии, тот стоит у табло', () => {
         call('profile.create', { name: 'С линии' });
         assert.equal(call('profile.delete', { name: 'С линии' }, LINE).ok, true);
     });
