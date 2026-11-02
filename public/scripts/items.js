@@ -4,6 +4,11 @@
 // (загружаются раньше). Раскладку, параметры и сами индикаторы табло не
 // редактирует: их готовит и присылает BCS_DrillerMonitorLoader. Здесь остаётся
 // только показ и единственное действие оператора — квитирование тревоги.
+//
+// Тревоги решает сервер табла (server/alarm.js), а не эта страница: история
+// должна переживать перезагрузку киоска, а реле оповещателя висит на USB
+// сервера. Сюда приходит готовое состояние (SSE «alarm-state»): какие тревоги
+// активны и квитированы, звучит ли динамик. Страница его только рисует.
 
 var _fontsPromise = null;
 
@@ -14,6 +19,8 @@ var _alarmSoundTimeout  = null;
 var _alarmAudio         = null;
 var _alarmSoundPending  = false;
 var _alarmAudioBanner   = null;
+var _alarmState         = null;   // последнее состояние от сервера
+var _speakerWanted      = false;  // сервер велит звучать динамику
 
 window.getAlarmLog      = function() { return _alarmLog; };
 window.stopAlarmSound   = function() { _stopAlarmSound(); };
@@ -40,7 +47,7 @@ function alarmAudioBannerClick() {
 }
 
 function _hasUnackedAlarm() {
-    return !!document.querySelector('#workSpace .alarm-active');
+    return _speakerWanted;
 }
 
 function _stopAlarmSound() {
@@ -75,61 +82,62 @@ function _playAlarmSound() {
     });
 }
 
-function _addAlarmLogEntry(el, val, event) {
-    var name  = el.dataset.headerText || 'Индикатор';
-    var color = el.dataset.alarmColor || '#ff0000';
-    _alarmLog.unshift({ ts: new Date(), name: name, value: val, event: event, color: color });
-    if (_alarmLog.length > 200) _alarmLog.length = 200;
-
-    var eventLabel = event === 'trigger' ? 'ТРЕВОГА' : (event === 'clear' ? 'СБРОС' : 'КВИТИРОВАНИЕ');
-    var valStr     = typeof val === 'number' ? val.toFixed(2) : String(val);
-    $.ajax({
-        url:         '/api/logs',
-        method:      'POST',
-        contentType: 'application/json',
-        global:      false, // фоновый запрос — не показывать полноэкранный лоадер
-        data:        JSON.stringify({ message: '[Сигнализация] ' + eventLabel + ': ' + name + ' = ' + valStr })
-    });
-    document.dispatchEvent(new CustomEvent('alarmLogUpdate'));
-}
-
-function _checkAlarm(el, numericVal) {
+/// Ключ тревоги индикатора — так же его строит сервер (alarm.keyOf):
+/// параметр и пороги. Без включённой сигнализации ключа нет.
+function _alarmKey(el) {
     var d = el.dataset;
-    if (d.alarmEnabled !== '1') {
-        if (el._alarmActive) {
-            el._alarmActive = false;
-            el._alarmAcked  = false;
-            el.classList.remove('alarm-active', 'alarm-acked');
-            if (!_hasUnackedAlarm()) { _stopAlarmSound(); }
-        }
-        return;
-    }
-    var alarmMin = d.alarmMin !== '' && d.alarmMin !== undefined ? parseFloat(d.alarmMin) : null;
-    var alarmMax = d.alarmMax !== '' && d.alarmMax !== undefined ? parseFloat(d.alarmMax) : null;
-    if (alarmMin === null && alarmMax === null) return;
-
-    var inAlarm = false;
-    if (alarmMin !== null && !isNaN(alarmMin) && numericVal < alarmMin) inAlarm = true;
-    if (alarmMax !== null && !isNaN(alarmMax) && numericVal > alarmMax) inAlarm = true;
-
-    el.style.setProperty('--alarm-color', d.alarmColor || '#ff0000');
-
-    var wasActive = !!el._alarmActive;
-    if (inAlarm && !wasActive) {
-        el._alarmActive = true;
-        el._alarmAcked  = false;
-        el.classList.add('alarm-active');
-        el.classList.remove('alarm-acked');
-        _addAlarmLogEntry(el, numericVal, 'trigger');
-        _playAlarmSound();
-    } else if (!inAlarm && wasActive) {
-        el._alarmActive = false;
-        el._alarmAcked  = false;
-        el.classList.remove('alarm-active', 'alarm-acked');
-        _addAlarmLogEntry(el, numericVal, 'clear');
-        if (!_hasUnackedAlarm()) { _stopAlarmSound(); }
-    }
+    if (d.alarmEnabled !== '1' || d.paramId === '' || d.paramId === undefined) return null;
+    return d.paramId + '|' + (d.alarmMin || '') + '|' + (d.alarmMax || '');
 }
+
+function _showAlarmNote(text) {
+    var el = document.getElementById('alarmNote');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('visible', !!text);
+}
+
+/**
+ * Нарисовать состояние тревог, присланное сервером. Вызывается на каждое
+ * событие «alarm-state» и после перестройки раскладки — новые элементы
+ * индикаторов о тревоге ещё не знают.
+ */
+function applyAlarmState(s) {
+    if (s) _alarmState = s;
+    s = _alarmState;
+    if (!s) return;
+
+    var byKey = {};
+    (s.alarms || []).forEach(function (a) { byKey[a.key] = a; });
+
+    document.querySelectorAll('#workSpace .indicator').forEach(function (el) {
+        var key = _alarmKey(el);
+        var a   = key ? byKey[key] : null;
+        el._alarmKey    = key;
+        el._alarmActive = !!a;
+        el._alarmAcked  = !!(a && a.acked);
+        el.classList.toggle('alarm-active', !!a && !a.acked);
+        el.classList.toggle('alarm-acked',  !!a && !!a.acked);
+        el.classList.toggle('alarm-stale',  !!a && !!s.stale);
+        if (a) el.style.setProperty('--alarm-color', el.dataset.alarmColor || a.color || '#ff0000');
+    });
+
+    _alarmLog = s.recent || [];
+    document.dispatchEvent(new CustomEvent('alarmLogUpdate'));
+
+    var note = '';
+    if (s.stale && (s.alarms || []).length)
+        note = 'Нет данных — состояние тревоги неизвестно, звук выключен';
+    else if (s.fallback)
+        note = 'Оповещатель не отвечает — звук тревоги через динамик';
+    _showAlarmNote(note);
+
+    var was = _speakerWanted;
+    _speakerWanted = !!s.speaker;
+    if (_speakerWanted && !was) _playAlarmSound();
+    else if (!_speakerWanted)   _stopAlarmSound();
+}
+window.applyAlarmState = applyAlarmState;
 
 // ── Квитирование ──────────────────────────────────────────────────────────────
 //
@@ -160,12 +168,16 @@ function _showCtxMenu(indicator, x, y) {
 function ctxAckAlarm() {
     var el = _ctxTarget;
     _hideCtxMenu();
-    if (!el || !el._alarmActive || el._alarmAcked) return;
-    el._alarmAcked = true;
-    el.classList.remove('alarm-active');
-    el.classList.add('alarm-acked');
-    _addAlarmLogEntry(el, el._currentValue, 'ack');
-    if (!_hasUnackedAlarm()) { _stopAlarmSound(); }
+    if (!el || !el._alarmActive || el._alarmAcked || !el._alarmKey) return;
+    // Решает сервер: он запишет квитирование в историю и пришлёт новое
+    // состояние всем экранам — этот перерисуется вместе с остальными
+    $.ajax({
+        url:         '/api/alarms/ack',
+        method:      'POST',
+        contentType: 'application/json',
+        global:      false, // фоновый запрос — не показывать полноэкранный лоадер
+        data:        JSON.stringify({ key: el._alarmKey })
+    }).fail(function () { showError('Квитирование не дошло до сервера табла'); });
 }
 
 document.addEventListener('contextmenu', function (e) {
@@ -212,8 +224,6 @@ function setIndicatorValue(el, val) {
     }
 
     // Обрыв данных (null) не превращаем в 0: показываем «нет данных»
-    // и не меняем состояние тревоги — иначе каждый обрыв связи давал
-    // ложную сирену на индикаторах с alarmMin > rangeMin
     if (val == null || isNaN(+val)) {
         el._currentValue = null;
         if (typeDef.setValue) typeDef.setValue(el, null);
@@ -225,7 +235,8 @@ function setIndicatorValue(el, val) {
     var zc = _getZoneColor(el, el._currentValue);
 
     if (typeDef.setValue) typeDef.setValue(el, el._currentValue, zc);
-    _checkAlarm(el, el._currentValue);
+    // Тревогу здесь не проверяем: её решает сервер по тому же значению
+    // (server/alarm.js) и присылает состояние — см. applyAlarmState
 }
 
 // ── Построение индикатора ─────────────────────────────────────────────────────

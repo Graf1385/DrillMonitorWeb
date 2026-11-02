@@ -5,9 +5,13 @@ const _post_router   = require("./routes/post_routers");
 const _stream_router    = require("./routes/streams_router");
 const _push_router      = require("./routes/push_router");
 const _serial_router    = require("./routes/serial_router");
+const _alarm_router     = require("./routes/alarm_router");
+const alarm             = require("./alarm");
+const annunciator       = require("./annunciator");
 const streamManager  = require("./streams/StreamManager");
 const serialSource   = require("./serialSource");
 const selfCheck      = require("./selfCheck");
+const migrateLayout  = require("./migrateLayout");
 const logger         = require("./logger");
 const db             = require("./db");
 const _exphbs        = require('express-handlebars');
@@ -34,17 +38,25 @@ _app.use(_post_router);
 _app.use(_stream_router);
 _app.use(_push_router);
 _app.use(_serial_router);
+_app.use(_alarm_router);
 
 function Start(port){
     const srv = _app.listen(port, ()=>{
         console.log("The server is already running...");
         console.log("http://localhost:" + port);
         logger.log('Сервер запущен на порту ' + port);
+        // Тревоги решает табло: история в базе, звук и реле отсюда (server/alarm.js)
+        alarm.start();
+        // Оповещатель и кнопка на Digispark (если плата воткнута)
+        annunciator.start();
         // Приём данных по RS-485 (если порт настроен и доступен)
         serialSource.start();
         // Самодиагностика: к табло доступа нет, неисправность должна либо
         // чиниться сама, либо остаться в журнале (server/selfCheck.js)
         selfCheck.start();
+        // Табло старой установки переводится на новые права само: на буровой
+        // переустановить его некому (server/migrateLayout.js)
+        migrateLayout.start();
     });
 
     // Loader шлёт записи с интервалом до 4 с, а node по умолчанию закрывает
@@ -66,6 +78,9 @@ function Start(port){
 // лишнего времени киоск стоит тёмным после каждого обновления и смены сети.
 function _shutdown() {
     try { selfCheck.stop(); }      catch (e) { console.error('[stop] diag:', e.message); }
+    try { migrateLayout.stop(); }  catch (e) { console.error('[stop] migrate:', e.message); }
+    try { alarm.stop(); }          catch (e) { console.error('[stop] alarm:', e.message); }
+    try { annunciator.stop(); }    catch (e) { console.error('[stop] annunciator:', e.message); }
     try { serialSource.stop(); }   catch (e) { console.error('[stop] serial:', e.message); }
     try { streamManager.stopAll(); } catch (e) { console.error('[stop] streams:', e.message); }
     process.exit(0);

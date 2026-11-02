@@ -7,7 +7,9 @@
 # буровой нет. Поэтому снаружи, раз в минуту, спрашиваем у сервера, жив ли он,
 # и после трёх неудач подряд перезапускаем службу.
 #
-# Ставится install.sh как drillmonitor-watchdog.service + .timer (от root).
+# Ставится install.sh как drillmonitor-watchdog.service + .timer (от root);
+# сам скрипт копируется в /usr/local/lib/drillmonitor и принадлежит root —
+# пакет обновления его не заменяет, иначе любой пакет исполнялся бы от root.
 # Строку о перезапуске кладём в файл: служба подберёт её при следующем запуске
 # и перенесёт в общий журнал (server/selfCheck.js) — иначе перезапуск остался
 # бы виден только в journalctl.
@@ -36,13 +38,17 @@ FAILS=$(cat "${STATE_DIR}/fails" 2>/dev/null || echo 0)
 note() {
     local msg="$1"
     logger -t "${SERVICE}-watchdog" "$msg" 2>/dev/null || true
-    # Служба не поднимается совсем — файл не должен расти без предела
-    if [[ -f "$LOG_FILE" ]] && [[ $(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0) -gt 65536 ]]; then
-        tail -n 50 "$LOG_FILE" > "${LOG_FILE}.tmp" 2>/dev/null && mv "${LOG_FILE}.tmp" "$LOG_FILE"
-    fi
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $msg" >> "$LOG_FILE" 2>/dev/null || true
-    # Файл читает и очищает сама служба — она работает не под root
-    chown "${APP_USER}:${APP_USER}" "$LOG_FILE" 2>/dev/null || true
+    # Файл лежит в server/data, куда пишет служба, — и пишем его от её имени.
+    # Root, идущий по ссылке, которую туда могла подложить служба, переписал
+    # бы любой файл системы (и chown отдал бы его службе).
+    runuser -u "$APP_USER" -- /bin/sh -c '
+        f="$1"
+        # Служба не поднимается совсем — файл не должен расти без предела
+        if [ -f "$f" ] && [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -gt 65536 ]; then
+            tail -n 50 "$f" > "$f.tmp" 2>/dev/null && mv "$f.tmp" "$f"
+        fi
+        printf "%s\n" "$2" >> "$f"
+    ' sh "$LOG_FILE" "$(date '+%Y-%m-%d %H:%M:%S') $msg" 2>/dev/null || true
 }
 
 if curl -sf --max-time 5 -o /dev/null "http://127.0.0.1:${PORT}/api/health"; then

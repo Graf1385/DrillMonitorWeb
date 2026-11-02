@@ -11,10 +11,10 @@
 // адрес, маршрут по умолчанию и серверы имён скрипт гасит (set-network.sh).
 // Ключи gateway/dns от старых версий Loader молча игнорируются.
 
-const { execFileSync, exec } = require('child_process');
+const { execFileSync, execFile } = require('child_process');
+const privileged = require('./privileged');
 
 const CONNECTION = 'Wired connection 1';
-const SCRIPT     = '/opt/drillmonitor/scripts/set-network.sh';
 
 function _validIp(s) {
     if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(s)) return false;
@@ -60,16 +60,20 @@ function validate(body) {
 function apply(body) {
     const s = validate(body);
     if (s.mode === 'dhcp') {
-        execFileSync('sudo', [SCRIPT, 'dhcp'], { timeout: 15000 });
+        execFileSync('sudo', ['-n', privileged.NETWORK, 'dhcp'], { timeout: 15000 });
     } else {
-        execFileSync('sudo', [SCRIPT, 'static', s.address + '/' + s.prefix], { timeout: 15000 });
+        execFileSync('sudo', ['-n', privileged.NETWORK, 'static', s.address + '/' + s.prefix], { timeout: 15000 });
     }
     return s;
 }
 
 /// Перезагрузка устройства — единственный разрешённый в sudoers путь к reboot.
 function reboot(delayMs) {
-    setTimeout(function () { exec('sudo ' + SCRIPT + ' reboot'); }, delayMs || 800);
+    setTimeout(function () {
+        execFile('sudo', ['-n', privileged.NETWORK, 'reboot'], function (err, stdout, stderr) {
+            if (err) console.error('[network] reboot:', String(stderr || err.message).trim());
+        });
+    }, delayMs || 800);
 }
 
 /// Описание для журнала: «статический 10.10.10.250/24» или «DHCP».

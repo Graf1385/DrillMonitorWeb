@@ -181,6 +181,9 @@ function _loadIndicatorsForProfile(profileId) {
     ).then(function(indicatorsResp) {
         if (seq !== _loadSeq) return;
         _restoreIndicators(indicatorsResp[0]);
+        // Новые элементы о тревогах не знают — дорисовываем по последнему
+        // состоянию с сервера
+        if (window.applyAlarmState) applyAlarmState();
     }).fail(function () {
         if (seq !== _loadSeq) return;
         showError('Ошибка загрузки индикаторов');
@@ -194,6 +197,11 @@ $.getJSON('/api/profiles/active', function (profile) {
     applyProfileFromSSE(profile);
     _loadIndicatorsForProfile(profile.id);
 }).fail(function () { showError('Ошибка загрузки профиля'); });
+
+// Тревога могла начаться до того, как открылся этот экран
+$.getJSON('/api/alarms/state', function (s) {
+    if (window.applyAlarmState) applyAlarmState(s);
+});
 
 // ── Data loss banner ──────────────────────────────────────────────────────────
 
@@ -271,6 +279,11 @@ function _applyUpdateState(s) {
 
     evtSource.addEventListener('update-state', function (e) {
         _applyUpdateState(JSON.parse(e.data));
+    });
+
+    // Тревоги решает сервер табла (server/alarm.js); экран их только рисует
+    evtSource.addEventListener('alarm-state', function (e) {
+        if (window.applyAlarmState) applyAlarmState(JSON.parse(e.data));
     });
 
     evtSource.addEventListener('run-state', function (e) {

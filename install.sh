@@ -48,7 +48,8 @@ ok "Список пакетов обновлён"
 
 # ── 2. Базовые утилиты ────────────────────────────────────────────────────────
 info "Установка базовых утилит..."
-apt-get install -y -qq curl git ca-certificates gnupg lsb-release
+# python3 — для установщика обновлений (scripts/apply-update.py), rsync — для копирования
+apt-get install -y -qq curl git ca-certificates gnupg lsb-release python3 rsync
 ok "Базовые утилиты установлены"
 
 # ── 3. Node.js ────────────────────────────────────────────────────────────────
@@ -107,29 +108,66 @@ else
 fi
 
 # ── 8. Права доступа ──────────────────────────────────────────────────────────
+# Код программы принадлежит root, служба его только читает. Пишет она лишь в
+# server/data (база, настройки) и /tmp/drillmonitor_hls. Раньше весь каталог
+# принадлежал службе, а в нём лежали скрипты, которые она же запускала от root
+# через sudo: любой её сбой или пакет обновления давал root на устройстве.
+# Повторный запуск install.sh переводит на эти права и прежние установки.
 info "Настройка прав доступа..."
-chown -R "${APP_USER}:${APP_USER}" "$APP_DIR"
-chmod -R 755 "$APP_DIR"
-# База данных и данные должны быть доступны для записи
-chmod -R 775 "$APP_DIR/server/data" 2>/dev/null || true
-ok "Права настроены"
+chown -R root:root "$APP_DIR"
+chmod -R u=rwX,go=rX "$APP_DIR"
+mkdir -p "$APP_DIR/server/data"
+chown -R "${APP_USER}:${APP_USER}" "$APP_DIR/server/data"
+chmod 0750 "$APP_DIR/server/data"
+ok "Права настроены: код — root, server/data — ${APP_USER}"
 
-# ── 8a. sudoers: сетевые настройки и синхронизация времени из веб-приложения ─
-# set-network.sh — смена IP/DHCP и reboot из UI; set-time.sh — подстройка
-# системных часов под время данных BCS_Loader (в сети буровой нет NTP).
+# ── 8a. Root-помощники и sudoers ─────────────────────────────────────────────
+# set-network.sh — смена IP/DHCP и reboot; set-time.sh — подстройка часов под
+# время данных BCS_Loader (в сети буровой нет NTP); apply-update.py — установка
+# пакета обновления; healthcheck.sh — внешний сторож (запускает systemd).
+# Лежат вне каталога программы и принадлежат root: служба не может их
+# заменить, пакет обновления их не трогает. Новые версии ставит только этот
+# скрипт.
+HELPER_DIR="/usr/local/lib/${SERVICE_NAME}"
+info "Установка root-помощников в ${HELPER_DIR}..."
+install -d -m 0755 -o root -g root "$HELPER_DIR"
+for f in set-network.sh set-time.sh healthcheck.sh apply-update.py; do
+    install -m 0755 -o root -g root "${APP_DIR}/scripts/${f}" "${HELPER_DIR}/${f}"
+done
+# Каталог программы и пользователь службы в установщике обновлений — те же, что здесь
+sed -i -e "s|^ROOT *= .*|ROOT         = '${APP_DIR}'|" \
+       -e "s|^APP_USER *= .*|APP_USER     = '${APP_USER}'|" "${HELPER_DIR}/apply-update.py"
+ok "Помощники установлены"
+
 info "Настройка sudoers для '${APP_USER}'..."
 SUDOERS_FILE="/etc/sudoers.d/${SERVICE_NAME}"
 SUDOERS_TMP=$(mktemp)
 cat > "$SUDOERS_TMP" <<EOF
-${APP_USER} ALL=(root) NOPASSWD: ${APP_DIR}/scripts/set-network.sh, ${APP_DIR}/scripts/set-time.sh
+${APP_USER} ALL=(root) NOPASSWD: ${HELPER_DIR}/set-network.sh, ${HELPER_DIR}/set-time.sh, ${HELPER_DIR}/apply-update.py
 EOF
 if visudo -cf "$SUDOERS_TMP" >/dev/null 2>&1; then
     install -m 0440 -o root -g root "$SUDOERS_TMP" "$SUDOERS_FILE"
+    rm -f "$SUDOERS_TMP"
     ok "sudoers установлен: ${SUDOERS_FILE}"
 else
-    warn "Некорректный файл sudoers — пропущено (проверьте вручную)"
+    rm -f "$SUDOERS_TMP"
+    # Оставлять прежний файл нельзя: он разрешает root скриптам из каталога,
+    # который раньше принадлежал службе
+    rm -f "$SUDOERS_FILE"
+    error "Некорректный файл sudoers — прежний удалён, установка прервана"
 fi
-rm -f "$SUDOERS_TMP"
+
+# ── 8b. Оповещатель на Digispark ─────────────────────────────────────────────
+# Плата — HID-устройство (firmware/annunciator), сервер читает её как файл
+# /dev/hidraw*. По умолчанию это файл root — правило отдаёт его службе. Пара
+# 16c0:05df общая для V-USB, поэтому сверяем и название устройства.
+info "Правило udev для оповещателя..."
+cat > /etc/udev/rules.d/99-${SERVICE_NAME}-annunciator.rules <<EOF
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="16c0", ATTRS{idProduct}=="05df", ATTRS{product}=="Annunciator", GROUP="${APP_USER}", MODE="0660"
+EOF
+udevadm control --reload-rules 2>/dev/null || true
+udevadm trigger --subsystem-match=hidraw 2>/dev/null || true
+ok "Правило udev установлено"
 
 # ── 9. Временная директория для HLS ──────────────────────────────────────────
 info "Подготовка временной директории HLS..."
@@ -183,8 +221,10 @@ SyslogIdentifier=${SERVICE_NAME}
 Environment=PORT=${PORT}
 Environment=NODE_ENV=production
 
-# Ограничения безопасности
-NoNewPrivileges=yes
+# Ограничения безопасности. NoNewPrivileges здесь быть не может: сеть, часы,
+# перезагрузку и установку обновлений служба делает через sudo, а под этим
+# флагом sudo не запускается. Root служба получает только через помощники в
+# ${HELPER_DIR}: они принадлежат root и сами проверяют аргументы.
 ${CAP_LINE}
 PrivateTmp=no
 ProtectSystem=full
@@ -200,7 +240,7 @@ ok "Файл сервиса создан: /etc/systemd/system/${SERVICE_NAME}.se
 # Сама служба чинит то, что видит (порт RS-485, видеопоток, диск). Случай
 # «процесс жив, но не отвечает» изнутри не чинится — раз в минуту спрашиваем
 # снаружи и после трёх неудач подряд перезапускаем. Подробности —
-# scripts/healthcheck.sh и server/selfCheck.js.
+# scripts/healthcheck.sh (ставится в ${HELPER_DIR}) и server/selfCheck.js.
 info "Установка сторожа службы..."
 
 cat > "/etc/systemd/system/${SERVICE_NAME}-watchdog.service" <<EOF
@@ -212,7 +252,7 @@ Type=oneshot
 Environment=APP_DIR=${APP_DIR}
 Environment=APP_USER=${APP_USER}
 Environment=SERVICE=${SERVICE_NAME}
-ExecStart=${APP_DIR}/scripts/healthcheck.sh
+ExecStart=${HELPER_DIR}/healthcheck.sh
 EOF
 
 cat > "/etc/systemd/system/${SERVICE_NAME}-watchdog.timer" <<EOF

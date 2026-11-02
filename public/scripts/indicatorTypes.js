@@ -1,6 +1,6 @@
 // ── Indicator type registry ───────────────────────────────────────────────────
 // Relies on helpers defined in indicatorHelpers.js (loaded before this file).
-// Methods reference setIndicatorValue and _checkAlarm from items.js — resolved
+// Methods reference setIndicatorValue from items.js — resolved
 // at call time (after full page load).
 
 var _indicatorTypes = {

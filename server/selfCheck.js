@@ -70,6 +70,7 @@ const _deps = {
     pushMode: function () { return require('./dataSource').isPushMode(); },
     runState: function () { return require('./dataSource').getRunState(); },
     streams:  function () { return require('./streams/StreamManager').diag(); },
+    annunciator: function () { return require('./annunciator').status(); },
     cleanDisk: _cleanDisk,
     watchdogLog: WATCHDOG_LOG,
     statfs:   function (p) { return fs.statfsSync(p); },
@@ -372,6 +373,24 @@ function _probeVideo() {
     return { level: 'ok', detail: 'потоков ' + list.length };
 }
 
+/**
+ * Оповещатель на Digispark. Нет платы — не неисправность: её может и не быть,
+ * а если она выбрана в профиле, звук и так уходит в динамик (server/alarm.js
+ * пишет об этом в журнал). Плата есть, но молчит — отказ: реле в этом
+ * состоянии сторож платы держит разомкнутым.
+ */
+function _probeAnnunciator() {
+    const st = _deps.annunciator();
+    if (!st || !st.present) {
+        return { level: 'off', detail: st && st.error ? st.error : 'плата не подключена' };
+    }
+    if (!st.alive) {
+        return { level: 'fail', detail: 'плата ' + st.node + ' не отвечает' +
+                 (st.silentMs !== null ? ' ' + _dur(st.silentMs) : '') };
+    }
+    return { level: 'ok', detail: st.node + ', реле ' + (st.relay ? 'замкнуто' : 'разомкнуто') };
+}
+
 const PROBES = [
     { id: 'serial', title: 'RS-485',             confirmMs: 10000, run: _probeSerial },
     { id: 'data',   title: 'Поступление данных', confirmMs: 15000, run: _probeData   },
@@ -379,6 +398,7 @@ const PROBES = [
     { id: 'memory', title: 'Память',             confirmMs: 30000, run: _probeMemory },
     { id: 'clock',  title: 'Часы',               confirmMs: 0,     run: _probeClock  },
     { id: 'video',  title: 'Видеопотоки',        confirmMs: 10000, run: _probeVideo  },
+    { id: 'annunciator', title: 'Оповещатель',   confirmMs: 5000,  run: _probeAnnunciator },
 ];
 
 // ── Уборка диска ─────────────────────────────────────────────────────────────
@@ -396,7 +416,10 @@ function _cleanDisk() {
         });
     } catch (_) {}
 
-    // Резервные копии прежних версий — оставляем самую свежую
+    // Резервные копии прежних версий — оставляем самую свежую. Каталог теперь
+    // принадлежит root (копии делает scripts/apply-update.py и сам держит не
+    // больше двух), удалить их служба не может — здесь это сработает только на
+    // установке, ещё не переведённой на новые права
     try {
         const dir   = path.join(ROOT, 'backup');
         const files = fs.readdirSync(dir).filter(function (f) { return /\.tgz$/.test(f); }).sort();

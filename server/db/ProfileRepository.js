@@ -33,21 +33,26 @@ class ProfileRepository {
         })();
     }
 
-    updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight, sidebarTimeout, timezone) {
+    /// alarmOutput: 'speaker' | 'annunciator'; не передан — остаётся прежним.
+    updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight, sidebarTimeout, timezone, alarmOutput) {
         return this.db.transaction(() => {
             // Не трогаем is_active остальных профилей, если целевого не существует
-            if (!this.db.prepare('SELECT 1 FROM profiles WHERE id = ?').get(id)) {
+            const cur = this.db.prepare('SELECT alarm_output FROM profiles WHERE id = ?').get(id);
+            if (!cur) {
                 return { changes: 0 };
             }
+            const output = alarmOutput === 'annunciator' || alarmOutput === 'speaker'
+                ? alarmOutput : (cur.alarm_output || 'speaker');
             this.db.prepare('UPDATE profiles SET is_active = 0').run();
             return this.db.prepare(`
                 UPDATE profiles
                 SET background = ?, cell_size = ?, alarm_sound_id = ?, alarm_volume = ?, alarm_delay = ?,
-                    ws_width = ?, ws_height = ?, sidebar_timeout = ?, timezone = ?, is_active = 1
+                    ws_width = ?, ws_height = ?, sidebar_timeout = ?, timezone = ?, alarm_output = ?,
+                    is_active = 1
                 WHERE id = ?
             `).run(background, cellSize, alarmSoundId || null, alarmVolume, alarmDelay,
                    wsWidth || 0, wsHeight || 0, sidebarTimeout != null ? parseInt(sidebarTimeout) : 20,
-                   timezone || '', id);
+                   timezone || '', output, id);
         })();
     }
 

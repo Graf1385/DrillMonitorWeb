@@ -276,6 +276,31 @@ function initSchema(db) {
     db.prepare('DELETE FROM logs WHERE timestamp < ?')
         .run(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
+    // ── История тревог (server/alarm.js) ──────────────────────────────────────
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS alarms (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile       TEXT    NOT NULL DEFAULT '',
+            param_id      INTEGER,
+            name          TEXT    NOT NULL DEFAULT '',
+            alarm_min     REAL,
+            alarm_max     REAL,
+            color         TEXT    NOT NULL DEFAULT '#ff0000',
+            started_at    TEXT    NOT NULL,
+            start_value   REAL,
+            extreme_value REAL,
+            acked_at      TEXT,
+            ended_at      TEXT,
+            end_value     REAL,
+            end_reason    TEXT
+        )
+    `);
+
+    // Звук тревоги: динамик киоска или внешний оповещатель на Digispark.
+    // Что человек слышит — настройка профиля, рядом со звуком и громкостью.
+    try { db.exec("ALTER TABLE profiles ADD COLUMN alarm_output TEXT NOT NULL DEFAULT 'speaker'"); } catch {}
+
     // ── Alarm sounds ──────────────────────────────────────────────────────────
 
     db.exec(`

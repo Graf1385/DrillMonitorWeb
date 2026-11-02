@@ -16,12 +16,12 @@
 //     чтобы прыжок системного времени не ломал интервал);
 //   • эпоха должна быть в правдоподобном диапазоне, скрипт проверяет её ещё раз.
 //
-// Само изменение делает scripts/set-time.sh через sudo (NOPASSWD в
-// /etc/sudoers.d/drillmonitor, ставится install.sh). На не-Linux и при
-// TIME_SYNC=0 модуль ничего не делает.
+// Само изменение делает set-time.sh через sudo (NOPASSWD в
+// /etc/sudoers.d/drillmonitor, ставится install.sh в /usr/local/lib/drillmonitor,
+// см. server/privileged.js). На не-Linux и при TIME_SYNC=0 модуль ничего не делает.
 
 const { execFile } = require('child_process');
-const path         = require('path');
+const privileged   = require('./privileged');
 
 const ENABLED           = process.platform === 'linux' && process.env.TIME_SYNC !== '0';
 const THRESHOLD_SEC     = Math.max(5, parseInt(process.env.TIME_SYNC_THRESHOLD || '30', 10) || 30);
@@ -31,14 +31,13 @@ const MAX_SPREAD_SEC    = 10;
 const MIN_INTERVAL_SEC  = 5 * 60;
 const MIN_EPOCH         = 1700000000;   // 2023-11-14
 const MAX_EPOCH         = 4102444800;   // 2100-01-01
-const SCRIPT            = path.join(__dirname, '..', 'scripts', 'set-time.sh');
 
 let _samples      = [];      // [{ drift, at }] — at по process.uptime()
 let _lastApplied  = -Infinity;
 let _lastFailLog  = -Infinity;
 
 let _applier = function (epoch, cb) {
-    execFile('sudo', ['-n', SCRIPT, String(epoch)], { timeout: 10000 }, function (err, stdout, stderr) {
+    execFile('sudo', ['-n', privileged.TIME, String(epoch)], { timeout: 10000 }, function (err, stdout, stderr) {
         if (err) cb(new Error((stderr || err.message || '').trim()));
         else cb(null, (stdout || '').trim());
     });

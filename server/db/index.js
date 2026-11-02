@@ -7,6 +7,7 @@ const FontRepository      = require('./FontRepository');
 const AlarmSoundRepository = require('./AlarmSoundRepository');
 const UserRepository      = require('./UserRepository');
 const SessionRepository   = require('./SessionRepository');
+const AlarmRepository     = require('./AlarmRepository');
 
 initSchema(db);
 
@@ -17,6 +18,7 @@ const fonts      = new FontRepository(db);
 const sounds     = new AlarmSoundRepository(db);
 const users      = new UserRepository(db);
 const sessions   = new SessionRepository(db);
+const alarms     = new AlarmRepository(db);
 
 module.exports = {
     // profiles
@@ -25,7 +27,7 @@ module.exports = {
     createProfile:  (name, bg, size) => profiles.createProfile(name, bg, size),
     getActiveProfile: () => profiles.getActiveProfile(),
     selectProfile:  (id) => profiles.selectProfile(id),
-    updateProfile:  (id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz) => profiles.updateProfile(id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz),
+    updateProfile:  (id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz, output) => profiles.updateProfile(id, bg, size, soundId, vol, delay, wsW, wsH, sbTimeout, tz, output),
     deleteProfile:  (id) => profiles.deleteProfile(id),
 
     // indicators
@@ -59,4 +61,14 @@ module.exports = {
     getSession:      (token) => sessions.get(token),
     deleteSession:   (token) => sessions.delete(token),
     purgeExpiredSessions: () => sessions.purgeExpired(),
+
+    // история тревог (server/alarm.js)
+    alarmStart:     (a) => alarms.start(a),
+    alarmExtreme:   (id, value) => alarms.extreme(id, value),
+    alarmAck:       (id, at) => alarms.ack(id, at),
+    alarmEnd:       (id, at, value, reason) => alarms.end(id, at, value, reason),
+    alarmCloseOpen: (at, reason) => alarms.closeOpen(at, reason),
+    alarmRecent:    (limit) => alarms.recent(limit),
+    alarmCount:     () => alarms.count(),
+    alarmTrim:      () => alarms.trim(),
 };

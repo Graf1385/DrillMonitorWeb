@@ -1,7 +1,8 @@
 #!/bin/bash
 # DrillMonitorWeb: установка системного времени из данных BCS_Loader.
 # Вызывается сервером через sudo (см. /etc/sudoers.d/drillmonitor):
-#   sudo /opt/drillmonitor/scripts/set-time.sh <epoch_seconds_utc>
+#   sudo /usr/local/lib/drillmonitor/set-time.sh <epoch_seconds_utc>
+# Ставится install.sh и принадлежит root; пакет обновления его не заменяет.
 set -euo pipefail
 
 EPOCH="${1:-}"

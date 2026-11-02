@@ -86,7 +86,7 @@ router.post('/api/profiles', (req, res) => {
 
 router.put('/api/profiles/:id', (req, res) => {
     try {
-        const { background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight, sidebarTimeout, timezone } = req.body;
+        const { background, cellSize, alarmSoundId, alarmVolume, alarmDelay, wsWidth, wsHeight, sidebarTimeout, timezone, alarmOutput } = req.body;
         if (!background || !cellSize) {
             return res.status(400).json({ error: 'background и cellSize обязательны' });
         }
@@ -100,7 +100,8 @@ router.put('/api/profiles/:id', (req, res) => {
             parseInt(wsWidth) || 0,
             parseInt(wsHeight) || 0,
             sidebarTimeout != null ? parseInt(sidebarTimeout) : 20,
-            timezone || ''
+            timezone || '',
+            alarmOutput
         );
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Профиль не найден' });

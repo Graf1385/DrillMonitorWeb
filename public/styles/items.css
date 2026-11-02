@@ -23,6 +23,32 @@
 
 #alarmAudioBanner.visible { display: block; }
 
+/* Пометка: звук через динамик вместо оповещателя, или нет данных и состояние
+   тревоги неизвестно. Внизу, чтобы не закрывать показания */
+#alarmNote {
+    display: none;
+    position: fixed;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 6px 16px;
+    border-radius: 6px;
+    background: rgba(13, 17, 23, 0.92);
+    border: 1px solid #f0883e;
+    color: #f0883e;
+    font-size: 16px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+#alarmNote.visible { display: block; }
+
+/* Нет данных: тревога в цвете, но не мигает — состояние неизвестно */
+.indicator.alarm-stale {
+    animation: none !important;
+    border-style: dashed !important;
+}
+
 @keyframes alarmBannerPulse {
     0%, 100% { background: #b91c1c; }
     50%       { background: #ef4444; }

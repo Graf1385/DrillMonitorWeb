@@ -10,7 +10,7 @@ UNIT="/etc/systemd/system/drillmonitor.service"
 echo "=== 1. Порт 80 для drillmonitor ==="
 sed -i 's/^Environment=PORT=.*/Environment=PORT=80/' "$UNIT"
 if ! grep -q '^AmbientCapabilities=' "$UNIT"; then
-    sed -i '/^NoNewPrivileges=yes/a AmbientCapabilities=CAP_NET_BIND_SERVICE' "$UNIT"
+    sed -i '/^\[Service\]/a AmbientCapabilities=CAP_NET_BIND_SERVICE' "$UNIT"
 fi
 systemctl daemon-reload
 systemctl restart drillmonitor

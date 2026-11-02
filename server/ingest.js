@@ -13,6 +13,7 @@ const sse        = require('./sse');
 const db         = require('./db');
 const timeSync   = require('./timeSync');
 const logger     = require('./logger');
+const alarm      = require('./alarm');
 
 function startPush() {
     dataSource.startPushMode(
@@ -23,6 +24,10 @@ function startPush() {
                 time:   record.time,
                 params: Object.fromEntries(record.params),
             });
+            // Тревоги решает табло — по каждой записи заново (server/alarm.js).
+            // Сбой расчёта не должен остановить показ данных
+            try { alarm.onRecord(record); }
+            catch (e) { console.error('[alarm]', e.message); }
         },
         {
             onStale:  (reason) => sse.broadcast('run-state', { running: false, reason: reason || null }),
@@ -140,6 +145,9 @@ function ingestConfig(cfg) {
     const alarmDelay     = _num(p.alarmDelay     !== undefined ? p.alarmDelay     : p.alarm_delay,      2);
     const wsWidth        = _int(p.wsWidth        !== undefined ? p.wsWidth        : p.ws_width,         0);
     const wsHeight       = _int(p.wsHeight       !== undefined ? p.wsHeight       : p.ws_height,        0);
+    // Звук тревоги: динамик или внешний оповещатель. Посылка без него (старый
+    // Loader) ничего не затирает — updateProfile оставляет прежнее значение
+    const alarmOutput    = _str(p.alarmOutput !== undefined ? p.alarmOutput : p.alarm_output, '');
     // upsert профиля по имени
     const existing = db.getProfiles().find(function (x) { return x.name === name; });
 
@@ -158,7 +166,7 @@ function ingestConfig(cfg) {
 
     // updateProfile обновляет поля и делает профиль активным (is_active=1)
     db.updateProfile(id, background, cellSize, alarmSoundId, alarmVolume, alarmDelay,
-                     wsWidth, wsHeight, sidebarTimeout, timezone);
+                     wsWidth, wsHeight, sidebarTimeout, timezone, alarmOutput);
 
     const list = cfg.indicators.map(_normIndicator);
     db.saveIndicators(id, list);

@@ -19,6 +19,12 @@ server/data/board-settings.json
 server_out.txt
 server_err.txt
 
+# Выгрузки сессий Claude: в них пароли табла, камеры и адреса серверов,
+# а репозиторий открытый
+Контекст*.txt
+Задание*.md
+*.jsonl
+
 # OS
 Thumbs.db
 .DS_Store

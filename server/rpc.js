@@ -58,6 +58,7 @@ function _profileOut(p) {
         alarmSoundId: p.alarm_sound_id,
         alarmVolume:  p.alarm_volume,
         alarmDelay:   p.alarm_delay,
+        alarmOutput:  p.alarm_output === 'annunciator' ? 'annunciator' : 'speaker',
     };
 }
 
@@ -143,7 +144,7 @@ function opProfileCreate(data) {
 
     const base = src || { background: '#000000', cell_size: 20, alarm_sound_id: null,
                           alarm_volume: 50, alarm_delay: 2, ws_width: 0, ws_height: 0,
-                          sidebar_timeout: 20, timezone: '0' };
+                          sidebar_timeout: 20, timezone: '0', alarm_output: 'speaker' };
 
     const wasActive = db.getActiveProfile();
 
@@ -151,7 +152,7 @@ function opProfileCreate(data) {
     // updateProfile заодно делает профиль активным
     db.updateProfile(id, base.background, base.cell_size, base.alarm_sound_id,
                      base.alarm_volume, base.alarm_delay, base.ws_width, base.ws_height,
-                     base.sidebar_timeout, base.timezone);
+                     base.sidebar_timeout, base.timezone, base.alarm_output);
 
     // Копируем раскладку только если об этом просили: «создать новый» обычно
     // значит пустое поле, а не копию текущего
@@ -307,6 +308,32 @@ function opUpdateCancel(data) {
     return { ok: true };
 }
 
+// ── Тревоги ───────────────────────────────────────────────────────────────────
+//
+// Решает их табло (server/alarm.js), Loader только показывает. История —
+// по кнопке, как журнал: фоновых запросов к табло Loader не делает.
+
+const ALARM_LIMIT_DEFAULT = 200;
+const ALARM_LIMIT_MAX     = 2000;
+
+function opAlarmHistory(data) {
+    const alarm = require('./alarm');
+    let limit = parseInt((data && data.limit), 10);
+    if (isNaN(limit) || limit <= 0) limit = ALARM_LIMIT_DEFAULT;
+    if (limit > ALARM_LIMIT_MAX)    limit = ALARM_LIMIT_MAX;
+
+    const s = alarm.snapshot();
+    return {
+        total:    db.alarmCount(),
+        entries:  alarm.history(limit),
+        // Что сейчас: сколько тревог активно и куда идёт звук
+        active:   s.alarms.length,
+        stale:    s.stale,
+        output:   s.output,
+        fallback: s.fallback,
+    };
+}
+
 function opLogClear() {
     db.clearLogs();
     // Первая же запись в пустом журнале — о том, кто его очистил
@@ -330,6 +357,7 @@ const OPS = {
     'settings.save':  { fn: opSettingsSave,  auth: true  },
     'log.get':        { fn: opLogGet,        auth: false },
     'log.clear':      { fn: opLogClear,      auth: true  },
+    'alarm.history':  { fn: opAlarmHistory,  auth: false },
     'update.begin':   { fn: opUpdateBegin,   auth: true  },
     'update.cancel':  { fn: opUpdateCancel,  auth: true  },
 };

@@ -6,7 +6,13 @@
 // версия приезжает из Loader: по TCP — POST /api/update/package с телом-архивом,
 // по RS-485 — кадром {"upd":{…}} с архивом в base64, нарезанным на части cfgSeq.
 //
-// Архив — обычный tar.gz, распаковывает его системный tar поверх установки.
+// Архив — обычный tar.gz. Здесь он только проверяется, чтобы ответить
+// оператору понятным отказом (чужой архив, смена зависимостей без
+// node_modules). Ставит его root-помощник apply-update.py (server/privileged.js):
+// код программы принадлежит root, и служба писать в него не может — иначе
+// любой пакет или любая ошибка службы превращались в root. Помощник сам
+// заново проверяет пакет, сохраняет прежнюю версию и при сбое возвращает её.
+//
 // Файлы, удалённые в новом релизе, на диске остаются: так распаковка не может
 // снести server/data с базой профилей. npm install не запускаем — без интернета
 // он невозможен, поэтому пакет без node_modules и с другими зависимостями
@@ -18,23 +24,20 @@ const os      = require('os');
 const crypto  = require('crypto');
 const { execFileSync } = require('child_process');
 
-const logger    = require('./logger');
-const netConfig = require('./netConfig');
+const logger     = require('./logger');
+const netConfig  = require('./netConfig');
+const privileged = require('./privileged');
 
-const ROOT        = path.join(__dirname, '..');
-const BACKUP_DIR  = path.join(ROOT, 'backup');
-const KEEP_BACKUPS = 3;
+const ROOT = path.join(__dirname, '..');
 
 /// Потолок пакета: полный с node_modules — около 35 МБ, запас троекратный.
 const MAX_BYTES = 100 * 1024 * 1024;
 
-/// Каталоги установки, которые имеет смысл сохранять перед распаковкой.
-const BACKUP_PATHS = ['app.js', 'package.json', 'package-lock.json', 'server', 'public', 'scripts'];
-
 // Рабочее состояние устройства: база профилей и настройки, нажитые на месте.
 // В пакет они попадать не должны, но архив легко собрать из рабочего дерева
 // вместе с ними — тогда табло потеряет свою базу или скорость линии. Поэтому
-// такие файлы при распаковке пропускаются (список — это .gitignore проекта).
+// такие файлы при распаковке пропускаются (список — это .gitignore проекта;
+// тот же список держит scripts/apply-update.py).
 const RUNTIME_STATE = /^server\/data\/([^/]*\.db(-shm|-wal)?|serial-settings\.json|data-source-settings\.json|board-settings\.json)$/;
 
 // ── Разбор и проверка архива ──────────────────────────────────────────────────
@@ -81,16 +84,6 @@ function _badEntry(list) {
             return 'Недопустимый путь в архиве: ' + p;
     }
     return null;
-}
-
-/// Ключи --exclude для tar: он сверяет их с именем до --strip-components.
-function _excludeArgs(skipped, strip) {
-    const args = [];
-    skipped.forEach(function (rel) {
-        args.push('--exclude=' + rel);
-        if (strip) args.push('--exclude=*/' + rel);
-    });
-    return args;
 }
 
 /// Содержимое одного файла из архива (или null, если его там нет).
@@ -162,30 +155,84 @@ function inspect(file) {
              skipped: skipped, entries: list };
 }
 
-// ── Сохранение прежней версии ─────────────────────────────────────────────────
+// ── Установка от root ─────────────────────────────────────────────────────────
 
-function _backup(withModules) {
+/**
+ * Поставить проверенный пакет root-помощником. Возвращает его отчёт
+ * ({ version, backup, skipped }) или бросает Error с текстом для оператора.
+ * Помощник при сбое распаковки сам возвращает прежнюю версию.
+ */
+function _install(file) {
+    let out;
     try {
-        fs.mkdirSync(BACKUP_DIR, { recursive: true });
-    } catch (_) { /* уже есть */ }
+        out = execFileSync('sudo', ['-n', privileged.UPDATE, file],
+                           { timeout: 600000, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+        const why = String((e.stderr && e.stderr.length ? e.stderr : '') || e.message || e).trim();
+        throw new Error(why);
+    }
+    try { return JSON.parse(String(out).trim().split('\n').pop()); }
+    catch (_) { return {}; }
+}
 
-    const paths = BACKUP_PATHS.filter(function (p) { return fs.existsSync(path.join(ROOT, p)); });
-    if (withModules && fs.existsSync(path.join(ROOT, 'node_modules'))) paths.push('node_modules');
-    if (!paths.length) return null;
+// ── Установка на табло старой установки ───────────────────────────────────────
+//
+// Табло, ещё не переведённое на новые права (privileged.isLegacy), не имеет
+// root-помощника, а код принадлежит службе. Здесь пакет распаковывается как
+// раньше — иначе такое табло на буровой нельзя было бы даже обновить до
+// версии, которая его переведёт (server/migrateLayout.js). Ничего не ухудшает:
+// в такой установке служба и так владеет своим кодом.
 
-    const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-    const name  = path.join(BACKUP_DIR, 'before-' + stamp + '.tgz');
-    execFileSync('tar', ['-czf', name, '-C', ROOT, '--exclude=server/data/*.db*'].concat(paths),
-                 { timeout: 300000 });
+const LEGACY_BACKUP_DIR   = path.join(ROOT, 'backup');
+const LEGACY_KEEP_BACKUPS = 3;
+const LEGACY_BACKUP_PATHS = ['app.js', 'package.json', 'package-lock.json', 'server', 'public', 'scripts'];
 
-    // Держим только последние снимки: диска много, но не бесконечно
-    const old = fs.readdirSync(BACKUP_DIR)
-        .filter(function (f) { return /^before-\d{14}\.tgz$/.test(f); })
-        .sort()
-        .slice(0, -KEEP_BACKUPS);
-    old.forEach(function (f) { try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch (_) {} });
+/// Ключи --exclude для tar: он сверяет их с именем до --strip-components.
+function _excludeArgs(skipped, strip) {
+    const args = [];
+    skipped.forEach(function (rel) {
+        args.push('--exclude=' + rel);
+        if (strip) args.push('--exclude=*/' + rel);
+    });
+    return args;
+}
 
-    return name;
+function _installLegacy(file, info) {
+    try { fs.mkdirSync(LEGACY_BACKUP_DIR, { recursive: true }); } catch (_) { /* уже есть */ }
+
+    let backup = null;
+    const paths = LEGACY_BACKUP_PATHS.filter(function (p) { return fs.existsSync(path.join(ROOT, p)); });
+    if (info.withModules && fs.existsSync(path.join(ROOT, 'node_modules'))) paths.push('node_modules');
+    if (paths.length) {
+        const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        backup = path.join(LEGACY_BACKUP_DIR, 'before-' + stamp + '.tgz');
+        try {
+            execFileSync('tar', ['-czf', backup, '-C', ROOT, '--exclude=server/data/*.db*'].concat(paths),
+                         { timeout: 300000 });
+        } catch (e) { throw new Error('Не удалось сохранить прежнюю версию: ' + (e.message || e)); }
+
+        fs.readdirSync(LEGACY_BACKUP_DIR)
+            .filter(function (f) { return /^before-\d{14}\.tgz$/.test(f); })
+            .sort()
+            .slice(0, -LEGACY_KEEP_BACKUPS)
+            .forEach(function (f) { try { fs.unlinkSync(path.join(LEGACY_BACKUP_DIR, f)); } catch (_) {} });
+    }
+
+    const args = ['-xzf', file, '-C', ROOT].concat(_excludeArgs(info.skipped, info.strip));
+    if (info.strip) args.push('--strip-components=' + info.strip);
+    try { execFileSync('tar', args, { timeout: 300000 }); }
+    catch (e) { throw new Error('Ошибка распаковки: ' + (e.message || e)); }
+
+    // Бит исполнения у скриптов возвращаем сами: без него перестанет работать
+    // set-network.sh — единственный путь к reboot и к переводу на новые права
+    try {
+        const dir = path.join(ROOT, 'scripts');
+        fs.readdirSync(dir)
+            .filter(function (f) { return /\.(sh|py)$/.test(f); })
+            .forEach(function (f) { fs.chmodSync(path.join(dir, f), 0o755); });
+    } catch (_) { /* каталога может не быть в пакете */ }
+
+    return { backup: backup ? path.basename(backup) : null };
 }
 
 // ── Применение ────────────────────────────────────────────────────────────────
@@ -198,6 +245,8 @@ let _latched = false;
  * Возвращает null при успехе или текст ошибки для оператора.
  * При успехе устройство перезагружается: другого способа поднять киоск на новой
  * версии нет, а `systemctl restart` этой службе не разрешён в sudoers.
+ * Пакет ставится от root (_install), поэтому файл кладём во временный каталог:
+ * помощник откроет его без следования по ссылкам и сначала скопирует к себе.
  */
 function apply(meta, buf) {
     if (_latched) return null;
@@ -218,32 +267,18 @@ function apply(meta, buf) {
 
         const info = inspect(file);
         if (info.error) return info.error;
-        const strip = info.strip, withModules = info.withModules, version = info.version;
+        const withModules = info.withModules, version = info.version;
 
-        let backup = null;
-        try { backup = _backup(withModules); }
-        catch (e) { return 'Не удалось сохранить прежнюю версию: ' + (e.message || e); }
-
-        const args = ['-xzf', file, '-C', ROOT].concat(_excludeArgs(info.skipped, strip));
-        if (strip) args.push('--strip-components=' + strip);
-        try { execFileSync('tar', args, { timeout: 300000 }); }
-        catch (e) { return 'Ошибка распаковки: ' + (e.message || e); }
-
-        // Бит исполнения у скриптов возвращаем сами: без него перестанет
-        // работать set-network.sh, а это единственный разрешённый путь к reboot
-        try {
-            const dir = path.join(ROOT, 'scripts');
-            fs.readdirSync(dir)
-                .filter(function (f) { return /\.sh$/.test(f); })
-                .forEach(function (f) { fs.chmodSync(path.join(dir, f), 0o755); });
-        } catch (_) { /* каталога может не быть в пакете */ }
+        let report;
+        try { report = privileged.isLegacy() ? _installLegacy(file, info) : _install(file); }
+        catch (e) { return 'Ошибка установки обновления: ' + (e.message || e); }
 
         _latched = true;
         logger.log('Обновление' + (version ? ' до ' + version : '') + ' принято' +
                    (meta.channel ? ' по ' + meta.channel : '') +
                    ' (' + Math.round(buf.length / 1024) + ' КБ' +
                    (withModules ? ', с зависимостями' : '') + ')' +
-                   (backup ? ', прежняя версия в ' + path.basename(backup) : '') +
+                   (report.backup ? ', прежняя версия в ' + report.backup : '') +
                    (info.skipped.length
                        ? ', своё оставлено: ' + info.skipped.join(', ') : '') +
                    ' — перезагрузка');
